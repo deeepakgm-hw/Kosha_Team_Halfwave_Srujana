@@ -10,6 +10,7 @@ import { CalendarPage } from "../features/calendar/CalendarPage";
 import { TrustPage } from "../features/trust/TrustPage";
 import { ShopCreditPage } from "../features/shopkeeper/ShopCreditPage";
 import { LoginPage } from "../features/auth/LoginPage";
+import { LandingPage } from "../features/landing/LandingPage";
 import { CustomerLayout } from "../components/layout/CustomerLayout";
 import { CustomerDashboardPage } from "../features/customer/CustomerDashboardPage";
 import { CustomerDuesPage } from "../features/customer/CustomerDuesPage";
@@ -19,6 +20,23 @@ import { CustomerProfilePage } from "../features/customer/CustomerProfilePage";
 import { RouteErrorBoundary } from "../components/layout/RouteErrorBoundary";
 
 export const router = createBrowserRouter([
+  // High-Impact PayPal-Style Landing Page
+  {
+    path: "/",
+    element: <LandingPage />,
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    path: "/landing",
+    element: <LandingPage />,
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    path: "/home",
+    element: <LandingPage />,
+    errorElement: <RouteErrorBoundary />,
+  },
+  // Interactive Demo / Persona Selection
   {
     path: "/welcome",
     element: <LoginPage />,
@@ -69,15 +87,11 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  // Business Owner / Merchant Dashboard Experience
   {
-    path: "/",
     element: <GlassLayout />,
     errorElement: <RouteErrorBoundary />,
     children: [
-      {
-        index: true,
-        element: <LoadPage />,
-      },
       // 1. Load data
       {
         path: "load",
@@ -153,6 +167,10 @@ export const router = createBrowserRouter([
         element: <ShopCreditPage />,
       },
       {
+        path: "shopkeeper-credit",
+        element: <ShopCreditPage />,
+      },
+      {
         path: "calendar",
         element: <CalendarPage />,
       },
@@ -174,7 +192,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "*",
-        element: <Navigate to="/load" replace />,
+        element: <Navigate to="/" replace />,
       },
     ],
   },
