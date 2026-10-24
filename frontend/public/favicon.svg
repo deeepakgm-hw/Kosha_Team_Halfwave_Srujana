@@ -1,0 +1,13 @@
+<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="koshaFavicon" x1="20" y1="10" x2="80" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#5EB0FF"/>
+      <stop offset="100%" stopColor="#1D6FD6"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="28" fill="url(#koshaFavicon)"/>
+  <line x1="36" y1="26" x2="36" y2="74" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round"/>
+  <line x1="38" y1="50" x2="64" y2="33" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round"/>
+  <line x1="45" y1="45" x2="69" y2="72" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="73" cy="28" r="7.5" fill="#FBBF24"/>
+</svg>

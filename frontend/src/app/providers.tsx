@@ -1,0 +1,15 @@
+import React from "react";
+import { BusinessProvider } from "../context/BusinessContext";
+import { LanguageProvider } from "../context/LanguageContext";
+
+interface ProvidersProps {
+  children: React.ReactNode;
+}
+
+export const Providers: React.FC<ProvidersProps> = ({ children }) => {
+  return (
+    <LanguageProvider>
+      <BusinessProvider>{children}</BusinessProvider>
+    </LanguageProvider>
+  );
+};
