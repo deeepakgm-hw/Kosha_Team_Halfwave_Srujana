@@ -16,6 +16,15 @@ import {
   ScenarioSimulationResponse,
   VendorBill,
 } from "../types/cashflow";
+import {
+  ActivityEvent,
+  CreditTransaction,
+  CreditTransactionCreatePayload,
+  CustomerDashboardSummary,
+  CustomerDuesResponse,
+  RepaymentCreatePayload,
+  Shop,
+} from "../types/customer";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
@@ -264,5 +273,52 @@ export const apiClient = {
 
   async getBacktestReliability(businessId = "apex_precision_mfg", evaluationPeriods = 12): Promise<BacktestResponse> {
     return fetchApi<BacktestResponse>(`/backtest?business_id=${businessId}&evaluation_periods=${evaluationPeriods}`);
+  },
+
+  // Customer Experience Endpoints
+  async getCustomerDashboard(customerId = "cust_rahul_01"): Promise<CustomerDashboardSummary> {
+    return fetchApi<CustomerDashboardSummary>(`/customer/dashboard?customer_id=${customerId}`);
+  },
+
+  async getCustomerDues(customerId = "cust_rahul_01", status?: string): Promise<CustomerDuesResponse> {
+    const q = status ? `&status=${status}` : "";
+    return fetchApi<CustomerDuesResponse>(`/customer/dues?customer_id=${customerId}${q}`);
+  },
+
+  async getCustomerTransaction(transactionId: string, customerId = "cust_rahul_01"): Promise<CreditTransaction> {
+    return fetchApi<CreditTransaction>(`/customer/transactions/${transactionId}?customer_id=${customerId}`);
+  },
+
+  async createCreditTransaction(
+    data: CreditTransactionCreatePayload,
+    customerId = "cust_rahul_01"
+  ): Promise<CreditTransaction> {
+    return fetchApi<CreditTransaction>(`/customer/transactions?customer_id=${customerId}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async recordCustomerRepayment(
+    transactionId: string,
+    data: RepaymentCreatePayload,
+    customerId = "cust_rahul_01"
+  ): Promise<CreditTransaction> {
+    return fetchApi<CreditTransaction>(`/customer/transactions/${transactionId}/repayments?customer_id=${customerId}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async listShops(): Promise<Shop[]> {
+    return fetchApi<Shop[]>("/shops");
+  },
+
+  async getShopByCode(shopCode: string): Promise<Shop> {
+    return fetchApi<Shop>(`/shops/${encodeURIComponent(shopCode.trim())}`);
+  },
+
+  async getCustomerActivity(customerId = "cust_rahul_01", limit = 20): Promise<ActivityEvent[]> {
+    return fetchApi<ActivityEvent[]>(`/customer/activity?customer_id=${customerId}&limit=${limit}`);
   },
 };

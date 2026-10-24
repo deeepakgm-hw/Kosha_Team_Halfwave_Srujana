@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { KoshaLogo } from "../ui/KoshaLogo";
 import { useBusiness } from "../../context/BusinessContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { ChevronDown, Database, Sparkles, Plus, Check, Menu, X, HelpCircle, LogOut } from "lucide-react";
+import { ChevronDown, Database, Sparkles, Plus, Check, Menu, X, HelpCircle, LogOut, User } from "lucide-react";
 
 export const GlassNavbar: React.FC = () => {
   const location = useLocation();
@@ -250,6 +250,16 @@ export const GlassNavbar: React.FC = () => {
             </button>
           </div>
 
+          {/* Customer View Switcher */}
+          <Link
+            to="/customer/dashboard"
+            className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 shadow-xs transition-all"
+            title="Open Customer Credit Dashboard"
+          >
+            <User className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Customer View</span>
+          </Link>
+
           {/* Product Overview / Welcome Link */}
           <Link
             to="/welcome"
@@ -326,6 +336,18 @@ export const GlassNavbar: React.FC = () => {
                 {item.name}
               </Link>
             ))}
+          </div>
+
+          {/* Mobile Customer View Link */}
+          <div className="pt-2">
+            <Link
+              to="/customer/dashboard"
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-full px-3 py-2 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center gap-2 transition-colors"
+            >
+              <User className="w-4 h-4 text-emerald-600" />
+              <span>Switch to Customer View</span>
+            </Link>
           </div>
 
           {/* Mobile Language Switcher & Sign Out */}

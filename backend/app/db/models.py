@@ -246,3 +246,100 @@ class OperatingExpenseModel(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     business = relationship("BusinessModel", back_populates="operating_expenses")
+
+
+class ShopModel(Base):
+    """Participating merchant shop for credit purchases."""
+
+    __tablename__ = "shops"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    shop_name = Column(String(200), nullable=False)
+    shop_code = Column(String(50), nullable=False, unique=True, index=True)
+    category = Column(String(100), default="General Store")
+    owner_name = Column(String(100), default="Authorized Merchant")
+    phone = Column(String(20), nullable=True)
+    upi_id = Column(String(100), nullable=True)
+    qr_payload = Column(String(255), nullable=True)
+    is_verified = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    transactions = relationship("CreditTransactionModel", back_populates="shop", cascade="all, delete-orphan")
+
+
+class CustomerModel(Base):
+    """Customer profile for tracking shop credits and repayment obligations."""
+
+    __tablename__ = "customers"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    display_name = Column(String(200), nullable=False, default="Rahul Sharma")
+    phone = Column(String(20), nullable=False, default="+91 98765 43210")
+    email = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    transactions = relationship("CreditTransactionModel", back_populates="customer", cascade="all, delete-orphan")
+    activities = relationship("ActivityEventModel", back_populates="customer", cascade="all, delete-orphan")
+
+
+class CreditTransactionModel(Base):
+    """Customer credit transaction at a participating shop with repayment tracking."""
+
+    __tablename__ = "customer_credit_transactions"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    reference = Column(String(50), nullable=False, unique=True, index=True)
+    customer_id = Column(String(50), ForeignKey("customers.id"), nullable=False, index=True)
+    shop_id = Column(String(50), ForeignKey("shops.id"), nullable=False, index=True)
+    description = Column(String(255), nullable=False)
+    purchase_amount = Column(Numeric(15, 2, asdecimal=True), nullable=False)
+    initial_paid_amount = Column(Numeric(15, 2, asdecimal=True), nullable=False, default=0.00)
+    outstanding_amount = Column(Numeric(15, 2, asdecimal=True), nullable=False)
+    transaction_date = Column(Date, nullable=False, index=True)
+    agreed_repayment_date = Column(Date, nullable=False, index=True)
+    status = Column(String(20), nullable=False, default="upcoming", index=True)  # upcoming, due_today, overdue, paid
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    customer = relationship("CustomerModel", back_populates="transactions")
+    shop = relationship("ShopModel", back_populates="transactions")
+    repayments = relationship("RepaymentModel", back_populates="transaction", cascade="all, delete-orphan")
+
+
+class RepaymentModel(Base):
+    """Recorded repayment towards a credit transaction."""
+
+    __tablename__ = "customer_repayments"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    transaction_id = Column(String(50), ForeignKey("customer_credit_transactions.id"), nullable=False, index=True)
+    amount = Column(Numeric(15, 2, asdecimal=True), nullable=False)
+    repayment_date = Column(Date, nullable=False)
+    payment_method = Column(String(50), default="demo_upi")  # demo_upi, demo_cash, demo_netbanking
+    payment_status = Column(String(20), default="completed")  # completed, failed, pending
+    provider_reference = Column(String(100), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    transaction = relationship("CreditTransactionModel", back_populates="repayments")
+
+
+class ActivityEventModel(Base):
+    """Audit activity event for customer actions and repayment reminders."""
+
+    __tablename__ = "customer_activities"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    customer_id = Column(String(50), ForeignKey("customers.id"), nullable=False, index=True)
+    transaction_id = Column(String(50), ForeignKey("customer_credit_transactions.id"), nullable=True)
+    event_type = Column(String(50), nullable=False)  # purchase_recorded, partial_payment, repayment_completed, reminder
+    title = Column(String(200), nullable=False)
+    description = Column(String(255), nullable=False)
+    amount = Column(Numeric(15, 2, asdecimal=True), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    customer = relationship("CustomerModel", back_populates="activities")

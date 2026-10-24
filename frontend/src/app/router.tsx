@@ -9,6 +9,12 @@ import { ReceivablesPage } from "../features/receivables/ReceivablesPage";
 import { CalendarPage } from "../features/calendar/CalendarPage";
 import { TrustPage } from "../features/trust/TrustPage";
 import { LoginPage } from "../features/auth/LoginPage";
+import { CustomerLayout } from "../components/layout/CustomerLayout";
+import { CustomerDashboardPage } from "../features/customer/CustomerDashboardPage";
+import { CustomerDuesPage } from "../features/customer/CustomerDuesPage";
+import { CustomerPayPage } from "../features/customer/CustomerPayPage";
+import { CustomerActivityPage } from "../features/customer/CustomerActivityPage";
+import { CustomerProfilePage } from "../features/customer/CustomerProfilePage";
 
 export const router = createBrowserRouter([
   {
@@ -18,6 +24,45 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     element: <LoginPage />,
+  },
+  // Customer Experience
+  {
+    path: "/customer",
+    element: <CustomerLayout />,
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/customer/dashboard" replace />,
+      },
+      {
+        path: "dashboard",
+        element: <CustomerDashboardPage />,
+      },
+      {
+        path: "dues",
+        element: <CustomerDuesPage />,
+      },
+      {
+        path: "repayments",
+        element: <CustomerDuesPage />,
+      },
+      {
+        path: "pay",
+        element: <CustomerPayPage />,
+      },
+      {
+        path: "shops",
+        element: <CustomerPayPage />,
+      },
+      {
+        path: "activity",
+        element: <CustomerActivityPage />,
+      },
+      {
+        path: "profile",
+        element: <CustomerProfilePage />,
+      },
+    ],
   },
   {
     path: "/",

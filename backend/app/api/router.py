@@ -10,6 +10,8 @@ from backend.app.api.routes.actions import router as actions_router
 from backend.app.api.routes.receivables import router as receivables_router
 from backend.app.api.routes.calendar import router as calendar_router
 from backend.app.api.routes.backtest import router as backtest_router
+from backend.app.api.routes.customer import router as customer_router
+from backend.app.api.routes.shops import router as shops_router
 
 api_router = APIRouter()
 
@@ -25,4 +27,6 @@ api_router.include_router(actions_router, prefix="/actions", tags=["Corrective A
 api_router.include_router(receivables_router, prefix="/receivables", tags=["Receivables & MSMED Law"])
 api_router.include_router(calendar_router, prefix="/calendar", tags=["Cash Calendar"])
 api_router.include_router(backtest_router, prefix="/backtest", tags=["Forecast Reliability"])
+api_router.include_router(customer_router, prefix="/customer", tags=["Customer Dashboard & Dues"])
+api_router.include_router(shops_router, prefix="/shops", tags=["Merchant Shops"])
 
