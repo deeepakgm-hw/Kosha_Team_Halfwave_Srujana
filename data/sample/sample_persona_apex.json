@@ -1,0 +1,44 @@
+{
+  "persona_id": "apex_precision_mfg",
+  "name": "Apex Precision Components Pvt Ltd",
+  "is_synthetic": true,
+  "description": "Synthetic profile of a small tier-2 auto component manufacturing unit in Pune, India.",
+  "opening_cash": 450000.0,
+  "currency": "INR",
+  "monthly_payroll": 180000.0,
+  "monthly_rent": 65000.0,
+  "active_invoices": [
+    {
+      "id": "INV-SYNTH-001",
+      "customer": "Western Auto Assemblers",
+      "amount": 280000.0,
+      "due_date": "2026-11-04",
+      "status": "expected",
+      "confidence": 0.85
+    },
+    {
+      "id": "INV-SYNTH-002",
+      "customer": "Bharat Gears Ltd",
+      "amount": 195000.0,
+      "due_date": "2026-10-18",
+      "status": "overdue",
+      "confidence": 0.60
+    }
+  ],
+  "upcoming_obligations": [
+    {
+      "id": "OBL-SYNTH-001",
+      "title": "Monthly Factory Payroll",
+      "amount": 180000.0,
+      "due_date": "2026-11-07",
+      "category": "payroll"
+    },
+    {
+      "id": "OBL-SYNTH-002",
+      "title": "GSTR-3B Tax Filing",
+      "amount": 54000.0,
+      "due_date": "2026-11-20",
+      "category": "statutory"
+    }
+  ]
+}
