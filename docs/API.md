@@ -18,13 +18,15 @@
 | `POST` | `/api/businesses/{id}/accounts` | Register bank account with verified/unverified opening balance |
 | `GET` | `/api/businesses/{id}/accounts` | List accounts associated with a business |
 | `POST` | `/api/statements/import-csv` | Multipart CSV statement upload with auto-delimiter sniffing, deduplication, and atomic commit |
+| `GET` | `/api/statements/duplicates/audit` | Audit database for duplicate transactions, file hashes, and repeated rows |
+| `POST` | `/api/statements/duplicates/cleanup` | Idempotent cleanup of redundant duplicates with dry-run support |
 | `GET` | `/api/transactions` | Query persisted bank transactions filtered by business, account, and date range |
 | `POST` | `/api/invoices` | Create customer invoice with MSMED 45-day tracking eligibility |
 | `GET` | `/api/invoices` | List customer invoices filtered by status (`unpaid`, `partially_paid`, `paid`, `cancelled`) |
-| `POST` | `/api/invoices/{id}/payments` | Record customer payment (validates overpayment prevention) |
+| `POST` | `/api/invoices/{id}/payments` | Record customer payment (supports `idempotency_key`, validates overpayment prevention) |
 | `POST` | `/api/bills` | Create vendor bill with priority weighting (`critical`, `normal`, `flexible`) |
 | `GET` | `/api/bills` | List vendor bills filtered by status |
-| `POST` | `/api/bills/{id}/payments` | Record vendor bill outflow |
+| `POST` | `/api/bills/{id}/payments` | Record vendor bill outflow (supports `idempotency_key`) |
 | `POST` | `/api/operating-expenses` | Register recurring expense (payroll, rent, statutory tax, utilities) |
 | `GET` | `/api/operating-expenses` | List recurring operating expenses |
 | `POST` | `/api/forecast` | Run deterministic 90-day rolling simulation with reserve breach & shortfall detection |
@@ -33,6 +35,23 @@
 | `GET` | `/api/receivables/law` | MSMED Section 16 monthly compound penal interest & Section 43B(h) compliance |
 | `GET` | `/api/calendar` | 42-day categorized disbursements (Statutory, Payroll, Loans, Suppliers, Recurring) |
 | `GET` | `/api/backtest` | Empirical backtest replay metrics and calibration coordinates |
+| `GET` | `/api/customer/dashboard` | Customer profile summary, active dues, upcoming repayment commitments |
+| `GET` | `/api/customer/dues` | Filtered customer transactions (`upcoming`, `due_today`, `overdue`, `paid`) |
+| `POST` | `/api/customer/credit-transactions` | Record shop purchase on credit with down-payment (supports `idempotency_key`) |
+| `POST` | `/api/customer/repayments` | Record customer repayment towards outstanding credit (supports `idempotency_key`) |
+| `GET` | `/api/shops` | List participating verified merchant shops |
+| `GET` | `/api/shops/{shop_code}` | Resolve shop by code or QR payload |
+| `GET` | `/api/shops/{shop_code}/qr` | Generate authoritative SVG QR code and customer payment instructions |
+| `GET` | `/api/shopkeeper/shop/summary` | Shopkeeper receivables summary KPIs, overdue balance, today's collections |
+| `GET` | `/api/shopkeeper/shop/transactions` | Shopkeeper customer credit transactions with status and search filters |
+| `POST` | `/api/shopkeeper/shop/transactions/{id}/repay` | Record direct counter payment collected from customer |
+| `GET` | `/api/payment-gateway/status` | Connectivity status and transparent sandbox mode indicator |
+| `POST` | `/api/payment-gateway/initiate` | Initiate payment order with persistent idempotency |
+| `POST` | `/api/payment-gateway/verify` | Server-side payment verification and idempotent ledger update |
+| `POST` | `/api/payment-gateway/webhook` | Idempotent webhook handler with unique event tracking |
+| `POST` | `/api/notifications/evaluate` | Evaluate repayment dates in `Asia/Kolkata` and schedule deduplicated reminders |
+| `GET` | `/api/notifications` | List persistent notifications for customer or merchant |
+| `POST` | `/api/notifications/{id}/read` | Mark persistent notification as read |
 
 ---
 
@@ -452,5 +471,116 @@ Retrieves empirical forecast reliability metrics, prediction band coverage, warn
   "methodology_notes": [ ... ]
 }
 ```
+
+---
+
+## 2. Customer & Shopkeeper Integration Endpoints
+
+### `GET /api/customer/dashboard`
+Retrieves customer summary profile, active dues, shops count, and friendly non-judgmental guidance message.
+
+#### Query Parameters
+- `customer_id` (string): Customer ID (default: `"cust_rahul_01"`)
+
+---
+
+### `POST /api/customer/credit-transactions`
+Records a purchase made on credit with optional initial downpayment. Supports `idempotency_key`.
+
+#### Request Body
+```json
+{
+  "shop_code": "KOSHA-LAKSHMI",
+  "description": "Hardware Fittings & Fasteners",
+  "purchase_amount": 1500.0,
+  "amount_paid_now": 500.0,
+  "agreed_repayment_date": "2026-11-05",
+  "idempotency_key": "idemp_cust_tx_123"
+}
+```
+
+---
+
+### `POST /api/customer/repayments`
+Records an auditable repayment towards an outstanding credit balance.
+
+#### Request Body
+```json
+{
+  "amount": 500.0,
+  "payment_method": "demo_upi",
+  "notes": "Payment via UPI",
+  "idempotency_key": "idemp_rep_456"
+}
+```
+
+---
+
+### `GET /api/shops/{shop_code}/qr`
+Generates authoritative SVG QR code and instructions for merchant shops.
+
+#### Response (`200 OK`)
+```json
+{
+  "shop_code": "KOSHA-APEX",
+  "shop_name": "Apex Precision Works",
+  "qr_payload": "kosha://shop/KOSHA-APEX",
+  "qr_svg": "<svg ...></svg>",
+  "instructions": "Scan this QR code with the KOSHA Customer app or enter shop code KOSHA-APEX to record credit purchases."
+}
+```
+
+---
+
+### `GET /api/shopkeeper/shop/summary`
+Calculates authoritative receivables summary KPIs for shopkeepers from persistent records.
+
+---
+
+### `POST /api/payment-gateway/initiate`
+Initiates a payment order with persistent idempotency.
+
+#### Request Body
+```json
+{
+  "transaction_id": "ctx_demo_01",
+  "amount": 500.0,
+  "idempotency_key": "idemp_order_789"
+}
+```
+
+---
+
+### `POST /api/payment-gateway/webhook`
+Idempotent webhook endpoint for asynchronous payment status updates.
+
+#### Request Body
+```json
+{
+  "event_id": "evt_razorpay_mock_123",
+  "payload": {
+    "event": "payment.captured",
+    "payment_id": "pay_mock_456",
+    "amount": 50000
+  }
+}
+```
+
+---
+
+### `POST /api/notifications/evaluate`
+Scans active credit transactions, evaluates due dates in `Asia/Kolkata`, and schedules persistent deduplicated notifications.
+
+#### Response (`200 OK`)
+```json
+{
+  "evaluation_date": "2026-10-24",
+  "timezone": "Asia/Kolkata",
+  "active_transactions_evaluated": 5,
+  "generated_notifications_count": 2,
+  "skipped_duplicates_count": 0
+}
+```
+
 
 

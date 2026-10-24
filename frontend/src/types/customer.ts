@@ -16,7 +16,16 @@ export interface Shop {
   upi_id?: string;
   qr_payload?: string;
   is_verified: boolean;
+  status: string;
   created_at: string;
+}
+
+export interface ShopQr {
+  shop_code: string;
+  shop_name: string;
+  qr_payload: string;
+  qr_svg: string;
+  instructions: string;
 }
 
 export interface Repayment {
@@ -26,6 +35,7 @@ export interface Repayment {
   repayment_date: string;
   payment_method: string;
   payment_status: string;
+  recorded_by?: string;
   provider_reference?: string;
   notes?: string;
   created_at: string;
@@ -62,10 +72,13 @@ export interface ActivityEvent {
 
 export interface ReminderItem {
   transaction_id: string;
+  reference?: string;
   shop_name: string;
+  shop_code?: string;
   amount: number;
   due_date: string;
-  urgency: "overdue" | "due_today" | "upcoming";
+  days_diff?: number;
+  urgency: "overdue" | "due_today" | "approaching" | "upcoming" | "completed";
   message: string;
 }
 
@@ -102,4 +115,52 @@ export interface RepaymentCreatePayload {
   amount: number;
   payment_method?: string;
   notes?: string;
+}
+
+// =========================================================================
+// Shopkeeper Types
+// =========================================================================
+
+export interface ShopkeeperSummary {
+  shop: Shop;
+  total_customer_receivables: number;
+  collected_today: number;
+  due_in_7_days: number;
+  overdue_receivables: number;
+  customers_with_balance_count: number;
+  total_transactions_count: number;
+}
+
+export interface ShopkeeperTransaction {
+  id: string;
+  reference: string;
+  customer_id: string;
+  customer_name: string;
+  customer_phone: string;
+  shop_id: string;
+  shop_name: string;
+  shop_code: string;
+  description: string;
+  purchase_amount: number;
+  initial_paid_amount: number;
+  outstanding_amount: number;
+  transaction_date: string;
+  agreed_repayment_date: string;
+  status: "upcoming" | "due_today" | "overdue" | "paid";
+  created_at: string;
+  repayments: Repayment[];
+}
+
+export interface ShopkeeperRepaymentCreatePayload {
+  amount: number;
+  payment_method: string;
+  notes?: string;
+}
+
+export interface PaymentGatewayStatus {
+  is_configured: boolean;
+  provider_name: string;
+  supported_methods: string[];
+  is_sandbox: boolean;
+  instructions: string;
 }

@@ -1,3 +1,4 @@
+from datetime import date, datetime, timezone
 from decimal import Decimal
 import pytest
 from backend.app.core.errors import AppException
@@ -220,7 +221,7 @@ def test_csv_import_with_opening_balance_and_empty_date(db_session):
     acc = db_session.query(BankAccountModel).filter_by(business_id="biz_op_bal_test").first()
     assert acc is not None
     assert acc.opening_balance == Decimal("234554")
-    assert acc.opening_balance_date == date.today()
+    assert acc.opening_balance_date in (date.today(), datetime.now(timezone.utc).date())
     assert acc.is_verified is True
 
 
@@ -303,6 +304,6 @@ def test_bank_account_create_schema_defaults():
         opening_balance=Decimal("234554"),
     )
     assert acc.account_number_mask == "...0000"
-    assert acc.opening_balance_date == date.today()
+    assert acc.opening_balance_date in (date.today(), datetime.now(timezone.utc).date())
     assert acc.opening_balance == Decimal("234554")
     assert acc.is_verified is True

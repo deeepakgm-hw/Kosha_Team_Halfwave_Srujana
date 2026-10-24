@@ -9,6 +9,7 @@ from backend.app.schemas.customer import (
     CreditTransactionOut,
     CustomerDashboardSummary,
     CustomerDuesResponse,
+    ReminderItemOut,
     RepaymentCreate,
 )
 from backend.app.services.customer_service import customer_service
@@ -43,6 +44,20 @@ def get_customer_dues(
     db: Session = Depends(get_db),
 ) -> CustomerDuesResponse:
     return customer_service.get_dues(customer_id=customer_id, filter_status=status, db=db)
+
+
+@router.get(
+    "/transactions",
+    response_model=List[CreditTransactionOut],
+    summary="List All Transactions for Customer",
+    description="Returns all credit transactions recorded for this customer.",
+)
+def list_customer_transactions(
+    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    db: Session = Depends(get_db),
+) -> List[CreditTransactionOut]:
+    dues = customer_service.get_dues(customer_id=customer_id, filter_status=None, db=db)
+    return dues.transactions
 
 
 @router.get(
@@ -104,3 +119,16 @@ def get_customer_activity(
     db: Session = Depends(get_db),
 ) -> List[ActivityEventOut]:
     return customer_service.get_activity(customer_id=customer_id, limit=limit, db=db)
+
+
+@router.get(
+    "/reminders",
+    response_model=List[ReminderItemOut],
+    summary="List Customer Repayment Reminders",
+    description="Returns chronological, urgency-sorted repayment reminders based on upcoming, due today, and overdue commitments.",
+)
+def get_customer_reminders(
+    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    db: Session = Depends(get_db),
+) -> List[ReminderItemOut]:
+    return customer_service.get_reminders(customer_id=customer_id, db=db)

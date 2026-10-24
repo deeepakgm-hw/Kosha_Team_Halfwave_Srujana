@@ -67,7 +67,7 @@ class ImportService:
                     account_number_mask="...0000",
                     currency=biz.currency or "INR",
                     opening_balance=opening_balance,
-                    opening_balance_date=opening_balance_date or datetime.now(timezone.utc).date(),
+                    opening_balance_date=opening_balance_date or date.today(),
                     is_verified=True,
                 )
                 db.add(account)
@@ -98,7 +98,7 @@ class ImportService:
 
         # 5. Parse and validate CSV rows
         try:
-            accepted_data, rejected_data, duplicate_count = parse_statement_csv(
+            parsed = parse_statement_csv(
                 file_bytes=file_bytes,
                 business_id=business_id,
                 account_id=bank_account_id,
@@ -106,6 +106,16 @@ class ImportService:
                 amount_sign_mode=amount_sign_mode,
                 existing_fingerprints=existing_fingerprints,
             )
+            if len(parsed) == 4:
+                accepted_data, rejected_data, duplicate_count, breakdown = parsed
+            else:
+                accepted_data, rejected_data, duplicate_count = parsed
+                breakdown = {
+                    "exact_file_duplicates": duplicate_count,
+                    "previously_imported_duplicates": 0,
+                    "potential_duplicates_review": 0,
+                    "potential_duplicates_details": [],
+                }
         except CsvImportError as exc:
             raise AppException(status_code=422, message=str(exc), code="CSV_PARSE_ERROR") from exc
 
@@ -175,6 +185,10 @@ class ImportService:
             "total_rows": batch.total_rows,
             "accepted_rows": batch.accepted_rows,
             "duplicate_rows": batch.duplicate_rows,
+            "exact_file_duplicates": breakdown.get("exact_file_duplicates", 0),
+            "previously_imported_duplicates": breakdown.get("previously_imported_duplicates", 0),
+            "potential_duplicates_review": breakdown.get("potential_duplicates_review", 0),
+            "potential_duplicates_details": breakdown.get("potential_duplicates_details", []),
             "rejected_rows": batch.rejected_rows,
             "rejected_details": rejected_data,
             "statement_period": {
@@ -194,6 +208,103 @@ class ImportService:
                     else "Opening balance has not been verified. Reconciled net movement calculated from statement only."
                 ),
             },
+        }
+
+    def audit_existing_duplicates(self, db: Session, business_id: str) -> Dict[str, Any]:
+        """
+        Scans persistent database records for confirmed and probable duplicate transactions.
+        Preserves audit history and financial traceability.
+        """
+        biz = db.query(BusinessModel).filter_by(id=business_id).first()
+        if not biz:
+            raise NotFoundException(f"Business '{business_id}' not found.")
+
+        txns = (
+            db.query(BankTransactionModel)
+            .filter_by(business_id=business_id)
+            .order_by(BankTransactionModel.transaction_date.desc(), BankTransactionModel.id)
+            .all()
+        )
+
+        seen_fingerprints: Dict[str, BankTransactionModel] = {}
+        seen_ref_keys: Dict[str, BankTransactionModel] = {}
+        exact_duplicates: List[Dict[str, Any]] = []
+        probable_duplicates: List[Dict[str, Any]] = []
+
+        for t in txns:
+            # 1. Exact duplicate by external reference
+            if t.external_reference:
+                ref_key = f"{t.transaction_date.isoformat()}|{t.amount:.2f}|{t.external_reference.strip().lower()}"
+                if ref_key in seen_ref_keys:
+                    first = seen_ref_keys[ref_key]
+                    exact_duplicates.append({
+                        "id": t.id,
+                        "original_id": first.id,
+                        "date": t.transaction_date.isoformat(),
+                        "amount": float(t.amount),
+                        "description": t.description,
+                        "external_reference": t.external_reference,
+                        "reason": f"Matches reference '{t.external_reference}' and date of original transaction {first.id}.",
+                    })
+                else:
+                    seen_ref_keys[ref_key] = t
+
+            # 2. Duplicate by fingerprint
+            if t.fingerprint in seen_fingerprints:
+                first = seen_fingerprints[t.fingerprint]
+                if not any(d["id"] == t.id for d in exact_duplicates):
+                    exact_duplicates.append({
+                        "id": t.id,
+                        "original_id": first.id,
+                        "date": t.transaction_date.isoformat(),
+                        "amount": float(t.amount),
+                        "description": t.description,
+                        "external_reference": t.external_reference,
+                        "reason": f"Identical fingerprint matches transaction {first.id}.",
+                    })
+            else:
+                seen_fingerprints[t.fingerprint] = t
+
+        return {
+            "business_id": business_id,
+            "total_transactions_scanned": len(txns),
+            "confirmed_exact_duplicates_count": len(exact_duplicates),
+            "confirmed_exact_duplicates": exact_duplicates,
+            "probable_duplicates_count": len(probable_duplicates),
+            "probable_duplicates": probable_duplicates,
+            "is_clean": len(exact_duplicates) == 0,
+        }
+
+    def cleanup_duplicates(
+        self, db: Session, business_id: str, dry_run: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Removes redundant exact duplicate transactions while preserving the primary record.
+        """
+        audit = self.audit_existing_duplicates(db=db, business_id=business_id)
+        duplicate_ids = [d["id"] for d in audit["confirmed_exact_duplicates"]]
+
+        if dry_run or not duplicate_ids:
+            return {
+                "dry_run": True,
+                "actions_planned": f"Would remove {len(duplicate_ids)} confirmed duplicate transactions.",
+                "duplicate_ids": duplicate_ids,
+                "audit": audit,
+            }
+
+        # Execute safe removal
+        deleted_count = (
+            db.query(BankTransactionModel)
+            .filter(BankTransactionModel.id.in_(duplicate_ids))
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+
+        return {
+            "dry_run": False,
+            "deleted_count": deleted_count,
+            "message": f"Successfully eliminated {deleted_count} redundant duplicate transactions.",
+            "duplicate_ids": duplicate_ids,
         }
 
 

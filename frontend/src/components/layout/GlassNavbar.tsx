@@ -36,6 +36,7 @@ export const GlassNavbar: React.FC = () => {
 
   const supportingNav = [
     { name: t("receivables"), path: "/receivables", aliases: [] },
+    { name: "Shop Credit", path: "/shop-credit", aliases: ["/shopkeeper", "/shopkeeper-credit"] },
     { name: t("cashCalendar"), path: "/calendar", aliases: ["/cash-calendar"] },
     { name: t("forecastReliability"), path: "/reliability", aliases: ["/trust", "/forecast-reliability"] },
   ];

@@ -88,6 +88,10 @@ class CsvImportResult(BaseModel):
     total_rows: int
     accepted_rows: int
     duplicate_rows: int
+    exact_file_duplicates: int = 0
+    previously_imported_duplicates: int = 0
+    potential_duplicates_review: int = 0
+    potential_duplicates_details: List[Dict[str, Any]] = []
     rejected_rows: int
     rejected_details: List[RejectedRowDetail]
     statement_period: StatementPeriod
@@ -129,6 +133,7 @@ class InvoicePaymentCreate(BaseModel):
     payment_date: date
     reference: Optional[str] = None
     bank_transaction_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 
 class InvoicePaymentOut(BaseModel):
@@ -140,6 +145,7 @@ class InvoicePaymentOut(BaseModel):
     amount: float
     reference: Optional[str] = None
     bank_transaction_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
     created_at: datetime
 
 
@@ -201,6 +207,7 @@ class BillPaymentCreate(BaseModel):
     payment_date: date
     reference: Optional[str] = None
     bank_transaction_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 
 class BillPaymentOut(BaseModel):
@@ -212,6 +219,7 @@ class BillPaymentOut(BaseModel):
     amount: float
     reference: Optional[str] = None
     bank_transaction_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
     created_at: datetime
 
 

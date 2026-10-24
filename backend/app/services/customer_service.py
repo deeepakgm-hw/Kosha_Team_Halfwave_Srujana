@@ -1,13 +1,19 @@
 """
-Customer Service: Implements customer shop-credit tracking, dues aggregation,
-transaction creation, and auditable demo repayment recording.
+Customer & Shopkeeper Shared Ledger Service:
+Implements the shared single source of truth for:
+1. Customer shop-credit purchases, dues tracking, and demo repayments.
+2. Shopkeeper receivables dashboard, QR generation, customer credit monitoring, and counter payment recording.
+3. Multi-shop and multi-customer synthetic demo fixtures with verified integrity.
 """
 
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import uuid
 from typing import Any, Dict, List, Optional
+import qrcode
+import qrcode.image.svg
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from backend.app.core.errors import AppException, NotFoundException
 from backend.app.db.models import (
@@ -28,6 +34,10 @@ from backend.app.schemas.customer import (
     RepaymentCreate,
     RepaymentOut,
     ShopOut,
+    ShopQrOut,
+    ShopkeeperRepaymentCreate,
+    ShopkeeperSummaryOut,
+    ShopkeeperTransactionOut,
 )
 
 
@@ -38,22 +48,16 @@ def generate_reference() -> str:
 
 
 class CustomerService:
-    """Handles customer credit transactions, dues, and repayment commitments."""
+    """Shared financial service connecting customer and shopkeeper records."""
 
     def ensure_demo_seeds(self, db: Session) -> CustomerModel:
-        """Seeds default synthetic demo customer and shops if not already created."""
-        customer = db.query(CustomerModel).filter_by(id="cust_rahul_01").first()
-        if not customer:
-            customer = CustomerModel(
-                id="cust_rahul_01",
-                display_name="Rahul Sharma",
-                phone="+91 98765 43210",
-                email="rahul.sharma@example.in",
-            )
-            db.add(customer)
-            db.flush()
-
-        # Seed standard participating shops
+        """
+        Seeds deterministic synthetic demo entities:
+        - 3 Verified Shops (Apex, Lakshmi, City)
+        - 3 Customers (Rahul, Priya, Amit)
+        - Varied transactions: upcoming, due today, overdue, fully paid, multiple repayments
+        """
+        # 1. Seed 3 Shops
         shops_data = [
             {
                 "id": "shop_apex_01",
@@ -63,7 +67,8 @@ class CustomerService:
                 "owner_name": "Vikram Mehta",
                 "phone": "+91 98220 11223",
                 "upi_id": "apexworks@upi",
-                "qr_payload": "kosha://pay?shop=KOSHA-APEX",
+                "qr_payload": "kosha://shop/KOSHA-APEX",
+                "status": "active",
             },
             {
                 "id": "shop_lakshmi_02",
@@ -73,7 +78,8 @@ class CustomerService:
                 "owner_name": "Lakshmi Narayanan",
                 "phone": "+91 98440 22334",
                 "upi_id": "lakshmiprovisions@upi",
-                "qr_payload": "kosha://pay?shop=KOSHA-LAKSHMI",
+                "qr_payload": "kosha://shop/KOSHA-LAKSHMI",
+                "status": "active",
             },
             {
                 "id": "shop_city_03",
@@ -83,7 +89,8 @@ class CustomerService:
                 "owner_name": "Rajesh Patil",
                 "phone": "+91 98110 33445",
                 "upi_id": "cityhardware@upi",
-                "qr_payload": "kosha://pay?shop=KOSHA-CITY",
+                "qr_payload": "kosha://shop/KOSHA-CITY",
+                "status": "active",
             },
         ]
 
@@ -101,91 +108,303 @@ class CustomerService:
                         upi_id=s["upi_id"],
                         qr_payload=s["qr_payload"],
                         is_verified=True,
+                        status=s["status"],
                     )
                 )
         db.flush()
 
-        # Seed sample credit transactions if user has none
-        txn_count = db.query(CreditTransactionModel).filter_by(customer_id=customer.id).count()
-        if txn_count == 0:
-            today = date.today()
-            # 1. Upcoming due in 5 days
-            txn1 = CreditTransactionModel(
-                id="ctx_demo_01",
-                reference="TXN-9482A101",
-                customer_id=customer.id,
-                shop_id="shop_lakshmi_02",
-                description="Monthly Grocery & Food Staples",
-                purchase_amount=Decimal("3200.00"),
-                initial_paid_amount=Decimal("1000.00"),
-                outstanding_amount=Decimal("2200.00"),
-                transaction_date=today - timedelta(days=10),
-                agreed_repayment_date=today + timedelta(days=5),
-                status="upcoming",
-            )
-            # 2. Overdue by 2 days
-            txn2 = CreditTransactionModel(
-                id="ctx_demo_02",
-                reference="TXN-3819B202",
-                customer_id=customer.id,
-                shop_id="shop_city_03",
-                description="Hardware Fittings & Cables",
-                purchase_amount=Decimal("1850.00"),
-                initial_paid_amount=Decimal("500.00"),
-                outstanding_amount=Decimal("1350.00"),
-                transaction_date=today - timedelta(days=15),
-                agreed_repayment_date=today - timedelta(days=2),
-                status="overdue",
-            )
-            # 3. Fully paid
-            txn3 = CreditTransactionModel(
-                id="ctx_demo_03",
-                reference="TXN-7193C303",
-                customer_id=customer.id,
-                shop_id="shop_apex_01",
-                description="Precision Fasteners & Safety Gloves",
-                purchase_amount=Decimal("950.00"),
-                initial_paid_amount=Decimal("950.00"),
-                outstanding_amount=Decimal("0.00"),
-                transaction_date=today - timedelta(days=7),
-                agreed_repayment_date=today - timedelta(days=3),
-                status="paid",
-            )
-            db.add_all([txn1, txn2, txn3])
-            db.flush()
+        # 2. Seed 3 Customers
+        customers_data = [
+            {
+                "id": "cust_rahul_01",
+                "display_name": "Rahul Sharma",
+                "phone": "+91 98765 43210",
+                "email": "rahul.sharma@example.in",
+            },
+            {
+                "id": "cust_priya_02",
+                "display_name": "Priya Patel",
+                "phone": "+91 98234 56789",
+                "email": "priya.patel@example.in",
+            },
+            {
+                "id": "cust_amit_03",
+                "display_name": "Amit Kumar",
+                "phone": "+91 98345 67890",
+                "email": "amit.kumar@example.in",
+            },
+        ]
 
-            # Add activity history
-            act1 = ActivityEventModel(
-                customer_id=customer.id,
-                transaction_id=txn1.id,
-                event_type="purchase_recorded",
-                title="Purchase Recorded",
-                description="Bought Monthly Grocery at Sri Lakshmi Provisions for ₹3,200 (Paid ₹1,000)",
-                amount=Decimal("3200.00"),
-                created_at=datetime.now(timezone.utc) - timedelta(days=10),
-            )
-            act2 = ActivityEventModel(
-                customer_id=customer.id,
-                transaction_id=txn2.id,
-                event_type="purchase_recorded",
-                title="Purchase Recorded",
-                description="Bought Hardware Fittings at City Hardware & Tools for ₹1,850 (Paid ₹500)",
-                amount=Decimal("1850.00"),
-                created_at=datetime.now(timezone.utc) - timedelta(days=15),
-            )
-            act3 = ActivityEventModel(
-                customer_id=customer.id,
-                transaction_id=txn3.id,
-                event_type="repayment_completed",
-                title="Repayment Completed",
-                description="Cleared full balance of ₹950 at Apex Precision Works",
-                amount=Decimal("950.00"),
-                created_at=datetime.now(timezone.utc) - timedelta(days=3),
-            )
-            db.add_all([act1, act2, act3])
-            db.commit()
+        primary_customer = None
+        for c in customers_data:
+            existing_cust = db.query(CustomerModel).filter_by(id=c["id"]).first()
+            if not existing_cust:
+                existing_cust = CustomerModel(
+                    id=c["id"],
+                    display_name=c["display_name"],
+                    phone=c["phone"],
+                    email=c["email"],
+                )
+                db.add(existing_cust)
+            if c["id"] == "cust_rahul_01":
+                primary_customer = existing_cust
+        db.flush()
 
-        return customer
+        # 3. Seed Realistic Transactions idempotently
+        today = date.today()
+        txns_spec = [
+            (
+                CreditTransactionModel(
+                    id="ctx_demo_01",
+                    reference="TXN-9482A101",
+                    customer_id="cust_rahul_01",
+                    shop_id="shop_lakshmi_02",
+                    description="Monthly Grocery & Food Staples",
+                    purchase_amount=Decimal("3200.00"),
+                    initial_paid_amount=Decimal("1000.00"),
+                    outstanding_amount=Decimal("2200.00"),
+                    transaction_date=today - timedelta(days=10),
+                    agreed_repayment_date=today + timedelta(days=5),
+                    status="upcoming",
+                ),
+                [
+                    RepaymentModel(
+                        id="rep_demo_01",
+                        transaction_id="ctx_demo_01",
+                        amount=Decimal("1000.00"),
+                        repayment_date=today - timedelta(days=10),
+                        payment_method="initial_downpayment",
+                        payment_status="completed",
+                        recorded_by="customer",
+                        provider_reference="DOWN-LAK-01",
+                        notes="Initial payment at checkout",
+                    )
+                ],
+                ActivityEventModel(
+                    id="act_demo_01",
+                    customer_id="cust_rahul_01",
+                    transaction_id="ctx_demo_01",
+                    event_type="purchase_recorded",
+                    title="Purchase Recorded",
+                    description="Bought Monthly Grocery at Sri Lakshmi Provisions for ₹3,200 (Paid ₹1,000)",
+                    amount=Decimal("3200.00"),
+                    created_at=datetime.now(timezone.utc) - timedelta(days=10),
+                ),
+            ),
+            (
+                CreditTransactionModel(
+                    id="ctx_demo_02",
+                    reference="TXN-3819B202",
+                    customer_id="cust_rahul_01",
+                    shop_id="shop_city_03",
+                    description="Hardware Fittings & Cables",
+                    purchase_amount=Decimal("1850.00"),
+                    initial_paid_amount=Decimal("500.00"),
+                    outstanding_amount=Decimal("1350.00"),
+                    transaction_date=today - timedelta(days=15),
+                    agreed_repayment_date=today - timedelta(days=2),
+                    status="overdue",
+                ),
+                [
+                    RepaymentModel(
+                        id="rep_demo_02",
+                        transaction_id="ctx_demo_02",
+                        amount=Decimal("500.00"),
+                        repayment_date=today - timedelta(days=15),
+                        payment_method="initial_downpayment",
+                        payment_status="completed",
+                        recorded_by="customer",
+                        provider_reference="DOWN-CITY-01",
+                        notes="Initial payment at checkout",
+                    )
+                ],
+                ActivityEventModel(
+                    id="act_demo_02",
+                    customer_id="cust_rahul_01",
+                    transaction_id="ctx_demo_02",
+                    event_type="purchase_recorded",
+                    title="Purchase Recorded",
+                    description="Bought Hardware Fittings at City Hardware & Tools for ₹1,850 (Paid ₹500)",
+                    amount=Decimal("1850.00"),
+                    created_at=datetime.now(timezone.utc) - timedelta(days=15),
+                ),
+            ),
+            (
+                CreditTransactionModel(
+                    id="ctx_demo_03",
+                    reference="TXN-7193C303",
+                    customer_id="cust_rahul_01",
+                    shop_id="shop_apex_01",
+                    description="Precision Fasteners & Safety Gloves",
+                    purchase_amount=Decimal("950.00"),
+                    initial_paid_amount=Decimal("500.00"),
+                    outstanding_amount=Decimal("0.00"),
+                    transaction_date=today - timedelta(days=7),
+                    agreed_repayment_date=today - timedelta(days=3),
+                    status="paid",
+                ),
+                [
+                    RepaymentModel(
+                        id="rep_demo_03_down",
+                        transaction_id="ctx_demo_03",
+                        amount=Decimal("500.00"),
+                        repayment_date=today - timedelta(days=7),
+                        payment_method="initial_downpayment",
+                        payment_status="completed",
+                        recorded_by="customer",
+                        provider_reference="DOWN-APEX-01",
+                        notes="Initial payment at counter",
+                    ),
+                    RepaymentModel(
+                        id="rep_demo_03_clear",
+                        transaction_id="ctx_demo_03",
+                        amount=Decimal("450.00"),
+                        repayment_date=today,
+                        payment_method="demo_upi",
+                        payment_status="completed",
+                        recorded_by="customer",
+                        provider_reference="DEMO-UPI-9941",
+                        notes="Cleared full remaining balance",
+                    ),
+                ],
+                ActivityEventModel(
+                    id="act_demo_03",
+                    customer_id="cust_rahul_01",
+                    transaction_id="ctx_demo_03",
+                    event_type="repayment_completed",
+                    title="Repayment Completed",
+                    description="Cleared full balance of ₹450 at Apex Precision Works",
+                    amount=Decimal("450.00"),
+                    created_at=datetime.now(timezone.utc),
+                ),
+            ),
+            (
+                CreditTransactionModel(
+                    id="ctx_demo_04",
+                    reference="TXN-5521D404",
+                    customer_id="cust_priya_02",
+                    shop_id="shop_apex_01",
+                    description="Industrial Tooling Bits & Milling Cutters",
+                    purchase_amount=Decimal("2400.00"),
+                    initial_paid_amount=Decimal("400.00"),
+                    outstanding_amount=Decimal("2000.00"),
+                    transaction_date=today - timedelta(days=14),
+                    agreed_repayment_date=today - timedelta(days=4),
+                    status="overdue",
+                ),
+                [
+                    RepaymentModel(
+                        id="rep_demo_04",
+                        transaction_id="ctx_demo_04",
+                        amount=Decimal("400.00"),
+                        repayment_date=today - timedelta(days=14),
+                        payment_method="initial_downpayment",
+                        payment_status="completed",
+                        recorded_by="customer",
+                        provider_reference="DOWN-APEX-02",
+                        notes="Initial downpayment",
+                    )
+                ],
+                ActivityEventModel(
+                    id="act_demo_04",
+                    customer_id="cust_priya_02",
+                    transaction_id="ctx_demo_04",
+                    event_type="purchase_recorded",
+                    title="Purchase Recorded",
+                    description="Bought Industrial Tooling Bits for ₹2,400 (Paid ₹400)",
+                    amount=Decimal("2400.00"),
+                    created_at=datetime.now(timezone.utc) - timedelta(days=14),
+                ),
+            ),
+            (
+                CreditTransactionModel(
+                    id="ctx_demo_05",
+                    reference="TXN-8812E505",
+                    customer_id="cust_amit_03",
+                    shop_id="shop_apex_01",
+                    description="High-Tensile Bolts & Gaskets",
+                    purchase_amount=Decimal("1500.00"),
+                    initial_paid_amount=Decimal("500.00"),
+                    outstanding_amount=Decimal("1000.00"),
+                    transaction_date=today - timedelta(days=5),
+                    agreed_repayment_date=today,
+                    status="due_today",
+                ),
+                [
+                    RepaymentModel(
+                        id="rep_demo_05",
+                        transaction_id="ctx_demo_05",
+                        amount=Decimal("500.00"),
+                        repayment_date=today - timedelta(days=5),
+                        payment_method="initial_downpayment",
+                        payment_status="completed",
+                        recorded_by="customer",
+                        provider_reference="DOWN-APEX-03",
+                        notes="Initial downpayment",
+                    )
+                ],
+                ActivityEventModel(
+                    id="act_demo_05",
+                    customer_id="cust_amit_03",
+                    transaction_id="ctx_demo_05",
+                    event_type="purchase_recorded",
+                    title="Purchase Recorded",
+                    description="Bought High-Tensile Bolts for ₹1,500 (Paid ₹500)",
+                    amount=Decimal("1500.00"),
+                    created_at=datetime.now(timezone.utc) - timedelta(days=5),
+                ),
+            ),
+            (
+                CreditTransactionModel(
+                    id="ctx_demo_06",
+                    reference="TXN-1194F606",
+                    customer_id="cust_priya_02",
+                    shop_id="shop_lakshmi_02",
+                    description="Organic Pulses & Cooking Oil",
+                    purchase_amount=Decimal("1250.00"),
+                    initial_paid_amount=Decimal("250.00"),
+                    outstanding_amount=Decimal("1000.00"),
+                    transaction_date=today - timedelta(days=4),
+                    agreed_repayment_date=today + timedelta(days=3),
+                    status="upcoming",
+                ),
+                [
+                    RepaymentModel(
+                        id="rep_demo_06",
+                        transaction_id="ctx_demo_06",
+                        amount=Decimal("250.00"),
+                        repayment_date=today - timedelta(days=4),
+                        payment_method="initial_downpayment",
+                        payment_status="completed",
+                        recorded_by="customer",
+                        provider_reference="DOWN-LAK-02",
+                        notes="Initial downpayment",
+                    )
+                ],
+                ActivityEventModel(
+                    id="act_demo_06",
+                    customer_id="cust_priya_02",
+                    transaction_id="ctx_demo_06",
+                    event_type="purchase_recorded",
+                    title="Purchase Recorded",
+                    description="Bought Organic Pulses for ₹1,250 (Paid ₹250)",
+                    amount=Decimal("1250.00"),
+                    created_at=datetime.now(timezone.utc) - timedelta(days=4),
+                ),
+            ),
+        ]
+
+        for txn_item, reps, act_item in txns_spec:
+            existing_txn = db.query(CreditTransactionModel).filter_by(id=txn_item.id).first()
+            if not existing_txn:
+                db.add(txn_item)
+                db.flush()
+                for r in reps:
+                    db.add(r)
+                db.add(act_item)
+        db.commit()
+
+        return primary_customer or db.query(CustomerModel).filter_by(id="cust_rahul_01").first()
 
     def _sync_transaction_status(self, txn: CreditTransactionModel) -> str:
         """Derives transaction status dynamically based on current date and outstanding amount."""
@@ -213,6 +432,7 @@ class CustomerService:
                 repayment_date=r.repayment_date,
                 payment_method=r.payment_method,
                 payment_status=r.payment_status,
+                recorded_by=getattr(r, "recorded_by", "customer") or "customer",
                 provider_reference=r.provider_reference,
                 notes=r.notes,
                 created_at=r.created_at,
@@ -238,13 +458,16 @@ class CustomerService:
             repayments=repayments,
         )
 
+    # =========================================================================
+    # Customer APIs
+    # =========================================================================
+
     def get_dashboard(self, customer_id: str, db: Session) -> CustomerDashboardSummary:
         """Aggregates realistic KPI totals, upcoming commitments, and recent activity."""
-        customer = self.ensure_demo_seeds(db)
-        if customer_id != customer.id:
-            customer = db.query(CustomerModel).filter_by(id=customer_id).first()
-            if not customer:
-                customer = self.ensure_demo_seeds(db)
+        self.ensure_demo_seeds(db)
+        customer = db.query(CustomerModel).filter_by(id=customer_id).first()
+        if not customer:
+            customer = self.ensure_demo_seeds(db)
 
         txns = db.query(CreditTransactionModel).filter_by(customer_id=customer.id).all()
 
@@ -257,8 +480,8 @@ class CustomerService:
         active_shop_ids = set()
 
         reminders: List[ReminderItemOut] = []
-
         serialized_txns: List[CreditTransactionOut] = []
+
         for t in txns:
             status = self._sync_transaction_status(t)
             t.status = status
@@ -268,17 +491,22 @@ class CustomerService:
             if t.outstanding_amount > 0:
                 total_outstanding += t.outstanding_amount
                 active_shop_ids.add(t.shop_id)
+                days_diff = (t.agreed_repayment_date - today).days
 
                 if status == "overdue":
                     overdue_amount += t.outstanding_amount
+                    days_overdue = abs(days_diff)
                     reminders.append(
                         ReminderItemOut(
                             transaction_id=t.id,
+                            reference=t.reference,
                             shop_name=stxn.shop_name,
+                            shop_code=stxn.shop_code,
                             amount=float(t.outstanding_amount),
                             due_date=t.agreed_repayment_date,
+                            days_diff=days_diff,
                             urgency="overdue",
-                            message=f"₹{t.outstanding_amount:,.2f} due at {stxn.shop_name} was agreed for {t.agreed_repayment_date.strftime('%d %b %Y')}.",
+                            message=f"₹{t.outstanding_amount:,.2f} at {stxn.shop_name} was due {days_overdue} day(s) ago ({t.agreed_repayment_date.strftime('%d %b %Y')}).",
                         )
                     )
                 elif status == "due_today":
@@ -286,9 +514,12 @@ class CustomerService:
                     reminders.append(
                         ReminderItemOut(
                             transaction_id=t.id,
+                            reference=t.reference,
                             shop_name=stxn.shop_name,
+                            shop_code=stxn.shop_code,
                             amount=float(t.outstanding_amount),
                             due_date=t.agreed_repayment_date,
+                            days_diff=0,
                             urgency="due_today",
                             message=f"₹{t.outstanding_amount:,.2f} at {stxn.shop_name} is due today.",
                         )
@@ -298,15 +529,17 @@ class CustomerService:
                     reminders.append(
                         ReminderItemOut(
                             transaction_id=t.id,
+                            reference=t.reference,
                             shop_name=stxn.shop_name,
+                            shop_code=stxn.shop_code,
                             amount=float(t.outstanding_amount),
                             due_date=t.agreed_repayment_date,
-                            urgency="upcoming",
-                            message=f"₹{t.outstanding_amount:,.2f} at {stxn.shop_name} coming up on {t.agreed_repayment_date.strftime('%d %b %Y')}.",
+                            days_diff=days_diff,
+                            urgency="approaching" if days_diff <= 3 else "upcoming",
+                            message=f"₹{t.outstanding_amount:,.2f} at {stxn.shop_name} coming up in {days_diff} day(s) ({t.agreed_repayment_date.strftime('%d %b %Y')}).",
                         )
                     )
 
-        # Non-judgmental friendly status message
         if overdue_amount > 0:
             status_message = f"You have ₹{overdue_amount:,.2f} past its agreed repayment date. Review your dues to see the affected transactions."
         elif total_outstanding > 0:
@@ -314,11 +547,9 @@ class CustomerService:
         else:
             status_message = "You're all caught up. You have no outstanding shop dues."
 
-        # Sort upcoming by nearest due date
         upcoming = [t for t in serialized_txns if t.status != "paid"]
         upcoming.sort(key=lambda x: x.agreed_repayment_date)
 
-        # Recent activities
         acts = (
             db.query(ActivityEventModel)
             .filter_by(customer_id=customer.id)
@@ -326,9 +557,7 @@ class CustomerService:
             .limit(10)
             .all()
         )
-        recent_activity = [
-            ActivityEventOut.model_validate(a) for a in acts
-        ]
+        recent_activity = [ActivityEventOut.model_validate(a) for a in acts]
 
         return CustomerDashboardSummary(
             customer=CustomerProfileOut.model_validate(customer),
@@ -346,12 +575,10 @@ class CustomerService:
         self, customer_id: str, filter_status: Optional[str], db: Session
     ) -> CustomerDuesResponse:
         """Returns customer transactions filtered by status with ledger totals."""
-        customer = self.ensure_demo_seeds(db)
-        if customer_id != customer.id:
-            customer = db.query(CustomerModel).filter_by(id=customer_id).first() or customer
+        self.ensure_demo_seeds(db)
+        customer = db.query(CustomerModel).filter_by(id=customer_id).first() or self.ensure_demo_seeds(db)
 
-        query = db.query(CreditTransactionModel).filter_by(customer_id=customer.id)
-        txns = query.all()
+        txns = db.query(CreditTransactionModel).filter_by(customer_id=customer.id).all()
 
         total_outstanding = Decimal("0.00")
         overdue_amount = Decimal("0.00")
@@ -379,13 +606,11 @@ class CustomerService:
                 upcoming_amount += t.outstanding_amount
                 total_outstanding += t.outstanding_amount
 
-        # Filter if requested
         if filter_status and filter_status.lower() != "all":
             filtered = [t for t in all_serialized if t.status.lower() == filter_status.lower()]
         else:
             filtered = all_serialized
 
-        # Sort: Overdue & due today first, then nearest due date, paid last
         def sort_priority(item: CreditTransactionOut):
             if item.status == "overdue":
                 return (0, item.agreed_repayment_date)
@@ -421,6 +646,23 @@ class CustomerService:
             raise NotFoundException(f"Transaction '{transaction_id}' not found.")
         return self._serialize_transaction(txn)
 
+    def get_reminders(self, customer_id: str, db: Session) -> List[ReminderItemOut]:
+        """Returns sorted, actionable repayment reminders for a customer."""
+        dash = self.get_dashboard(customer_id=customer_id, db=db)
+        # Sort: Overdue first (most overdue first), then due today, then nearest upcoming
+        def reminder_urgency_score(r: ReminderItemOut):
+            if r.urgency == "overdue":
+                return (0, r.days_diff)  # e.g. -5 comes before -2
+            elif r.urgency == "due_today":
+                return (1, 0)
+            elif r.urgency == "approaching":
+                return (2, r.days_diff)
+            else:
+                return (3, r.days_diff)
+
+        reminders = sorted(dash.reminders, key=reminder_urgency_score)
+        return reminders
+
     def create_credit_transaction(
         self, customer_id: str, data: CreditTransactionCreate, db: Session
     ) -> CreditTransactionOut:
@@ -430,11 +672,18 @@ class CustomerService:
         Validates shop existence and constraints.
         """
         self.ensure_demo_seeds(db)
-        customer = db.query(CustomerModel).filter_by(id=customer_id).first()
-        if not customer:
-            customer = self.ensure_demo_seeds(db)
+        customer = db.query(CustomerModel).filter_by(id=customer_id).first() or self.ensure_demo_seeds(db)
 
         # 1. Resolve shop by shop_code
+        if data.idempotency_key:
+            existing_txn = (
+                db.query(CreditTransactionModel)
+                .filter_by(idempotency_key=data.idempotency_key)
+                .first()
+            )
+            if existing_txn:
+                return self._serialize_transaction(existing_txn)
+
         shop = (
             db.query(ShopModel)
             .filter(ShopModel.shop_code.ilike(data.shop_code.strip()))
@@ -445,6 +694,13 @@ class CustomerService:
                 status_code=404,
                 message=f"Shop code '{data.shop_code}' not recognized. Please verify the code or scan a participating KOSHA QR code.",
                 code="SHOP_NOT_FOUND",
+            )
+
+        if getattr(shop, "status", "active") == "inactive":
+            raise AppException(
+                status_code=400,
+                message=f"Shop '{shop.shop_name}' is currently inactive and cannot accept credit purchases.",
+                code="SHOP_INACTIVE",
             )
 
         # 2. Financial validation
@@ -472,7 +728,6 @@ class CustomerService:
         today = date.today()
         remaining_due = (data.purchase_amount - data.amount_paid_now).quantize(Decimal("0.01"))
 
-        # If there's an outstanding balance, date cannot be in the past
         if remaining_due > 0 and data.agreed_repayment_date < today:
             raise AppException(
                 status_code=422,
@@ -480,7 +735,6 @@ class CustomerService:
                 code="INVALID_REPAYMENT_DATE",
             )
 
-        # Determine status
         if remaining_due == 0:
             status = "paid"
         elif data.agreed_repayment_date == today:
@@ -502,11 +756,11 @@ class CustomerService:
             transaction_date=today,
             agreed_repayment_date=data.agreed_repayment_date,
             status=status,
+            idempotency_key=data.idempotency_key,
         )
         db.add(txn)
         db.flush()
 
-        # If user made an initial down payment, log it as completed repayment
         if data.amount_paid_now > 0:
             rep = RepaymentModel(
                 transaction_id=txn.id,
@@ -514,12 +768,12 @@ class CustomerService:
                 repayment_date=today,
                 payment_method="initial_downpayment",
                 payment_status="completed",
+                recorded_by="customer",
                 provider_reference=f"DOWN-{uuid.uuid4().hex[:6].upper()}",
                 notes="Initial payment at checkout",
             )
             db.add(rep)
 
-        # Audit Activity Event
         if remaining_due > 0:
             act_title = "Shop Credit Recorded"
             act_desc = f"Recorded purchase of {data.description} at {shop.shop_name} for ₹{data.purchase_amount:,.2f}. Paid ₹{data.amount_paid_now:,.2f}, balance ₹{remaining_due:,.2f} due on {data.agreed_repayment_date.strftime('%d %b %Y')}."
@@ -549,6 +803,16 @@ class CustomerService:
         Recalculates server-side balance atomically.
         """
         self.ensure_demo_seeds(db)
+
+        if data.idempotency_key:
+            existing_rep = (
+                db.query(RepaymentModel)
+                .filter_by(idempotency_key=data.idempotency_key)
+                .first()
+            )
+            if existing_rep:
+                return self._serialize_transaction(existing_rep.transaction)
+
         txn = (
             db.query(CreditTransactionModel)
             .filter_by(id=transaction_id, customer_id=customer_id)
@@ -586,13 +850,14 @@ class CustomerService:
             repayment_date=today,
             payment_method=data.payment_method or "demo_upi",
             payment_status="completed",
+            recorded_by="customer",
             provider_reference=f"DEMO-UPI-{uuid.uuid4().hex[:8].upper()}",
             notes=data.notes,
+            idempotency_key=data.idempotency_key,
         )
         db.add(repayment)
         db.flush()
 
-        # Recalculate outstanding balance from source of truth
         txn.outstanding_amount = (txn.outstanding_amount - data.amount).quantize(Decimal("0.01"))
         if txn.outstanding_amount <= Decimal("0.00"):
             txn.outstanding_amount = Decimal("0.00")
@@ -637,7 +902,8 @@ class CustomerService:
         self, customer_id: str, limit: int, db: Session
     ) -> List[ActivityEventOut]:
         """Fetches customer activity events."""
-        customer = self.ensure_demo_seeds(db)
+        self.ensure_demo_seeds(db)
+        customer = db.query(CustomerModel).filter_by(id=customer_id).first() or self.ensure_demo_seeds(db)
         acts = (
             db.query(ActivityEventModel)
             .filter_by(customer_id=customer.id)
@@ -646,6 +912,317 @@ class CustomerService:
             .all()
         )
         return [ActivityEventOut.model_validate(a) for a in acts]
+
+    def get_shop_qr(self, shop_code: str, db: Session) -> ShopQrOut:
+        """Generates real SVG QR code and instructions for a shop."""
+        shop = self.get_shop_by_code(shop_code=shop_code, db=db)
+        payload = f"kosha://shop/{shop.shop_code}"
+        
+        # Generate SVG QR image in memory
+        img = qrcode.make(payload, image_factory=qrcode.image.svg.SvgPathImage)
+        qr_svg = img.to_string().decode("utf-8")
+
+        return ShopQrOut(
+            shop_code=shop.shop_code,
+            shop_name=shop.shop_name,
+            qr_payload=payload,
+            qr_svg=qr_svg,
+            instructions=f"Scan this QR code with the KOSHA Customer app or enter shop code {shop.shop_code} to record credit purchases.",
+        )
+
+    # =========================================================================
+    # Shopkeeper APIs
+    # =========================================================================
+
+    def _resolve_shop(self, shop_id_or_code: str, db: Session) -> ShopModel:
+        """Helper to find shop by ID or code."""
+        self.ensure_demo_seeds(db)
+        clean = shop_id_or_code.strip()
+        shop = (
+            db.query(ShopModel)
+            .filter(or_(ShopModel.id == clean, ShopModel.shop_code.ilike(clean)))
+            .first()
+        )
+        if not shop:
+            # Default to Apex Precision Works for demo continuity
+            shop = db.query(ShopModel).filter_by(id="shop_apex_01").first()
+            if not shop:
+                raise NotFoundException(f"Shop '{shop_id_or_code}' not found.")
+        return shop
+
+    def get_shopkeeper_shop(self, shop_id_or_code: Optional[str], db: Session) -> ShopOut:
+        """Returns the active shopkeeper's shop details."""
+        shop = self._resolve_shop(shop_id_or_code or "shop_apex_01", db)
+        return ShopOut.model_validate(shop)
+
+    def get_shopkeeper_summary(
+        self, shop_id_or_code: str, db: Session
+    ) -> ShopkeeperSummaryOut:
+        """
+        Calculates live summary cards for the shopkeeper dashboard:
+        - Total customer receivables
+        - Amount collected today
+        - Amount due in next 7 days
+        - Overdue receivables
+        - Count of customers with balance
+        - Total transactions count
+        """
+        shop = self._resolve_shop(shop_id_or_code, db)
+        txns = db.query(CreditTransactionModel).filter_by(shop_id=shop.id).all()
+
+        today = date.today()
+        seven_days_later = today + timedelta(days=7)
+
+        total_receivables = Decimal("0.00")
+        collected_today = Decimal("0.00")
+        due_in_7_days = Decimal("0.00")
+        overdue_receivables = Decimal("0.00")
+        debtor_customers = set()
+
+        for t in txns:
+            status = self._sync_transaction_status(t)
+            t.status = status
+
+            if t.outstanding_amount > 0:
+                total_receivables += t.outstanding_amount
+                debtor_customers.add(t.customer_id)
+
+                if status == "overdue":
+                    overdue_receivables += t.outstanding_amount
+                elif status == "due_today" or (today <= t.agreed_repayment_date <= seven_days_later):
+                    due_in_7_days += t.outstanding_amount
+
+            # Check payments collected today
+            for r in (t.repayments or []):
+                if r.repayment_date == today and r.payment_status == "completed":
+                    collected_today += r.amount
+
+        return ShopkeeperSummaryOut(
+            shop=ShopOut.model_validate(shop),
+            total_customer_receivables=float(total_receivables),
+            collected_today=float(collected_today),
+            due_in_7_days=float(due_in_7_days),
+            overdue_receivables=float(overdue_receivables),
+            customers_with_balance_count=len(debtor_customers),
+            total_transactions_count=len(txns),
+        )
+
+    def get_shopkeeper_transactions(
+        self,
+        shop_id_or_code: str,
+        filter_status: Optional[str],
+        search: Optional[str],
+        db: Session,
+    ) -> List[ShopkeeperTransactionOut]:
+        """
+        Lists transactions scoped strictly to this shop.
+        Enforces shop-level isolation.
+        """
+        shop = self._resolve_shop(shop_id_or_code, db)
+        query = db.query(CreditTransactionModel).filter_by(shop_id=shop.id)
+
+        txns = query.all()
+        results: List[ShopkeeperTransactionOut] = []
+
+        for t in txns:
+            status = self._sync_transaction_status(t)
+            t.status = status
+
+            reps = [
+                RepaymentOut(
+                    id=r.id,
+                    transaction_id=r.transaction_id,
+                    amount=float(r.amount),
+                    repayment_date=r.repayment_date,
+                    payment_method=r.payment_method,
+                    payment_status=r.payment_status,
+                    recorded_by=getattr(r, "recorded_by", "customer") or "customer",
+                    provider_reference=r.provider_reference,
+                    notes=r.notes,
+                    created_at=r.created_at,
+                )
+                for r in (t.repayments or [])
+            ]
+
+            stxn = ShopkeeperTransactionOut(
+                id=t.id,
+                reference=t.reference,
+                customer_id=t.customer_id,
+                customer_name=t.customer.display_name if t.customer else "Customer",
+                customer_phone=t.customer.phone if t.customer else "",
+                shop_id=t.shop_id,
+                shop_name=shop.shop_name,
+                shop_code=shop.shop_code,
+                description=t.description,
+                purchase_amount=float(t.purchase_amount),
+                initial_paid_amount=float(t.initial_paid_amount),
+                outstanding_amount=float(t.outstanding_amount),
+                transaction_date=t.transaction_date,
+                agreed_repayment_date=t.agreed_repayment_date,
+                status=status,
+                created_at=t.created_at,
+                repayments=reps,
+            )
+            results.append(stxn)
+
+        # Filter by status if provided
+        if filter_status and filter_status.lower() != "all":
+            results = [r for r in results if r.status.lower() == filter_status.lower()]
+
+        # Filter by search string (reference or customer name)
+        if search and search.strip():
+            s = search.strip().lower()
+            results = [
+                r for r in results
+                if s in r.reference.lower()
+                or s in r.customer_name.lower()
+                or s in r.description.lower()
+            ]
+
+        # Sort: Overdue first, then due today, then upcoming, then paid
+        def sort_prio(item: ShopkeeperTransactionOut):
+            if item.status == "overdue":
+                return (0, item.agreed_repayment_date)
+            elif item.status == "due_today":
+                return (1, item.agreed_repayment_date)
+            elif item.status == "upcoming":
+                return (2, item.agreed_repayment_date)
+            else:
+                return (3, item.agreed_repayment_date)
+
+        results.sort(key=sort_prio)
+        return results
+
+    def record_shopkeeper_repayment(
+        self,
+        transaction_id: str,
+        shop_id_or_code: str,
+        data: ShopkeeperRepaymentCreate,
+        db: Session,
+    ) -> ShopkeeperTransactionOut:
+        """
+        Allows a shopkeeper to record a payment received directly in cash/UPI at the counter.
+        Enforces:
+        - Transaction must belong to the active shopkeeper's shop!
+        - Amount must be > 0 and <= outstanding amount.
+        - Atomically recalculates balance and records audit event.
+        """
+        shop = self._resolve_shop(shop_id_or_code, db)
+
+        txn = (
+            db.query(CreditTransactionModel)
+            .filter_by(id=transaction_id, shop_id=shop.id)
+            .first()
+        )
+        if data.idempotency_key:
+            existing_rep = (
+                db.query(RepaymentModel)
+                .filter_by(idempotency_key=data.idempotency_key)
+                .first()
+            )
+            if existing_rep:
+                return self._serialize_shopkeeper_transaction(existing_rep.transaction, shop)
+
+        if not txn:
+            raise NotFoundException(
+                f"Credit transaction '{transaction_id}' not found for shop '{shop.shop_name}'."
+            )
+
+        if txn.status == "paid" or txn.outstanding_amount <= Decimal("0.00"):
+            raise AppException(
+                status_code=400,
+                message="This transaction is already fully settled. No additional payment can be recorded.",
+                code="TRANSACTION_ALREADY_PAID",
+            )
+
+        if data.amount <= Decimal("0.00"):
+            raise AppException(
+                status_code=422,
+                message="Repayment amount must be positive.",
+                code="INVALID_REPAYMENT_AMOUNT",
+            )
+
+        if data.amount > txn.outstanding_amount:
+            raise AppException(
+                status_code=422,
+                message=f"Payment amount (₹{data.amount:,.2f}) exceeds outstanding customer balance (₹{txn.outstanding_amount:,.2f}).",
+                code="OVERPAYMENT_NOT_ALLOWED",
+            )
+
+        today = date.today()
+        repayment = RepaymentModel(
+            id=str(uuid.uuid4()),
+            transaction_id=txn.id,
+            amount=data.amount,
+            repayment_date=today,
+            payment_method=data.payment_method or "shopkeeper_cash",
+            payment_status="completed",
+            recorded_by="shopkeeper",
+            provider_reference=f"SHOP-{uuid.uuid4().hex[:8].upper()}",
+            notes=data.notes or "Payment collected directly by shopkeeper",
+            idempotency_key=data.idempotency_key,
+        )
+        db.add(repayment)
+        db.flush()
+
+        txn.outstanding_amount = (txn.outstanding_amount - data.amount).quantize(Decimal("0.01"))
+        if txn.outstanding_amount <= Decimal("0.00"):
+            txn.outstanding_amount = Decimal("0.00")
+            txn.status = "paid"
+            act_title = "Payment Received at Shop"
+            act_desc = f"Shopkeeper {shop.shop_name} recorded full settlement of ₹{data.amount:,.2f} for {txn.description}."
+        else:
+            txn.status = self._sync_transaction_status(txn)
+            act_title = "Partial Payment Received at Shop"
+            act_desc = f"Shopkeeper {shop.shop_name} recorded payment of ₹{data.amount:,.2f} for {txn.description}. Remaining due: ₹{txn.outstanding_amount:,.2f}."
+
+        act = ActivityEventModel(
+            customer_id=txn.customer_id,
+            transaction_id=txn.id,
+            event_type="repayment_completed" if txn.status == "paid" else "partial_payment",
+            title=act_title,
+            description=act_desc,
+            amount=data.amount,
+        )
+        db.add(act)
+        db.commit()
+        db.refresh(txn)
+
+        reps = [
+            RepaymentOut(
+                id=r.id,
+                transaction_id=r.transaction_id,
+                amount=float(r.amount),
+                repayment_date=r.repayment_date,
+                payment_method=r.payment_method,
+                payment_status=r.payment_status,
+                recorded_by=getattr(r, "recorded_by", "customer") or "customer",
+                provider_reference=r.provider_reference,
+                notes=r.notes,
+                created_at=r.created_at,
+            )
+            for r in (txn.repayments or [])
+        ]
+
+        return ShopkeeperTransactionOut(
+            id=txn.id,
+            reference=txn.reference,
+            customer_id=txn.customer_id,
+            customer_name=txn.customer.display_name if txn.customer else "Customer",
+            customer_phone=txn.customer.phone if txn.customer else "",
+            shop_id=txn.shop_id,
+            shop_name=shop.shop_name,
+            shop_code=shop.shop_code,
+            description=txn.description,
+            purchase_amount=float(txn.purchase_amount),
+            initial_paid_amount=float(txn.initial_paid_amount),
+            outstanding_amount=float(txn.outstanding_amount),
+            transaction_date=txn.transaction_date,
+            agreed_repayment_date=txn.agreed_repayment_date,
+            status=txn.status,
+            created_at=txn.created_at,
+            repayments=reps,
+        )
 
 
 customer_service = CustomerService()

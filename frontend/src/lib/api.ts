@@ -22,8 +22,14 @@ import {
   CreditTransactionCreatePayload,
   CustomerDashboardSummary,
   CustomerDuesResponse,
+  PaymentGatewayStatus,
+  ReminderItem,
   RepaymentCreatePayload,
   Shop,
+  ShopQr,
+  ShopkeeperRepaymentCreatePayload,
+  ShopkeeperSummary,
+  ShopkeeperTransaction,
 } from "../types/customer";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
@@ -320,5 +326,52 @@ export const apiClient = {
 
   async getCustomerActivity(customerId = "cust_rahul_01", limit = 20): Promise<ActivityEvent[]> {
     return fetchApi<ActivityEvent[]>(`/customer/activity?customer_id=${customerId}&limit=${limit}`);
+  },
+
+  async getCustomerReminders(customerId = "cust_rahul_01"): Promise<ReminderItem[]> {
+    return fetchApi<ReminderItem[]>(`/customer/reminders?customer_id=${customerId}`);
+  },
+
+  async getShopQr(shopCode: string): Promise<ShopQr> {
+    return fetchApi<ShopQr>(`/shops/${encodeURIComponent(shopCode.trim())}/qr`);
+  },
+
+  // Shopkeeper APIs
+  async getShopkeeperShop(shopId = "shop_apex_01"): Promise<Shop> {
+    return fetchApi<Shop>(`/shopkeeper/shop?shop_id=${shopId}`);
+  },
+
+  async getShopkeeperSummary(shopId = "shop_apex_01"): Promise<ShopkeeperSummary> {
+    return fetchApi<ShopkeeperSummary>(`/shopkeeper/shop/summary?shop_id=${shopId}`);
+  },
+
+  async getShopkeeperTransactions(
+    shopId = "shop_apex_01",
+    status?: string,
+    search?: string
+  ): Promise<ShopkeeperTransaction[]> {
+    let url = `/shopkeeper/shop/transactions?shop_id=${shopId}`;
+    if (status && status !== "all") url += `&status=${status}`;
+    if (search && search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
+    return fetchApi<ShopkeeperTransaction[]>(url);
+  },
+
+  async recordShopkeeperRepayment(
+    transactionId: string,
+    data: ShopkeeperRepaymentCreatePayload,
+    shopId = "shop_apex_01"
+  ): Promise<ShopkeeperTransaction> {
+    return fetchApi<ShopkeeperTransaction>(
+      `/shopkeeper/transactions/${transactionId}/repayments?shop_id=${shopId}`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    );
+  },
+
+  // Payment Gateway Boundary
+  async getPaymentGatewayStatus(): Promise<PaymentGatewayStatus> {
+    return fetchApi<PaymentGatewayStatus>("/payment-gateway/status");
   },
 };

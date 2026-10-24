@@ -102,3 +102,15 @@ input[type="range"]::-moz-range-thumb {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(18, 48, 79, 0.25);
 }
+
+/* Html5Qrcode styling */
+#qr-camera-viewport video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 1rem;
+}
+#qr-camera-viewport {
+  border: none !important;
+}
+

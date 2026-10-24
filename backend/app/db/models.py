@@ -173,6 +173,7 @@ class InvoicePaymentModel(Base):
     amount = Column(Numeric(15, 2, asdecimal=True), nullable=False)
     bank_transaction_id = Column(String(50), ForeignKey("bank_transactions.id"), nullable=True)
     reference = Column(String(100), nullable=True)
+    idempotency_key = Column(String(100), unique=True, nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     invoice = relationship("CustomerInvoiceModel", back_populates="payments")
@@ -224,6 +225,7 @@ class BillPaymentModel(Base):
     amount = Column(Numeric(15, 2, asdecimal=True), nullable=False)
     bank_transaction_id = Column(String(50), ForeignKey("bank_transactions.id"), nullable=True)
     reference = Column(String(100), nullable=True)
+    idempotency_key = Column(String(100), unique=True, nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     bill = relationship("VendorBillModel", back_populates="payments")
@@ -262,6 +264,7 @@ class ShopModel(Base):
     upi_id = Column(String(100), nullable=True)
     qr_payload = Column(String(255), nullable=True)
     is_verified = Column(Boolean, default=True)
+    status = Column(String(20), default="active")  # active, inactive
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     transactions = relationship("CreditTransactionModel", back_populates="shop", cascade="all, delete-orphan")
@@ -298,6 +301,7 @@ class CreditTransactionModel(Base):
     transaction_date = Column(Date, nullable=False, index=True)
     agreed_repayment_date = Column(Date, nullable=False, index=True)
     status = Column(String(20), nullable=False, default="upcoming", index=True)  # upcoming, due_today, overdue, paid
+    idempotency_key = Column(String(100), unique=True, nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
@@ -321,8 +325,10 @@ class RepaymentModel(Base):
     repayment_date = Column(Date, nullable=False)
     payment_method = Column(String(50), default="demo_upi")  # demo_upi, demo_cash, demo_netbanking
     payment_status = Column(String(20), default="completed")  # completed, failed, pending
+    recorded_by = Column(String(50), default="customer")  # customer, shopkeeper
     provider_reference = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
+    idempotency_key = Column(String(100), unique=True, nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     transaction = relationship("CreditTransactionModel", back_populates="repayments")
@@ -343,3 +349,61 @@ class ActivityEventModel(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     customer = relationship("CustomerModel", back_populates="activities")
+
+
+class PaymentAttemptModel(Base):
+    """Tracked digital payment initiation for idempotency and gateway reconciliation."""
+
+    __tablename__ = "payment_attempts"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    idempotency_key = Column(String(100), unique=True, nullable=False, index=True)
+    order_id = Column(String(100), unique=True, nullable=False, index=True)
+    customer_id = Column(String(50), nullable=True, index=True)
+    business_id = Column(String(50), nullable=True, index=True)
+    shop_id = Column(String(50), nullable=True, index=True)
+    target_id = Column(String(50), nullable=False, index=True)  # credit transaction or invoice ID
+    target_type = Column(String(50), nullable=False, default="credit_transaction")  # credit_transaction, customer_invoice
+    amount = Column(Numeric(15, 2, asdecimal=True), nullable=False)
+    currency = Column(String(10), default="INR")
+    status = Column(String(30), default="created", index=True)  # created, pending, succeeded, failed, cancelled
+    gateway_provider = Column(String(50), default="KOSHA_SANDBOX")
+    provider_payment_id = Column(String(100), nullable=True)
+    signature = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class WebhookEventModel(Base):
+    """Idempotency log of external payment gateway webhooks."""
+
+    __tablename__ = "webhook_events"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    event_id = Column(String(100), unique=True, nullable=False, index=True)
+    provider = Column(String(50), default="KOSHA_SANDBOX")
+    event_type = Column(String(100), nullable=False)
+    payload_json = Column(Text, nullable=True)
+    status = Column(String(30), default="processed")  # processed, ignored, failed
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class NotificationModel(Base):
+    """Persistent, deduplicated notifications and repayment reminders."""
+
+    __tablename__ = "notifications"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    notification_key = Column(String(150), unique=True, nullable=False, index=True)  # e.g. remind:ctx_01:2026-10-24:due_today
+    recipient_type = Column(String(30), nullable=False, index=True)  # customer, merchant, business
+    recipient_id = Column(String(50), nullable=False, index=True)
+    channel = Column(String(30), default="in_app")  # in_app, sms, email
+    title = Column(String(200), nullable=False)
+    message = Column(String(255), nullable=False)
+    urgency = Column(String(30), default="info", index=True)  # info, upcoming, due_today, overdue, payment_confirmed
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

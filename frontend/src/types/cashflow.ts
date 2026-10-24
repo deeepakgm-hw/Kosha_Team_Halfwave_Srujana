@@ -52,6 +52,16 @@ export interface CsvImportResult {
   total_rows: number;
   accepted_rows: number;
   duplicate_rows: number;
+  exact_file_duplicates?: number;
+  previously_imported_duplicates?: number;
+  potential_duplicates_review?: number;
+  potential_duplicates_details?: Array<{
+    row_number: number;
+    date: string;
+    amount: number;
+    description: string;
+    reason: string;
+  }>;
   rejected_rows: number;
   rejected_details: RejectedRowDetail[];
   statement_period: StatementPeriod;

@@ -30,8 +30,8 @@ async def import_csv_statement(
     bank_account_id: Optional[str] = Form(None, description="Optional bank account ID"),
     amount_sign_mode: str = Form("standard", description="'standard' (positive=inflow) or 'inverted'"),
     column_mapping_json: Optional[str] = Form(None, description="Optional JSON string mapping column headers"),
-    opening_balance: Optional[Decimal] = Form(None, description="Optional verified opening ledger balance"),
-    opening_balance_date: Optional[date] = Form(None, description="Optional date of opening balance (YYYY-MM-DD)"),
+    opening_balance: Optional[str] = Form(None, description="Optional verified opening ledger balance"),
+    opening_balance_date: Optional[str] = Form(None, description="Optional date of opening balance (YYYY-MM-DD)"),
     file: UploadFile = File(..., description="Bank statement CSV file"),
     db: Session = Depends(get_db),
 ) -> CsvImportResult:
@@ -49,18 +49,68 @@ async def import_csv_statement(
         except Exception:
             raise AppException(status_code=400, message="Invalid JSON for column_mapping_json", code="INVALID_MAPPING")
 
+    parsed_opening_balance: Optional[Decimal] = None
+    if opening_balance is not None and str(opening_balance).strip() != "":
+        clean_bal = str(opening_balance).strip().replace(",", "").replace("₹", "").replace("$", "")
+        try:
+            parsed_opening_balance = Decimal(clean_bal)
+        except Exception:
+            raise AppException(
+                status_code=422,
+                message=f"Invalid monetary opening balance: '{opening_balance}'",
+                code="INVALID_OPENING_BALANCE",
+            )
+
+    parsed_opening_date: Optional[date] = None
+    if opening_balance_date is not None and str(opening_balance_date).strip() != "":
+        clean_date_str = str(opening_balance_date).strip()
+        try:
+            from backend.app.domain.csv_importer import parse_date
+            parsed_opening_date = parse_date(clean_date_str)
+        except Exception:
+            raise AppException(
+                status_code=422,
+                message=f"Invalid opening balance date format: '{opening_balance_date}'",
+                code="INVALID_OPENING_DATE",
+            )
+
     result = import_service.import_csv_statement(
         db=db,
         business_id=business_id,
         filename=file.filename,
         file_bytes=file_bytes,
         bank_account_id=bank_account_id,
-        opening_balance=opening_balance,
-        opening_balance_date=opening_balance_date,
+        opening_balance=parsed_opening_balance,
+        opening_balance_date=parsed_opening_date,
         custom_mapping=custom_mapping,
         amount_sign_mode=amount_sign_mode,
     )
     return CsvImportResult.model_validate(result)
+
+
+@router.get(
+    "/statements/duplicates/audit",
+    summary="Audit Statement Duplicates",
+    description="Inspects database records for confirmed and probable duplicate transactions.",
+)
+def audit_statement_duplicates(
+    business_id: str = Query(..., description="Target business identifier"),
+    db: Session = Depends(get_db),
+):
+    return import_service.audit_existing_duplicates(db=db, business_id=business_id)
+
+
+@router.post(
+    "/statements/duplicates/cleanup",
+    summary="Cleanup Confirmed Duplicates",
+    description="Safely removes redundant duplicate transactions. Supports dry-run preview.",
+)
+def cleanup_statement_duplicates(
+    business_id: str = Query(..., description="Target business identifier"),
+    dry_run: bool = Query(True, description="When true, previews changes without altering database"),
+    db: Session = Depends(get_db),
+):
+    return import_service.cleanup_duplicates(db=db, business_id=business_id, dry_run=dry_run)
 
 
 @router.get(

@@ -14,6 +14,7 @@ import {
   RefreshCw,
   ChevronRight,
   ShieldCheck,
+  Bell,
 } from "lucide-react";
 import { apiClient, formatApiError } from "../../lib/api";
 import { CustomerDashboardSummary, CreditTransaction } from "../../types/customer";
@@ -259,7 +260,73 @@ export const CustomerDashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* D. Upcoming Repayments */}
+      {/* D. Repayment Reminders & Alerts */}
+      {data.reminders && data.reminders.length > 0 && (
+        <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-white/90 shadow-glass-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-amber-600" />
+              <h2 className="text-sm font-extrabold text-kosha-navy">Repayment Reminders</h2>
+            </div>
+            <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+              {data.reminders.length} Active Notice{data.reminders.length > 1 ? "s" : ""}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {data.reminders.map((rem) => {
+              const isOverdue = rem.urgency === "overdue";
+              const isDueToday = rem.urgency === "due_today";
+
+              return (
+                <div
+                  key={rem.transaction_id}
+                  className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs ${
+                    isOverdue
+                      ? "bg-rose-50/70 border-rose-200 text-rose-900"
+                      : isDueToday
+                      ? "bg-amber-50/70 border-amber-200 text-amber-900"
+                      : "bg-blue-50/50 border-blue-200 text-slate-800"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    {isOverdue ? (
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    ) : (
+                      <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
+                    )}
+                    <div>
+                      <p className="font-bold">{rem.message}</p>
+                      <p className="text-[10px] opacity-80 mt-0.5">
+                        Agreed date: {rem.due_date} · Amount: {formatINR(rem.amount)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const matched = data.upcoming_repayments.find(
+                        (t) => t.id === rem.transaction_id
+                      );
+                      if (matched) setSelectedTxnForRepay(matched);
+                      else navigate("/customer/dues");
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold shrink-0 transition-colors ${
+                      isOverdue
+                        ? "bg-rose-600 hover:bg-rose-700 text-white"
+                        : "bg-amber-600 hover:bg-amber-700 text-white"
+                    }`}
+                  >
+                    Clear Due
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* E. Upcoming Repayments */}
       <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-white/90 shadow-glass-sm space-y-4">
         <div className="flex items-center justify-between">
           <div>

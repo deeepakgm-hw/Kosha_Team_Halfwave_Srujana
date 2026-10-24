@@ -42,12 +42,18 @@ COLUMN_ALIASES = {
     "date": [
         "date", "transaction date", "transaction_date", "txn date", "txn_date",
         "value date", "val_date", "value_date", "booking date", "booking_date",
-        "posted date", "posted_date", "post date", "post_date"
+        "posted date", "posted_date", "post date", "post_date",
+        "record_date_or_type", "record date or type", "record_date", "record date",
+        "date_or_type", "date or type", "due_date_or_frequency"
     ],
     "description": [
         "description", "narration", "particulars", "details", "remarks",
         "memo", "transaction details", "transaction_details", "txn details",
-        "txn_details", "payee", "payer"
+        "txn_details", "payee", "payer",
+        "counterparty_or_category", "counterparty or category", "counterparty",
+        "party", "party_name", "party name", "beneficiary", "beneficiary_name",
+        "category", "vendor", "customer", "entity", "title", "purpose",
+        "duplicate_note", "duplicate note", "note", "notes", "type", "record_type"
     ],
     "credit": [
         "credit", "cr", "deposit", "deposits", "inflow", "inflows",
@@ -59,13 +65,18 @@ COLUMN_ALIASES = {
     ],
     "amount": [
         "amount", "txn amount", "txn_amount", "transaction amount", "transaction_amount",
-        "net amount", "net_amount", "total", "total amount", "total_amount", "inr"
+        "net amount", "net_amount", "total", "total amount", "total_amount",
+        "amount_inr", "amount in inr", "amount (inr)", "amount (rs)", "amt_inr", "amt", "inr"
     ],
     "reference": [
         "reference", "ref", "external_reference", "external reference", "external_ref",
         "reference no", "reference_no", "ref no", "ref_no", "chq no", "cheque no",
         "chq_no", "cheque_no", "utr", "utr no", "utr_no", "txn id", "txn_id",
-        "transaction id", "transaction_id"
+        "transaction id", "transaction_id", "record_id", "record id", "id",
+        "invoice_no", "invoice_number", "bill_no", "bill_number"
+    ],
+    "source": [
+        "source_file", "source file", "source", "doc_type", "document_type"
     ],
     "account": [
         "account", "account number", "account_number", "acc no", "acc_no", "account_no"
@@ -190,6 +201,7 @@ def resolve_columns(headers: List[str], custom_mapping: Optional[Dict[str, str]]
         "credit": None,
         "debit": None,
         "reference": None,
+        "source": None,
         "account": None,
         "balance": None,
     }
@@ -240,6 +252,23 @@ def resolve_columns(headers: List[str], custom_mapping: Optional[Dict[str, str]]
                         break
                 if col_map.get(logical_key) is not None:
                     break
+
+    # Defensive fallbacks:
+    # If date is unassigned, look for any unused column mentioning date/time/day
+    if col_map["date"] is None:
+        for idx, h in enumerate(norm_headers):
+            if idx not in used_indices and any(w in h for w in ["date", "time", "day", "txn"]):
+                col_map["date"] = idx
+                used_indices.add(idx)
+                break
+
+    # If description is unassigned, use any remaining unused text column
+    if col_map["description"] is None:
+        for idx, h in enumerate(norm_headers):
+            if idx not in used_indices:
+                col_map["description"] = idx
+                used_indices.add(idx)
+                break
 
     # Validation: Must have at least a date, description, and an amount or credit/debit
     if col_map["date"] is None:
@@ -313,10 +342,13 @@ def parse_statement_csv(
 
     accepted_rows: List[Dict[str, Any]] = []
     rejected_rows: List[Dict[str, Any]] = []
-    duplicate_count = 0
+    exact_file_duplicates = 0
+    previously_imported_duplicates = 0
+    potential_duplicates_details: List[Dict[str, Any]] = []
 
     seen_in_batch: Set[str] = set()
     db_fingerprints = existing_fingerprints or set()
+    seen_fallback_occurrences: Dict[str, int] = {}
     data_rows_found = False
 
     for row_idx, row in enumerate(reader, start=header_line_idx + 1):
@@ -326,17 +358,46 @@ def parse_statement_csv(
         data_rows_found = True
 
         try:
-            # 1. Parse Date
+            # 1. Parse Date and Description with Polymorphic Header Support
             date_idx = col_map["date"]
             if date_idx is None or date_idx >= len(row):
                 raise ValueError("Row missing date column")
-            txn_date = parse_date(row[date_idx])
+            raw_date_str = row[date_idx].strip()
 
-            # 2. Parse Description
-            desc_idx = col_map["description"]
-            if desc_idx is None or desc_idx >= len(row) or not row[desc_idx].strip():
+            desc_idx = col_map.get("description")
+            raw_desc_str = (
+                row[desc_idx].strip()
+                if desc_idx is not None and desc_idx < len(row)
+                else ""
+            )
+
+            txn_date = None
+            description = raw_desc_str
+
+            try:
+                txn_date = parse_date(raw_date_str)
+            except ValueError:
+                # If date_idx didn't parse as date (e.g. Inverted row where 'record_date_or_type' is 'Payroll'),
+                # check if the description column holds a valid date
+                try:
+                    txn_date = parse_date(raw_desc_str)
+                    description = raw_date_str
+                except ValueError:
+                    # Search other non-amount columns for a valid date
+                    for alt_idx, alt_cell in enumerate(row):
+                        if alt_idx in [col_map.get("amount"), col_map.get("credit"), col_map.get("debit"), col_map.get("reference")]:
+                            continue
+                        try:
+                            txn_date = parse_date(alt_cell.strip())
+                            description = raw_desc_str or raw_date_str or alt_cell.strip()
+                            break
+                        except ValueError:
+                            continue
+                    if txn_date is None:
+                        raise ValueError(f"Row missing valid transaction date: '{raw_date_str}'")
+
+            if not description:
                 raise ValueError("Row missing transaction description")
-            description = row[desc_idx].strip()
 
             # 3. Parse Amount
             signed_amount: Decimal
@@ -381,6 +442,18 @@ def parse_statement_csv(
                 else:
                     signed_amount = raw_amt
 
+                # Source-aware outflow adjustment:
+                # If a source column indicates an expense/bill/recurring payment and amount was positive, mark as debit outflow
+                source_idx = col_map.get("source")
+                if source_idx is not None and source_idx < len(row):
+                    src_val = row[source_idx].strip().lower()
+                    if any(w in src_val for w in ["bill", "recurring", "payment", "payout", "expense", "payroll", "lease", "rent"]):
+                        if signed_amount > 0:
+                            signed_amount = -signed_amount
+                    elif any(w in src_val for w in ["invoice", "receipt", "sale", "revenue"]):
+                        if signed_amount < 0:
+                            signed_amount = abs(signed_amount)
+
                 txn_type = "credit" if signed_amount > 0 else "debit"
 
             # 4. Parse External Reference
@@ -389,7 +462,12 @@ def parse_statement_csv(
             if ref_idx is not None and ref_idx < len(row) and row[ref_idx].strip():
                 external_ref = row[ref_idx].strip()
 
-            # 5. Duplicate Detection
+            # 5. Duplicate Detection & Fallback Key
+            clean_desc = re.sub(r"\s+", " ", description.strip().lower())
+            fallback_key = f"{business_id}|{account_id or ''}|{txn_date.isoformat()}|{signed_amount:.2f}|{clean_desc}"
+            prior_occurrences = seen_fallback_occurrences.get(fallback_key, 0)
+
+            # Build canonical fingerprint
             fingerprint = compute_transaction_fingerprint(
                 business_id=business_id,
                 account_id=account_id,
@@ -399,11 +477,39 @@ def parse_statement_csv(
                 reference=external_ref,
             )
 
-            if fingerprint in seen_in_batch or fingerprint in db_fingerprints:
-                duplicate_count += 1
-                continue
+            final_fingerprint = fingerprint
 
-            seen_in_batch.add(fingerprint)
+            if external_ref:
+                # When external reference (UTR/cheque) exists, identical match is always an exact duplicate
+                if fingerprint in seen_in_batch:
+                    exact_file_duplicates += 1
+                    continue
+                if fingerprint in db_fingerprints:
+                    previously_imported_duplicates += 1
+                    continue
+            else:
+                # Without external reference: repeated entries on the same day are common in MSME cash/retail transactions.
+                # Legitimate repeated occurrences get discriminators so they are not falsely dropped from cash flow.
+                if prior_occurrences > 0:
+                    raw_disc = f"{fallback_key}|occ_{prior_occurrences + 1}"
+                    final_fingerprint = hashlib.sha256(raw_disc.encode("utf-8")).hexdigest()
+                    potential_duplicates_details.append({
+                        "row_number": row_idx,
+                        "date": txn_date.isoformat(),
+                        "amount": float(signed_amount),
+                        "description": description,
+                        "reason": f"Repeated occurrence #{prior_occurrences + 1} with identical date and amount but no external reference.",
+                    })
+
+                if final_fingerprint in seen_in_batch:
+                    exact_file_duplicates += 1
+                    continue
+                if final_fingerprint in db_fingerprints:
+                    previously_imported_duplicates += 1
+                    continue
+
+            seen_in_batch.add(final_fingerprint)
+            seen_fallback_occurrences[fallback_key] = prior_occurrences + 1
 
             accepted_rows.append({
                 "row_number": row_idx,
@@ -414,7 +520,7 @@ def parse_statement_csv(
                 "amount": signed_amount,
                 "transaction_type": txn_type,
                 "external_reference": external_ref,
-                "fingerprint": fingerprint,
+                "fingerprint": final_fingerprint,
             })
 
         except Exception as exc:
@@ -427,4 +533,12 @@ def parse_statement_csv(
     if not data_rows_found:
         raise CsvImportError("CSV file contains headers but no transaction data rows.")
 
-    return accepted_rows, rejected_rows, duplicate_count
+    duplicate_count = exact_file_duplicates + previously_imported_duplicates
+    breakdown = {
+        "exact_file_duplicates": exact_file_duplicates,
+        "previously_imported_duplicates": previously_imported_duplicates,
+        "potential_duplicates_review": len(potential_duplicates_details),
+        "potential_duplicates_details": potential_duplicates_details,
+    }
+
+    return accepted_rows, rejected_rows, duplicate_count, breakdown

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { UploadCloud, CheckCircle2, AlertTriangle, FileText, X } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertTriangle, FileText, X, Download, Info } from "lucide-react";
 import { apiClient, formatApiError } from "../../lib/api";
 import { CsvImportResult } from "../../types/cashflow";
 import { formatINR } from "../../lib/utils";
@@ -76,6 +76,24 @@ export const StatementImportModal: React.FC<StatementImportModalProps> = ({
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleDownloadRejectedCsv = () => {
+    if (!result || result.rejected_details.length === 0) return;
+    const header = "Row Number,Error Reason,Raw Content\n";
+    const rows = result.rejected_details
+      .map(
+        (r) =>
+          `"${r.row_number}","${r.error.replace(/"/g, '""')}","${r.raw_content.replace(/"/g, '""')}"`
+      )
+      .join("\n");
+    const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `rejected_rows_${result.batch_id || "import"}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -222,6 +240,11 @@ export const StatementImportModal: React.FC<StatementImportModalProps> = ({
                 <div className="text-base font-bold text-amber-700 mt-1">
                   {result.duplicate_rows}
                 </div>
+                {(result.exact_file_duplicates !== undefined || result.previously_imported_duplicates !== undefined) && (
+                  <div className="text-[9px] text-amber-600 font-medium mt-0.5">
+                    {result.exact_file_duplicates || 0} in-file · {result.previously_imported_duplicates || 0} existing
+                  </div>
+                )}
               </div>
               <div className="bg-rose-50 p-2.5 rounded-lg border border-rose-200">
                 <div className="text-rose-700 text-[10px] uppercase font-bold">Rejected</div>
@@ -230,6 +253,17 @@ export const StatementImportModal: React.FC<StatementImportModalProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Potential repeated transactions review alert if present */}
+            {result.potential_duplicates_review !== undefined && result.potential_duplicates_review > 0 && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 text-xs flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Legitimate Repetition Notice:</span>{" "}
+                  {result.potential_duplicates_review} repeated transaction(s) occurred on the same date with identical amount and description without external reference. They have been preserved as distinct entries in the ledger.
+                </div>
+              </div>
+            )}
 
             {/* Movement reconciliation */}
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
@@ -262,9 +296,19 @@ export const StatementImportModal: React.FC<StatementImportModalProps> = ({
 
             {/* Rejected details if any */}
             {result.rejected_details.length > 0 && (
-              <div className="space-y-1">
-                <div className="font-semibold text-rose-800 text-[11px]">
-                  Rejected Row Details ({result.rejected_details.length}):
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-rose-800 text-[11px]">
+                    Rejected Row Details ({result.rejected_details.length}):
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDownloadRejectedCsv}
+                    className="text-[11px] text-rose-700 hover:text-rose-900 font-bold flex items-center gap-1 underline"
+                  >
+                    <Download className="w-3 h-3" />
+                    <span>Download Invalid Rows (CSV)</span>
+                  </button>
                 </div>
                 <div className="max-h-36 overflow-y-auto border border-rose-200 rounded-lg divide-y divide-rose-100 text-[11px] bg-rose-50/50">
                   {result.rejected_details.map((rej) => (

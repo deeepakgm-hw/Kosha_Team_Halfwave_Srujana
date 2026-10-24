@@ -110,11 +110,22 @@ class BillingService:
         payment_date: date,
         reference: Optional[str] = None,
         bank_transaction_id: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
     ) -> InvoicePaymentModel:
         """
         Records a customer payment against an invoice.
         Rejects overpayments to maintain strict accounting integrity.
+        Enforces idempotency by checking idempotency_key.
         """
+        if idempotency_key:
+            existing = (
+                db.query(InvoicePaymentModel)
+                .filter_by(idempotency_key=idempotency_key)
+                .first()
+            )
+            if existing:
+                return existing
+
         invoice = self.get_invoice(db, invoice_id)
 
         if invoice.status == "paid":
@@ -146,6 +157,7 @@ class BillingService:
             amount=amount,
             bank_transaction_id=bank_transaction_id,
             reference=reference,
+            idempotency_key=idempotency_key,
         )
         db.add(payment)
 
@@ -246,8 +258,18 @@ class BillingService:
         payment_date: date,
         reference: Optional[str] = None,
         bank_transaction_id: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
     ) -> BillPaymentModel:
-        """Records a payment towards a vendor bill, preventing overpayments."""
+        """Records a payment towards a vendor bill, preventing overpayments and enforcing idempotency."""
+        if idempotency_key:
+            existing = (
+                db.query(BillPaymentModel)
+                .filter_by(idempotency_key=idempotency_key)
+                .first()
+            )
+            if existing:
+                return existing
+
         bill = self.get_bill(db, bill_id)
 
         if bill.status == "paid":
@@ -278,6 +300,7 @@ class BillingService:
             amount=amount,
             bank_transaction_id=bank_transaction_id,
             reference=reference,
+            idempotency_key=idempotency_key,
         )
         db.add(payment)
 

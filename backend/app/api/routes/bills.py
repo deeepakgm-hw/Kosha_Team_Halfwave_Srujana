@@ -81,6 +81,7 @@ def record_bill_payment(
         payment_date=data.payment_date,
         reference=data.reference,
         bank_transaction_id=data.bank_transaction_id,
+        idempotency_key=data.idempotency_key,
     )
     return BillPaymentOut(
         id=payment.id,
@@ -89,5 +90,6 @@ def record_bill_payment(
         amount=float(payment.amount),
         reference=payment.reference,
         bank_transaction_id=payment.bank_transaction_id,
+        idempotency_key=payment.idempotency_key,
         created_at=payment.created_at,
     )

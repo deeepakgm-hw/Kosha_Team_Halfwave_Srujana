@@ -8,6 +8,7 @@ import { PlanPage } from "../features/plan/PlanPage";
 import { ReceivablesPage } from "../features/receivables/ReceivablesPage";
 import { CalendarPage } from "../features/calendar/CalendarPage";
 import { TrustPage } from "../features/trust/TrustPage";
+import { ShopCreditPage } from "../features/shopkeeper/ShopCreditPage";
 import { LoginPage } from "../features/auth/LoginPage";
 import { CustomerLayout } from "../components/layout/CustomerLayout";
 import { CustomerDashboardPage } from "../features/customer/CustomerDashboardPage";
@@ -15,20 +16,24 @@ import { CustomerDuesPage } from "../features/customer/CustomerDuesPage";
 import { CustomerPayPage } from "../features/customer/CustomerPayPage";
 import { CustomerActivityPage } from "../features/customer/CustomerActivityPage";
 import { CustomerProfilePage } from "../features/customer/CustomerProfilePage";
+import { RouteErrorBoundary } from "../components/layout/RouteErrorBoundary";
 
 export const router = createBrowserRouter([
   {
     path: "/welcome",
     element: <LoginPage />,
+    errorElement: <RouteErrorBoundary />,
   },
   {
     path: "/login",
     element: <LoginPage />,
+    errorElement: <RouteErrorBoundary />,
   },
   // Customer Experience
   {
     path: "/customer",
     element: <CustomerLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         index: true,
@@ -67,6 +72,7 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <GlassLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         index: true,
@@ -137,6 +143,14 @@ export const router = createBrowserRouter([
       {
         path: "receivables",
         element: <ReceivablesPage />,
+      },
+      {
+        path: "shop-credit",
+        element: <ShopCreditPage />,
+      },
+      {
+        path: "shopkeeper",
+        element: <ShopCreditPage />,
       },
       {
         path: "calendar",

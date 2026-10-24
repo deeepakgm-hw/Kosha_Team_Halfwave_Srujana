@@ -27,6 +27,23 @@ def init_db(engine_instance=None) -> None:
     target_engine = engine_instance or engine
     Base.metadata.create_all(bind=target_engine)
 
+    # Safe lightweight SQLite migration for added columns
+    with target_engine.connect() as conn:
+        for stmt in [
+            "ALTER TABLE shops ADD COLUMN status VARCHAR(20) DEFAULT 'active'",
+            "ALTER TABLE customer_repayments ADD COLUMN recorded_by VARCHAR(50) DEFAULT 'customer'",
+            "ALTER TABLE customer_credit_transactions ADD COLUMN idempotency_key VARCHAR(100)",
+            "ALTER TABLE customer_repayments ADD COLUMN idempotency_key VARCHAR(100)",
+            "ALTER TABLE invoice_payments ADD COLUMN idempotency_key VARCHAR(100)",
+            "ALTER TABLE bill_payments ADD COLUMN idempotency_key VARCHAR(100)",
+        ]:
+            try:
+                from sqlalchemy import text
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception:
+                pass
+
     # Seed demo entities into SQLite
     try:
         from backend.app.db.seeder import seed_demo_data

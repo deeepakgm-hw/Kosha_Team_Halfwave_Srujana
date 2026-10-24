@@ -30,20 +30,21 @@ KOSHA strictly isolates financial data categories:
 
 ```
 KOSHA Architecture:
-├── Frontend: React 18 • TypeScript • Tailwind CSS • Vite • Lucide Icons • Recharts
+├── Frontend: React 18 • TypeScript • Tailwind CSS • Vite • Lucide Icons • Recharts • html5-qrcode
 ├── Backend:  Python 3.14/3.11+ • FastAPI • SQLAlchemy 2.0 • Pydantic V2 • SQLite • NumPy
-└── Testing:  Pytest (40 tests passing) • Vitest (10 tests passing) & React Testing Library
+└── Testing:  Pytest (82 tests passing) • Vitest (25 tests passing) & React Testing Library
 ```
 
-### Primary Five-Step Workflow
-```
-1. Load Data → 2. Understand Cash Flow → 3. Test Scenarios → 4. Compare Actions → 5. Action Plan
-```
-- **1. Load Data (`/load`):** Sample business selector (Manufacturer, Trader, Service) or strict CSV statement upload with cryptographic SHA-256 deduplication.
-- **2. Understand Cash Flow (`/understand-cash-flow`):** Reconciled opening cash, expected receipts, 90-day trajectory, safety buffer breach vs zero-cash alerts, and Recharts area visualization.
-- **3. Test Scenarios (`/test-scenarios`):** Interactive what-if shocks (buyer delay days, sales drop %, unexpected emergency expenses) debounced at 250ms and recalculated live on the backend.
-- **4. Compare Actions (`/compare-actions`):** Ranked corrective actions (early payment discount, supplier extension, collections chase, discretionary capex deferral) scored via Multi-Criteria Decision Analysis (MCDA).
-- **5. Action Plan (`/action-plan`):** Formulated execution plan with practical operational steps, print-friendly stylesheet for PDF generation, CSV export, and clipboard summary.
+### Connected Product Experiences
+1. **Business Owner Experience (`/load`):**
+   - **5-Step Treasury Flow:** 1. Load Data → 2. Understand Cash Flow → 3. Test Scenarios → 4. Compare Actions → 5. Action Plan.
+   - **Supporting Tools:** Receivables & MSMED Act Law (`/receivables`), 42-day Cash Calendar (`/calendar`), Forecast Reliability & Calibration (`/reliability`).
+   - **Shopkeeper Counter Experience (`/shopkeeper`):** Real-time receivables summary, shop QR code generation, transaction status filters, and counter cash collection.
+2. **Customer Experience (`/customer`):**
+   - Dual-persona login and entry page with non-judgmental guidance.
+   - Active shop credit dues and upcoming repayment schedule.
+   - QR code scanner (`html5-qrcode`) to record purchases at participating shops.
+   - Direct digital repayments via transparent Payment Gateway Sandbox.
 
 ### Supporting Capabilities
 - **Receivables & Late Payments (`/receivables`):** MSMED Act 2006 (Section 15 & 16: compound penal interest with monthly rests at 3x RBI Bank Rate = 19.50% p.a.), Income Tax Section 43B(h) buyer deduction disallowance tracking, and editable statutory notice drafts.
@@ -92,13 +93,13 @@ npm run dev
 ```bash
 python -m pytest backend/tests -v
 ```
-**Result:** **40 passed in 1.21s** (covers ledger reconciliation, CSV parser encoding/deduplication, invoice/bill persistence, 90-day forecast, scenario shocks, MCDA action ranking, MSMED Section 16 compounding rests, cash calendar, and backtest calibration).
+**Result:** **82 passed in 6.60s** (includes 20 data integrity & idempotency scenarios covering duplicate prevention, in-file repetitions, UTR discriminators, full settlement, overpayment rejection, webhook idempotency, and Asia/Kolkata timezone scheduled reminders).
 
 ### Frontend Tests (Vitest)
 ```bash
-npm --prefix frontend test -- --run
+npm --prefix frontend test
 ```
-**Result:** **10 passed across 4 test suites** (covers Button, App router, forecast loading/success/error, reserve alerts, and trilingual translation switching).
+**Result:** **25 passed across 7 test suites** (covers Button, App router, forecast loading/success/error, reserve alerts, trilingual localization, Customer dashboard, Shopkeeper credit & QR code flows, and Bank Statement import with rejected CSV downloads).
 
 ### Production Build
 ```bash
@@ -108,19 +109,29 @@ npm --prefix frontend run build
 
 ---
 
-## 6. API Route Contracts
+## 6. Primary API Route Matrix
 
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/api/health` | Service health status and version info |
 | `GET` | `/api/businesses` | List registered and demo business entities |
-| `POST` | `/api/statements/import-csv` | Multi-format bank statement CSV parser with SHA-256 deduplication |
+| `POST` | `/api/statements/import-csv` | Multi-format bank statement CSV parser with SHA-256 deduplication & rejected row export |
+| `GET` | `/api/statements/duplicates/audit` | Scan database for existing duplicate transactions and file hashes |
+| `POST` | `/api/statements/duplicates/cleanup` | Cleanup redundant duplicate records with dry-run audit mode |
 | `POST` | `/api/forecast` | Rolling 90-day cash forecast with runway and shortfall detection |
 | `POST` | `/api/simulate` | Comparative what-if scenario shock engine |
 | `POST` | `/api/actions/rank` | MCDA-based corrective intervention priority ranker |
 | `GET` | `/api/receivables/law` | MSMED Section 16 penal interest & Section 43B(h) compliance |
 | `GET` | `/api/calendar` | 42-day scheduled cash outflows categorized by commitment type |
 | `GET` | `/api/backtest` | Empirical backtest replay metrics and calibration coordinates |
+| `GET` | `/api/customer/dashboard` | Customer profile summary, active dues, upcoming commitments |
+| `POST` | `/api/customer/credit-transactions` | Record shop purchase on credit with down-payment |
+| `POST` | `/api/customer/repayments` | Record customer repayment towards outstanding credit |
+| `GET` | `/api/shops/{shop_code}/qr` | Generate authoritative SVG QR code and instructions |
+| `GET` | `/api/shopkeeper/shop/summary` | Shopkeeper receivables summary KPIs and today's collections |
+| `POST` | `/api/payment-gateway/initiate` | Initiate payment order with persistent idempotency |
+| `POST` | `/api/payment-gateway/webhook` | Idempotent webhook handler with unique event tracking |
+| `POST` | `/api/notifications/evaluate` | Evaluate repayment dates in Asia/Kolkata and schedule deduplicated reminders |
 
 ---
 
