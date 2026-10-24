@@ -1,5 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/>
-  <path d="M12 8v8"/>
-  <path d="M8 12h8"/>
+<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="koshaFavicon" x1="20" y1="10" x2="80" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#5EB0FF"/>
+      <stop offset="100%" stopColor="#1D6FD6"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="28" fill="url(#koshaFavicon)"/>
+  <line x1="36" y1="26" x2="36" y2="74" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round"/>
+  <line x1="38" y1="50" x2="64" y2="33" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round"/>
+  <line x1="45" y1="45" x2="69" y2="72" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="73" cy="28" r="7.5" fill="#FBBF24"/>
 </svg>

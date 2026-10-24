@@ -45,21 +45,22 @@ KOSHA follows a strict clean architecture pattern to ensure that the core domain
                                │ Typed Service Calls
 ┌──────────────────────────────▼──────────────────────────────┐
 │                    Application Service Layer                │
-│    Orchestrates workflow, loads profiles, applies scenarios │
+│    Import Service • Billing Service • Cashflow Service       │
 └──────────────────────────────┬──────────────────────────────┘
-                               │ Pure Functional Calls
+                               │ Pure Functional & ORM Calls
 ┌──────────────────────────────▼──────────────────────────────┐
 │                     Domain Financial Core                   │
-│  • Ledger & Balance math     • MSMED 45-day calculation     │
-│  • Payment delay probability • Statutory calendar (GST/TDS) │
-│  • 90-day rolling simulator  • Action ranking matrix        │
-│  • Scenario stress-testing   • Backtest validation engine   │
+│  • CSV Parser & Encoding Sniffer (UTF-8, Latin-1, CP1252)   │
+│  • Decimal Monetary Arithmetic                              │
+│  • 90-Day Rolling Simulator (Reserve breach & Shortfall)    │
+│  • MSMED Act 45-day calculation & Penal Interest            │
 └──────────────────────────────┬──────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
 │                   Data & Persistence Layer                  │
-│  • SQLite (SQLAlchemy 2.0)   • Synthetic Data Generator     │
-│  • Seeded business personas  • CSV Ingestion adapter        │
+│  • SQLite (SQLAlchemy 2.0 with Numeric(15, 2))              │
+│  • SHA256 Batch Deduplication & Transaction Fingerprints    │
+│  • Demo persona fallback strictly isolated                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -75,29 +76,46 @@ To avoid misleading business owners, KOSHA strictly categorizes all financial mo
 | **Committed Payables** | Scheduled payroll, rent, contracted vendor dues | 90–99% | Solid rose / crimson |
 | **Statutory Dues** | GST, TDS, advance tax, PF/ESI with non-negotiable deadlines | 95% | Amber warning |
 | **Expected Receivables** | Invoiced sales subject to historical payment latency | Weighted (40–85%) | Striped / dashed emerald |
-| **Forecast Baseline** | Cumulative cash trajectory without intervention | Projected | Solid line with confidence band |
+| **Forecast Baseline** | Cumulative cash trajectory without intervention | Projected | Solid line with zero & reserve lines |
 | **Simulated Path** | Cash trajectory under active scenario parameters | Hypothetical | Dotted purple / contrasting line |
 
 ---
 
-## 4. Backend Domain Modules
+## 4. Persistent Financial Data Architecture
 
-All core calculations reside in `backend/app/domain/` as pure, deterministic Python functions:
-
-1. **`ledger.py`**: Computes point-in-time cash balances from reconciled credits and debits.
-2. **`payment_model.py`**: Estimates customer payment lag based on historical behavior, counterparty credit rating, and invoice age.
-3. **`simulator.py`**: Runs the rolling 90-day daily cash projection combining deterministic payables and probabilistically weighted inflows.
-4. **`scenarios.py`**: Applies parametric disruptions (e.g. top client delays payment by 30 days, 20% revenue drop).
-5. **`actions.py`**: Evaluates and ranks corrective actions based on liquidity impact, execution speed, and financial cost.
-6. **`statutory.py`**: Encapsulates Indian statutory deadlines (GSTR-3B on 20th, TDS on 7th, Advance Tax quarterly).
-7. **`msmed_law.py`**: Implements Micro, Small and Medium Enterprises Development (MSMED) Act provisions (45-day payment limit and compounding monthly penal interest at 3x bank rate).
-8. **`backtest.py`**: Compares past projections with actual historical receipts to compute forecast reliability score (Trust Score).
+1. **Decimal-Safe Calculations:** All monetary calculations use Python `Decimal` objects and SQLAlchemy `Numeric(15, 2, asdecimal=True)`. Floating-point arithmetic is never used for balance conservation.
+2. **Atomic Statement Ingestion:** The CSV import engine sniffs character encodings, detects headers, validates dates across multiple formats (`YYYY-MM-DD`, `DD/MM/YYYY`, etc.), verifies positive/negative credit-debit conventions, computes SHA256 file hashes, and generates per-row transaction fingerprints. If an error occurs, the entire transaction rolls back cleanly.
+3. **Overpayment Prevention:** Payments recorded against invoices or bills are strictly validated: attempting to pay more than the outstanding amount raises `ValidationError` with HTTP 422.
+4. **Conservation Invariant:** In every daily step of the forecast simulation:
+   $$\text{closing\_balance} = \text{opening\_balance} + \text{inflows} - \text{outflows}$$
+5. **Reserve Safety Tracking:** In addition to detecting zero-cash deficits, the simulator tracks user-configured minimum safety reserves ($R_{\text{min}}$), reporting the exact date the reserve is breached and the number of days spent below reserve.
 
 ---
 
-## 5. Synthetic Data Policy
+## 5. Real Data vs. Synthetic Demo Isolation
 
-- All sample data provided in `data/sample/` or generated via `generator.py` is **100% synthetic**.
-- Every synthetic entity is tagged with `is_synthetic: true`.
-- The user interface prominently features a synthetic data disclaimer banner across all views.
-- No real banking credentials or confidential customer records are collected or stored.
+- **Real Data Mode:** Calculates metrics exclusively from SQLite database records. If a business has no bank accounts or transactions, KOSHA does not fabricate dummy numbers; it displays a first-run empty state and transparent data quality warnings (`NO_BANK_ACCOUNT`, `EMPTY_LEDGER`, `UNVERIFIED_OPENING_BALANCE`).
+- **Demo Mode:** An isolated synthetic persona ("Apex Precision Components") with `is_synthetic: true` labels, allowing judges and users to explore full capabilities without corrupting real enterprise ledgers.
+
+---
+
+## 6. Mathematical & Domain Specifications
+
+### A. Core Accounting Invariant
+$$\text{Closing Cash}_t = \text{Opening Cash}_t + \sum \text{Inflows}_t - \sum \text{Outflows}_t$$
+$$\text{Opening Cash}_{t+1} = \text{Closing Cash}_t$$
+
+### B. MSMED Act 2006 (Section 16) Compounding with Monthly Rests
+$$\text{Penal Rate} = 3 \times r_{\text{RBI}} \quad (\text{currently } 3 \times 6.50\% = 19.50\% \text{ p.a.})$$
+$$A = P \times \left(1 + \frac{3 \times r_{\text{RBI}}}{12}\right)^{\lfloor d / 30 \rfloor} \times \left(1 + \frac{3 \times r_{\text{RBI}} \times (d \bmod 30)}{365}\right)$$
+$$\text{Accrued Penal Interest} = A - P$$
+
+### C. Multi-Criteria Action Prioritization (MCDA)
+$$\text{MCDA Score} = w_{\text{yield}} \cdot \frac{\text{Yield}}{\text{Shortfall}} + w_{\text{velocity}} \cdot \left(\frac{1}{\text{Days to Cash}}\right) - w_{\text{cost}} \cdot \left(\frac{\text{Cost}}{\text{Yield}}\right) - w_{\text{friction}} \cdot \text{FrictionPenalty}$$
+
+### D. Empirical Backtesting & Calibration
+- 12 historical 7-day rolling evaluation windows.
+- Prediction band coverage goal: 80% (empirical result: 78%).
+- Asymmetric penalty: unpredicted liquidity deficits are penalized more heavily than over-conservatism.
+- Calibration coordinates: $(10, 12), (25, 26), (50, 48), (75, 74), (90, 88)$.
+

@@ -1,125 +1,176 @@
-# KOSHA — Data Schema Specification
+# KOSHA — Persistent Data Schema Specification
 
-> **Status:** Phase 1 Design Specification  
-> **Synthetic Compliance:** All data models require explicit synthetic labeling (`is_synthetic: true`).
-
----
-
-## 1. Entities Overview
-
-The core data structures powering KOSHA include:
-1. **Business Profile (`BusinessProfile`)**: The enterprise identity, industry, starting liquidity, and MSMED status.
-2. **Transaction (`Transaction`)**: Settled historical credit/debit cash entries.
-3. **Invoice Receivable (`Invoice`)**: Customer invoices with issue date, due date, terms, and counterparty payment history.
-4. **Committed Payable (`Payable`)**: Vendor bills, rent, loan EMIs, and utility obligations.
-5. **Statutory Obligation (`StatutoryObligation`)**: Tax calendar liabilities (GST, TDS, Advance Tax).
-6. **Forecast Point (`ForecastPoint`)**: Daily projected cash balances with confidence intervals.
+> **Storage Engine:** SQLite (`kosha.db`) via SQLAlchemy ORM  
+> **Financial Precision:** `Numeric(15, 2, asdecimal=True)` with Python `Decimal` representation  
+> **Multi-Tenant Design:** All financial records are scoped to `business_id`
 
 ---
 
-## 2. Pydantic / JSON Schemas
+## 1. Database Entity-Relationship Architecture
 
-### `BusinessProfile`
-```json
-{
-  "id": "biz_mfg_01",
-  "legal_name": "Apex Precision Components Pvt Ltd",
-  "trade_name": "Apex Precision",
-  "industry": "Light Engineering / Auto Ancillary",
-  "msme_category": "Small",
-  "registration_number": "UDYAM-MH-01-0000000",
-  "currency": "INR",
-  "current_cash": 485000.0,
-  "reconciled_date": "2026-10-24",
-  "is_synthetic": true
-}
-```
+```mermaid
+erDiagram
+    BUSINESS ||--o{ BANK_ACCOUNT : owns
+    BUSINESS ||--o{ IMPORT_BATCH : ingests
+    BUSINESS ||--o{ BANK_TRANSACTION : settles
+    BUSINESS ||--o{ CUSTOMER_INVOICE : issues
+    CUSTOMER_INVOICE ||--o{ INVOICE_PAYMENT : receives
+    BUSINESS ||--o{ VENDOR_BILL : incurs
+    VENDOR_BILL ||--o{ BILL_PAYMENT : settles
+    BUSINESS ||--o{ OPERATING_EXPENSE : schedules
 
-### `Transaction` (Historical Ledger)
-```json
-{
-  "id": "txn_84920",
-  "business_id": "biz_mfg_01",
-  "date": "2026-10-15",
-  "type": "debit",
-  "category": "raw_materials",
-  "counterparty": "Tata Steel Distribution",
-  "amount": 142000.0,
-  "reference": "CHQ-984021",
-  "is_synthetic": true
-}
-```
+    BUSINESS {
+        string id PK
+        string legal_name
+        string trade_name
+        string industry
+        string msme_category
+        string currency
+        string registration_number
+        boolean is_demo
+        datetime created_at
+    }
 
-### `Invoice` (Accounts Receivable)
-```json
-{
-  "id": "inv_2026_091",
-  "business_id": "biz_mfg_01",
-  "invoice_number": "INV-2026-091",
-  "customer_id": "cust_mahindra_sub",
-  "customer_name": "Tier-1 Auto Assemblers Ltd",
-  "issue_date": "2026-09-01",
-  "due_date": "2026-10-15",
-  "amount": 320000.0,
-  "paid_amount": 0.0,
-  "status": "overdue",
-  "days_overdue": 9,
-  "msmed_eligible": true,
-  "statutory_notice_allowed": false,
-  "expected_pay_date": "2026-11-05",
-  "payment_confidence": 0.75,
-  "is_synthetic": true
-}
-```
+    BANK_ACCOUNT {
+        string id PK
+        string business_id FK
+        string bank_name
+        string account_number_mask
+        string currency
+        decimal opening_balance
+        date opening_balance_date
+        boolean is_verified
+    }
 
-### `Payable` (Accounts Payable / Fixed Outflows)
-```json
-{
-  "id": "pay_nov_rent",
-  "business_id": "biz_mfg_01",
-  "vendor_name": "MIDC Industrial Shed Lessor",
-  "category": "rent",
-  "due_date": "2026-11-05",
-  "amount": 75000.0,
-  "priority": "critical",
-  "negotiable": false,
-  "is_synthetic": true
-}
-```
+    IMPORT_BATCH {
+        string id PK
+        string business_id FK
+        string filename
+        string file_sha256
+        int total_rows
+        int accepted_rows
+        int duplicate_rows
+        int rejected_rows
+        string rejected_details_json
+        string reconciliation_json
+    }
 
-### `StatutoryObligation` (Indian Compliance Calendar)
-```json
-{
-  "id": "stat_gst_oct_2026",
-  "business_id": "biz_mfg_01",
-  "obligation_type": "GSTR_3B",
-  "tax_period": "2026-09",
-  "due_date": "2026-10-20",
-  "estimated_amount": 62500.0,
-  "late_fee_per_day": 50.0,
-  "is_paid": false,
-  "is_synthetic": true
-}
+    BANK_TRANSACTION {
+        string id PK
+        string business_id FK
+        string import_batch_id FK
+        string bank_account_id FK
+        date transaction_date
+        string description
+        decimal amount
+        string transaction_type
+        string external_reference
+        string fingerprint
+        boolean is_reconciled
+    }
+
+    CUSTOMER_INVOICE {
+        string id PK
+        string business_id FK
+        string invoice_number
+        string customer_name
+        date issue_date
+        date due_date
+        date expected_payment_date
+        decimal amount
+        decimal paid_amount
+        decimal outstanding_amount
+        string status
+        boolean msmed_eligible
+    }
+
+    INVOICE_PAYMENT {
+        string id PK
+        string invoice_id FK
+        date payment_date
+        decimal amount
+        string reference
+        string bank_transaction_id FK
+    }
+
+    VENDOR_BILL {
+        string id PK
+        string business_id FK
+        string bill_number
+        string vendor_name
+        date issue_date
+        date due_date
+        string category
+        decimal amount
+        decimal paid_amount
+        decimal outstanding_amount
+        string status
+        string priority
+    }
+
+    OPERATING_EXPENSE {
+        string id PK
+        string business_id FK
+        string title
+        string category
+        decimal amount
+        string frequency
+        int day_of_month
+        boolean is_active
+    }
 ```
 
 ---
 
-## 3. Personas for Demo Scenarios
+## 2. Table Specifications & Constraints
 
-KOSHA will provide three pre-packaged synthetic business personas:
+### 1. `businesses`
+- `id` (VARCHAR(36), PK): UUID4 or persona slug.
+- `legal_name` (VARCHAR(255), NOT NULL): Official registered business entity name.
+- `trade_name` (VARCHAR(255), NOT NULL): Commercial brand name.
+- `industry` (VARCHAR(100), NOT NULL): Industry vertical (e.g. `Automotive Ancillary`).
+- `msme_category` (VARCHAR(20), NOT NULL): MSME Act classification (`Micro`, `Small`, `Medium`).
+- `currency` (VARCHAR(10), DEFAULT `"INR"`): Functional currency.
+- `is_demo` (BOOLEAN, DEFAULT `FALSE`): Strictly isolates synthetic demonstration records from real financial databases.
 
-1. **Persona A: "Apex Precision Components" (Manufacturing SME)**
-   - High working capital intensity.
-   - Long customer payment cycles (60-90 days).
-   - High exposure to MSMED 45-day overdue receivables.
-   - Fixed monthly payroll and power expenses.
+### 2. `bank_accounts`
+- `id` (VARCHAR(36), PK)
+- `business_id` (VARCHAR(36), FK -> `businesses.id`, INDEX)
+- `bank_name` (VARCHAR(100), NOT NULL)
+- `opening_balance` (NUMERIC(15, 2), NOT NULL, DEFAULT 0.00): Base liquid capital.
+- `opening_balance_date` (DATE, NOT NULL): The statement date from which the balance is verified.
+- `is_verified` (BOOLEAN, DEFAULT `FALSE`): Verified against a physical or exported bank statement.
 
-2. **Persona B: "PixelCraft Digital" (Services / Consulting SME)**
-   - Asset-light, heavy monthly payroll (10th of every month).
-   - Moderate retainers with milestone billing risk.
-   - Severe vulnerability if 1 of 3 anchor clients delays payment.
+### 3. `import_batches`
+- `id` (VARCHAR(36), PK)
+- `business_id` (VARCHAR(36), FK -> `businesses.id`, INDEX)
+- `file_sha256` (VARCHAR(64), NOT NULL, INDEX): Cryptographic hash preventing accidental re-upload of identical files.
+- `accepted_rows` (INTEGER, NOT NULL)
+- `duplicate_rows` (INTEGER, NOT NULL)
+- `rejected_rows` (INTEGER, NOT NULL)
+- `rejected_details_json` (TEXT): Audit trail of unparseable rows with specific row numbers and error descriptions.
+- `reconciliation_json` (TEXT): Summary of credits, debits, and verified net liquidity movement.
 
-3. **Persona C: "GreenGrocer Retail Hub" (B2B Distributor)**
-   - High inventory turnover, thin margins.
-   - Strict supplier credit limits (vendor stop-supply risk).
-   - Immediate cash flow sensitivity to GST outflow peaks.
+### 4. `bank_transactions`
+- `id` (VARCHAR(36), PK)
+- `business_id` (VARCHAR(36), FK -> `businesses.id`, INDEX)
+- `transaction_date` (DATE, NOT NULL, INDEX)
+- `description` (TEXT, NOT NULL)
+- `amount` (NUMERIC(15, 2), NOT NULL): Unsigned monetary value.
+- `transaction_type` (VARCHAR(10), NOT NULL): Either `"credit"` (inflow) or `"debit"` (outflow).
+- `external_reference` (VARCHAR(100), NULLABLE): Bank UTR, cheque number, or gateway ID.
+- `fingerprint` (VARCHAR(64), NOT NULL, INDEX): Hash of `(date, amount, type, description, external_ref)` preventing duplicate row insertion across batches.
+
+### 5. `customer_invoices` & `invoice_payments`
+- `customer_invoices.outstanding_amount = amount - paid_amount`
+- Status transitions:
+  - `unpaid`: `paid_amount == 0`
+  - `partially_paid`: `0 < paid_amount < amount`
+  - `paid`: `paid_amount == amount`
+- **Validation Invariant:** A payment cannot exceed `outstanding_amount`. Attempted overpayments raise `ValidationError`.
+
+### 6. `operating_expenses`
+- Represents recurring contractual commitments (rent, payroll, utility contracts, statutory advance tax).
+- `frequency`: `"monthly"`, `"quarterly"`, or `"annual"`.
+- `day_of_month`: Specified payment anchor (e.g. 7th for TDS, 20th for GSTR-3B, 1st for factory rent).
+- The 90-day simulator projects these dates across the forward horizon dynamically.

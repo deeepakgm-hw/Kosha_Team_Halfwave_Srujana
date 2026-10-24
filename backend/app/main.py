@@ -3,10 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.core.config import settings
 from backend.app.core.errors import setup_exception_handlers
 from backend.app.api.router import api_router
+from backend.app.db.database import init_db
+import backend.app.db.models  # ensure models are registered with Base metadata
 
 
 def create_application() -> FastAPI:
     """FastAPI application factory for KOSHA backend."""
+    # Ensure database schema is initialized
+    init_db()
+
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.VERSION,

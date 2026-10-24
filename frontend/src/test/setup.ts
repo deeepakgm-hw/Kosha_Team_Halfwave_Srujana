@@ -17,3 +17,10 @@ if (!global.fetch) {
     })
   );
 }
+
+// Polyfill ResizeObserver for Recharts in JSDOM
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};

@@ -1,6 +1,7 @@
 """
 Database engine and session management.
-Uses SQLite for local zero-dependency persistence when needed.
+Uses SQLite for local zero-dependency persistence.
+Provides decimal-safe configuration and thread-safe session factories.
 """
 
 from sqlalchemy import create_engine
@@ -19,6 +20,24 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
+
+
+def init_db(engine_instance=None) -> None:
+    """Initialize all database tables safely and seed default synthetic personas."""
+    target_engine = engine_instance or engine
+    Base.metadata.create_all(bind=target_engine)
+
+    # Seed demo entities into SQLite
+    try:
+        from backend.app.db.seeder import seed_demo_data
+        session = SessionLocal(bind=target_engine)
+        try:
+            seed_demo_data(session)
+        finally:
+            session.close()
+    except Exception:
+        # Ignore seeding errors during test runs or alternate databases
+        pass
 
 
 def get_db():

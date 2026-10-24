@@ -1,20 +1,28 @@
 from fastapi import APIRouter
 from backend.app.api.routes.health import router as health_router
+from backend.app.api.routes.forecast import router as forecast_router
+from backend.app.api.routes.businesses import router as businesses_router
+from backend.app.api.routes.statements import router as statements_router
+from backend.app.api.routes.invoices import router as invoices_router
+from backend.app.api.routes.bills import router as bills_router
+from backend.app.api.routes.operating_expenses import router as operating_expenses_router
+from backend.app.api.routes.actions import router as actions_router
+from backend.app.api.routes.receivables import router as receivables_router
+from backend.app.api.routes.calendar import router as calendar_router
+from backend.app.api.routes.backtest import router as backtest_router
 
 api_router = APIRouter()
 
 # Register active routes
 api_router.include_router(health_router, tags=["Health"])
+api_router.include_router(businesses_router, tags=["Businesses & Accounts"])
+api_router.include_router(statements_router, tags=["Bank Statements & Transactions"])
+api_router.include_router(invoices_router, tags=["Customer Invoices"])
+api_router.include_router(bills_router, tags=["Vendor Bills"])
+api_router.include_router(operating_expenses_router, tags=["Operating Expenses"])
+api_router.include_router(forecast_router, tags=["Forecast Engine"])
+api_router.include_router(actions_router, prefix="/actions", tags=["Corrective Actions"])
+api_router.include_router(receivables_router, prefix="/receivables", tags=["Receivables & MSMED Law"])
+api_router.include_router(calendar_router, prefix="/calendar", tags=["Cash Calendar"])
+api_router.include_router(backtest_router, prefix="/backtest", tags=["Forecast Reliability"])
 
-# NOTE: The following routes are reserved for subsequent phases:
-# - /api/load/sample (Synthetic persona loader)
-# - /api/load/csv (CSV statement parser)
-# - /api/state (Current treasury snapshot)
-# - /api/forecast (90-day cash projection)
-# - /api/simulate (What-if scenario engine)
-# - /api/actions/rank (Corrective intervention priority ranking)
-# - /api/receivables/law (MSMED 45-day overdue & penal interest)
-# - /api/calendar (Cash calendar commitments)
-# - /api/backtest (Forecast trust score & error analysis)
-# - /api/brief (Plain-English executive brief)
-# - /api/export/csv (CSV forecast export)

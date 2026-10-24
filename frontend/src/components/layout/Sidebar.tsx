@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import {
   TrendingUp,
+  LineChart,
   SlidersHorizontal,
   Zap,
   Receipt,
@@ -21,9 +22,15 @@ interface NavItem {
 const navItems: NavItem[] = [
   {
     name: "Know",
-    sublabel: "Dashboard",
+    sublabel: "Treasury Overview",
     path: "/",
     icon: TrendingUp,
+  },
+  {
+    name: "Forecast",
+    sublabel: "90-Day Simulation",
+    path: "/forecast",
+    icon: LineChart,
   },
   {
     name: "Decide",
