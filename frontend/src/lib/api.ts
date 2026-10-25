@@ -1,10 +1,15 @@
 import { ApiHealthResponse } from "../types/api";
 import {
+  AutopayAttempt,
   AutopayMandate,
   AutopayMandateDetail,
   AutopaySetupPayload,
   AutopaySetupResponse,
   AutopayVerifyPayload,
+  BillCollectionEligibilityResponse,
+  CollectionCycleResponse,
+  CollectionCycleTriggerRequest,
+  CollectionEngineStatusResponse,
 } from "../types/autopay";
 import {
   AuthResponse,
@@ -734,5 +739,48 @@ export const apiClient = {
     return fetchApi<AutopayMandate>(`/autopay/mandates/${mandateId}/revoke${q}`, {
       method: "POST",
     });
+  },
+
+  // ---------------------------------------------------------------------------
+  // Deadline Collection Engine API
+  // ---------------------------------------------------------------------------
+  async triggerCollectionCycle(payload?: CollectionCycleTriggerRequest): Promise<CollectionCycleResponse> {
+    return fetchApi<CollectionCycleResponse>("/autopay/collection/trigger", {
+      method: "POST",
+      body: JSON.stringify(payload || {}),
+    });
+  },
+
+  async getCollectionEngineStatus(): Promise<CollectionEngineStatusResponse> {
+    return fetchApi<CollectionEngineStatusResponse>("/autopay/collection/status");
+  },
+
+  async listCollectionAttempts(params?: {
+    bill_id?: string;
+    customer_id?: string;
+    status?: string;
+    limit?: number;
+  }): Promise<AutopayAttempt[]> {
+    const query = new URLSearchParams();
+    if (params?.bill_id) query.append("bill_id", params.bill_id);
+    if (params?.customer_id) query.append("customer_id", params.customer_id);
+    if (params?.status) query.append("status", params.status);
+    if (params?.limit) query.append("limit", params.limit.toString());
+    const qs = query.toString() ? `?${query.toString()}` : "";
+    return fetchApi<AutopayAttempt[]>(`/autopay/collection/attempts${qs}`);
+  },
+
+  async reconcileCollectionAttempt(attemptId: string): Promise<AutopayAttempt> {
+    return fetchApi<AutopayAttempt>(`/autopay/collection/reconcile/${attemptId}`, {
+      method: "POST",
+    });
+  },
+
+  async getBillCollectionEligibility(
+    billId: string,
+    bypassNotificationWindow = false
+  ): Promise<BillCollectionEligibilityResponse> {
+    const qs = bypassNotificationWindow ? "?bypass_notification_window=true" : "";
+    return fetchApi<BillCollectionEligibilityResponse>(`/autopay/collection/bill/${billId}/eligibility${qs}`);
   },
 };

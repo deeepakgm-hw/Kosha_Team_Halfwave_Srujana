@@ -317,6 +317,7 @@ class CreditTransactionModel(Base):
     payment_requests = relationship("PaymentRequestModel", back_populates="bill", cascade="all, delete-orphan")
     payment_verifications = relationship("PaymentVerificationModel", back_populates="bill", cascade="all, delete-orphan")
     autopay_mandates = relationship("AutopayMandateModel", back_populates="bill", cascade="all, delete-orphan")
+    autopay_attempts = relationship("AutopayAttemptModel", back_populates="bill", cascade="all, delete-orphan")
 
 
 class RepaymentModel(Base):
@@ -642,9 +643,20 @@ class AutopayAttemptModel(Base):
     idempotency_key = Column(String(100), unique=True, nullable=False, index=True)
     attempt_number = Column(Integer, default=1, nullable=False)
 
-    status = Column(String(30), default="initiated", nullable=False, index=True)  # initiated, pending_confirmation, success, failed, rejected
+    status = Column(String(30), default="scheduled", nullable=False, index=True)
+    # scheduled, eligible, awaiting_notification, initiated, pending, succeeded, failed, cancelled, reconciliation_required
+
     razorpay_payment_id = Column(String(100), nullable=True, index=True)
     razorpay_order_id = Column(String(100), nullable=True, index=True)
+
+    intended_collection_date = Column(Date, nullable=True)
+    notification_requirement = Column(String(30), default="required", nullable=True)  # required, not_required
+    notification_status = Column(String(30), default="pending", nullable=True)        # pending, sent, delivered, failed, bypassed
+    notification_reference = Column(String(100), nullable=True)
+    notification_timestamp = Column(DateTime, nullable=True)
+    eligibility_decision = Column(String(50), nullable=True)                         # eligible, deferred_awaiting_notification, ineligible_zero_balance, etc.
+    deferral_reason = Column(Text, nullable=True)
+    next_retry_at = Column(DateTime, nullable=True)
 
     initiation_time = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     result_time = Column(DateTime, nullable=True)
@@ -661,7 +673,7 @@ class AutopayAttemptModel(Base):
     )
 
     mandate = relationship("AutopayMandateModel", back_populates="attempts")
-    bill = relationship("CreditTransactionModel")
+    bill = relationship("CreditTransactionModel", back_populates="autopay_attempts")
 
 
 class ConsentAuditModel(Base):

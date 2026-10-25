@@ -14,6 +14,7 @@ import {
   Clock,
   Sparkles,
   Info,
+  History,
 } from "lucide-react";
 import {
   AutopayMandate,
@@ -61,6 +62,7 @@ export const AutoPayCard: React.FC<AutoPayCardProps> = ({
   const [explicitConsent, setExplicitConsent] = useState<boolean>(false);
   const [termsAccepted, setTermsAccepted] = useState<boolean>(false);
   const [showAuditLogs, setShowAuditLogs] = useState<boolean>(false);
+  const [showAttempts, setShowAttempts] = useState<boolean>(true);
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
 
   // Load existing mandate for this bill
@@ -618,6 +620,121 @@ export const AutoPayCard: React.FC<AutoPayCardProps> = ({
                 </span>
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {/* Automatic Collection Activity */}
+      {mandateDetail?.attempts && mandateDetail.attempts.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-slate-200/60">
+          <button
+            onClick={() => setShowAttempts(!showAttempts)}
+            className="w-full flex items-center justify-between text-xs font-semibold text-slate-700 hover:text-slate-900 transition-colors py-1"
+          >
+            <span className="flex items-center gap-1.5">
+              <History className="w-3.5 h-3.5 text-emerald-600" />
+              <span>
+                Collection Engine Activity ({mandateDetail.attempts.length}{" "}
+                {mandateDetail.attempts.length === 1 ? "attempt" : "attempts"})
+              </span>
+            </span>
+            {showAttempts ? (
+              <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            )}
+          </button>
+
+          {showAttempts && (
+            <div className="mt-2.5 space-y-2.5">
+              {mandateDetail.attempts.map((att) => {
+                const isSuccess = att.status === "succeeded";
+                const isAwaitingNotice = att.status === "awaiting_notification";
+                const isRecon = att.status === "reconciliation_required";
+                const isPending = att.status === "pending";
+                const isFailed = att.status === "failed";
+
+                return (
+                  <div
+                    key={att.id}
+                    className={`p-3 rounded-xl border text-xs space-y-1.5 transition-all ${
+                      isSuccess
+                        ? "bg-emerald-50/70 border-emerald-200 text-emerald-950"
+                        : isAwaitingNotice
+                        ? "bg-amber-50/70 border-amber-200 text-amber-950"
+                        : isRecon
+                        ? "bg-purple-50/70 border-purple-200 text-purple-950"
+                        : isPending
+                        ? "bg-sky-50/70 border-sky-200 text-sky-950"
+                        : isFailed
+                        ? "bg-rose-50/70 border-rose-200 text-rose-950"
+                        : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        {isSuccess && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
+                        {isAwaitingNotice && <Clock className="w-4 h-4 text-amber-600 shrink-0" />}
+                        {isRecon && <AlertTriangle className="w-4 h-4 text-purple-600 shrink-0" />}
+                        {isPending && <RefreshCw className="w-4 h-4 text-sky-600 shrink-0 animate-spin" />}
+                        {isFailed && <XCircle className="w-4 h-4 text-rose-500 shrink-0" />}
+                        <span>
+                          {isSuccess
+                            ? `Collection Succeeded: ${formatINR(att.amount)}`
+                            : isAwaitingNotice
+                            ? `Pre-Debit Notice Recorded (${formatINR(att.amount)})`
+                            : isRecon
+                            ? "Reconciliation Required"
+                            : isPending
+                            ? "Collection In Progress"
+                            : isFailed
+                            ? `Collection Attempt ${att.attempt_number} Failed`
+                            : `Attempt ${att.attempt_number}: ${att.status}`}
+                        </span>
+                      </div>
+                      <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full font-bold bg-white/80 border border-current">
+                        {att.status.replace("_", " ")}
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] opacity-90 leading-relaxed space-y-0.5">
+                      {isSuccess && (
+                        <p>
+                          AutoPay debited {formatINR(att.amount)} from customer mandate. Applied to bill ledger.
+                          {att.razorpay_payment_id && ` Payment Ref: ${att.razorpay_payment_id}`}
+                        </p>
+                      )}
+                      {isAwaitingNotice && (
+                        <p>
+                          Mandatory 24-hour pre-debit notice sent to customer on{" "}
+                          {att.notification_timestamp
+                            ? new Date(att.notification_timestamp).toLocaleString()
+                            : "today"}
+                          . Collection will be executed once waiting period elapses.
+                        </p>
+                      )}
+                      {isRecon && (
+                        <p>
+                          Gateway timed out during debit request. Marked as reconciliation required to prevent duplicate debit.
+                        </p>
+                      )}
+                      {isFailed && (
+                        <div>
+                          <p className="text-rose-800">
+                            {att.failure_reason || "Provider reported collection failure."}
+                          </p>
+                          {att.next_retry_at && (
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              Next automatic retry scheduled after: {new Date(att.next_retry_at).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

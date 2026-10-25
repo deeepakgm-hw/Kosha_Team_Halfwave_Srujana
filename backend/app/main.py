@@ -1,3 +1,6 @@
+import asyncio
+from contextlib import asynccontextmanager
+import logging
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,8 +9,62 @@ from fastapi.responses import FileResponse
 from backend.app.core.config import settings
 from backend.app.core.errors import setup_exception_handlers
 from backend.app.api.router import api_router
-from backend.app.db.database import init_db
+from backend.app.db.database import init_db, SessionLocal
 import backend.app.db.models  # ensure models are registered with Base metadata
+
+logger = logging.getLogger("kosha.main")
+_scheduler_running = False
+
+
+async def autopay_scheduler_worker():
+    """Autonomous background scheduler worker executing periodic AutoPay collection cycles."""
+    global _scheduler_running
+    from backend.app.services.collection_engine import collection_engine
+
+    collection_engine.is_running = True
+    logger.info(f"AutoPay collection scheduler started (interval: {settings.AUTOPAY_COLLECTION_INTERVAL_SECONDS}s).")
+
+    while _scheduler_running:
+        try:
+            # Run collection cycle in isolated session
+            db = SessionLocal()
+            try:
+                collection_engine.run_collection_cycle(db=db)
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Error in background AutoPay collection cycle: {e}")
+
+        # Sleep for configured interval
+        try:
+            await asyncio.sleep(settings.AUTOPAY_COLLECTION_INTERVAL_SECONDS)
+        except asyncio.CancelledError:
+            break
+
+    collection_engine.is_running = False
+    logger.info("AutoPay collection scheduler stopped.")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifecycle manager for FastAPI starting and stopping background workers."""
+    global _scheduler_running
+    scheduler_task = None
+
+    # Start background scheduler in development & production
+    if settings.AUTOPAY_COLLECTION_ENABLED and settings.ENVIRONMENT != "test":
+        _scheduler_running = True
+        scheduler_task = asyncio.create_task(autopay_scheduler_worker())
+
+    yield
+
+    _scheduler_running = False
+    if scheduler_task:
+        scheduler_task.cancel()
+        try:
+            await scheduler_task
+        except asyncio.CancelledError:
+            pass
 
 
 def create_application() -> FastAPI:
@@ -21,6 +78,7 @@ def create_application() -> FastAPI:
         description="Predictive Cash-Flow Early Warning & Enterprise MSME Treasury Platform.",
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
     # Configure CORS for local development and frontend origins

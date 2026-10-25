@@ -112,10 +112,54 @@ class AutopayAttemptOut(BaseModel):
     attempt_number: int
     status: str
     razorpay_payment_id: Optional[str] = None
+    razorpay_order_id: Optional[str] = None
+    intended_collection_date: Optional[str] = None
+    notification_requirement: Optional[str] = None
+    notification_status: Optional[str] = None
+    notification_reference: Optional[str] = None
+    notification_timestamp: Optional[datetime] = None
+    eligibility_decision: Optional[str] = None
+    deferral_reason: Optional[str] = None
+    next_retry_at: Optional[datetime] = None
+    failure_code: Optional[str] = None
     initiation_time: datetime
     result_time: Optional[datetime] = None
     failure_reason: Optional[str] = None
     reconciliation_status: str
+
+
+class CollectionCycleTriggerRequest(BaseModel):
+    target_date: Optional[date] = Field(None, description="Optional target date to simulate or evaluate (defaults to today)")
+    bypass_notification_window: bool = Field(False, description="Set to True for testing to bypass the 24-hour pre-debit waiting window")
+    bill_ids: Optional[List[str]] = Field(None, description="Optional filter to execute collection only for specific bill IDs")
+
+
+class CollectionCycleResponse(BaseModel):
+    status: str
+    cycle_id: str
+    executed_at: datetime
+    bills_evaluated: int
+    eligible_count: int
+    succeeded_count: int
+    failed_count: int
+    deferred_count: int
+    reconciled_count: int
+    total_collected_paise: int
+    total_collected_inr: float
+    results: List[Dict[str, Any]] = []
+
+
+class CollectionEngineStatusResponse(BaseModel):
+    is_enabled: bool
+    is_running: bool
+    interval_seconds: int
+    pre_debit_notification_hours: int
+    max_retry_attempts: int
+    last_run_time: Optional[datetime] = None
+    overdue_bills_count: int
+    active_mandates_count: int
+    pending_attempts_count: int
+    reconciliation_required_count: int
 
 
 class AutopayMandateDetailOut(BaseModel):

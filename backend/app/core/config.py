@@ -46,6 +46,12 @@ class Settings:
     RAZORPAY_MERCHANT_NAME: str = os.getenv("RAZORPAY_MERCHANT_NAME", "KOSHA MSME Treasury")
     RAZORPAY_UPI_VPA: str = os.getenv("RAZORPAY_UPI_VPA", "kosha.msme@razorpay")
 
+    # AutoPay Deadline Collection Engine Configuration
+    AUTOPAY_COLLECTION_ENABLED: bool = os.getenv("AUTOPAY_COLLECTION_ENABLED", "True").lower() in ("true", "1", "yes")
+    AUTOPAY_COLLECTION_INTERVAL_SECONDS: int = int(os.getenv("AUTOPAY_COLLECTION_INTERVAL_SECONDS", "300"))
+    PRE_DEBIT_NOTIFICATION_HOURS: int = int(os.getenv("PRE_DEBIT_NOTIFICATION_HOURS", "24"))
+    AUTOPAY_MAX_RETRY_ATTEMPTS: int = int(os.getenv("AUTOPAY_MAX_RETRY_ATTEMPTS", "3"))
+
     # Authentication & JWT Configuration
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "kosha_dev_jwt_secret_key_change_in_production_32b_len")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")

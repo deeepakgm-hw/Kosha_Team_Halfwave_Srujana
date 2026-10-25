@@ -38,6 +38,14 @@ def init_db(engine_instance=None) -> None:
             "ALTER TABLE customer_repayments ADD COLUMN idempotency_key VARCHAR(100)",
             "ALTER TABLE invoice_payments ADD COLUMN idempotency_key VARCHAR(100)",
             "ALTER TABLE bill_payments ADD COLUMN idempotency_key VARCHAR(100)",
+            "ALTER TABLE autopay_attempts ADD COLUMN intended_collection_date DATE",
+            "ALTER TABLE autopay_attempts ADD COLUMN notification_requirement VARCHAR(30) DEFAULT 'required'",
+            "ALTER TABLE autopay_attempts ADD COLUMN notification_status VARCHAR(30) DEFAULT 'pending'",
+            "ALTER TABLE autopay_attempts ADD COLUMN notification_reference VARCHAR(100)",
+            "ALTER TABLE autopay_attempts ADD COLUMN notification_timestamp TIMESTAMP",
+            "ALTER TABLE autopay_attempts ADD COLUMN eligibility_decision VARCHAR(50)",
+            "ALTER TABLE autopay_attempts ADD COLUMN deferral_reason TEXT",
+            "ALTER TABLE autopay_attempts ADD COLUMN next_retry_at TIMESTAMP",
         ]:
             try:
                 from sqlalchemy import text

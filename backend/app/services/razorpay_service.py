@@ -947,7 +947,21 @@ class RazorpayService:
             payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
             err_reason = payment_entity.get("error_description", "Payment transaction failed at gateway.")
             notes = payment_entity.get("notes", {})
-            bill_id = notes.get("bill_id")
+            bill_id = notes.get("bill_id") or notes.get("kosha_bill_id")
+            attempt_id = notes.get("kosha_attempt_id") or notes.get("kosha_bill_id")
+            attempt_id = notes.get("kosha_attempt_id")
+
+            if attempt_id:
+                from backend.app.db.models import AutopayAttemptModel
+                att = db.query(AutopayAttemptModel).filter_by(id=attempt_id).first()
+                if att:
+                    att.status = "failed"
+                    att.failure_code = payment_entity.get("error_code", "PAYMENT_FAILED")
+                    att.failure_reason = err_reason
+                    att.result_time = datetime.now(timezone.utc)
+                    att.reconciliation_status = "reconciled"
+                    db.add(att)
+
             if bill_id:
                 active_req = (
                     db.query(PaymentRequestModel)
@@ -957,7 +971,7 @@ class RazorpayService:
                 if active_req:
                     active_req.failure_reason = err_reason
                     db.add(active_req)
-                    db.commit()
+            db.commit()
             return {
                 "status": "processed",
                 "event": event_name,
@@ -981,7 +995,8 @@ class RazorpayService:
             method = payment_entity.get("method", "upi")
             vpa = payment_entity.get("vpa")
             notes = payment_entity.get("notes", {})
-            bill_id = notes.get("bill_id")
+            bill_id = notes.get("bill_id") or notes.get("kosha_bill_id")
+            attempt_id = notes.get("kosha_attempt_id")
 
             # Validate currency
             if currency != "INR":
@@ -1148,6 +1163,24 @@ class RazorpayService:
             else:
                 payment_request.status = "partially_paid"
             db.add(payment_request)
+
+        # 5. Reconcile in-flight AutoPay attempt if present
+        from backend.app.db.models import AutopayAttemptModel
+        att = (
+            db.query(AutopayAttemptModel)
+            .filter(
+                AutopayAttemptModel.bill_id == bill.id,
+                AutopayAttemptModel.status.in_(["initiated", "pending", "reconciliation_required"]),
+            )
+            .order_by(AutopayAttemptModel.created_at.desc())
+            .first()
+        )
+        if att:
+            att.status = "succeeded"
+            att.razorpay_payment_id = razorpay_payment_id
+            att.reconciliation_status = "reconciled"
+            att.result_time = datetime.now(timezone.utc)
+            db.add(att)
 
         db.commit()
         db.refresh(verif)

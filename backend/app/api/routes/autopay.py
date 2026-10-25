@@ -16,13 +16,18 @@ from backend.app.core.errors import AppException
 from backend.app.db.database import get_db
 from backend.app.db.models import UserModel
 from backend.app.schemas.autopay import (
+    AutopayAttemptOut,
     AutopayMandateDetailOut,
     AutopayMandateOut,
     AutopaySetupRequest,
     AutopaySetupResponse,
     AutopayVerifyRequest,
+    CollectionCycleResponse,
+    CollectionCycleTriggerRequest,
+    CollectionEngineStatusResponse,
 )
 from backend.app.services.autopay_service import autopay_service
+from backend.app.services.collection_engine import collection_engine
 
 router = APIRouter()
 
@@ -198,3 +203,179 @@ def revoke_mandate(
 ) -> AutopayMandateOut:
     eff_cust_id = resolve_auth_customer_id(current_user, customer_id)
     return autopay_service.revoke_mandate(mandate_id=mandate_id, customer_id=eff_cust_id, db=db)
+
+
+# =============================================================================
+# 5. Deadline Collection Engine Endpoints
+# =============================================================================
+
+@router.post(
+    "/collection/trigger",
+    response_model=CollectionCycleResponse,
+    summary="Trigger AutoPay Collection Cycle",
+    description="Executes a deadline-based collection run over overdue bills with active mandates.",
+)
+def trigger_collection_cycle(
+    payload: CollectionCycleTriggerRequest,
+    db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+) -> CollectionCycleResponse:
+    res = collection_engine.run_collection_cycle(
+        db=db,
+        target_date=payload.target_date,
+        bypass_notification_window=payload.bypass_notification_window,
+        bill_ids=payload.bill_ids,
+    )
+    return CollectionCycleResponse(**res)
+
+
+@router.get(
+    "/collection/status",
+    response_model=CollectionEngineStatusResponse,
+    summary="Get Collection Engine Status & Metrics",
+    description="Returns configuration, run status, overdue bill counts, and pending attempts.",
+)
+def get_collection_engine_status(
+    db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+) -> CollectionEngineStatusResponse:
+    res = collection_engine.get_engine_status(db=db)
+    return CollectionEngineStatusResponse(**res)
+
+
+@router.get(
+    "/collection/attempts",
+    response_model=List[AutopayAttemptOut],
+    summary="List Collection Attempts",
+    description="Lists durable collection attempts with status and error details.",
+)
+def list_collection_attempts(
+    bill_id: Optional[str] = Query(None),
+    mandate_id: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    limit: int = Query(50, le=200),
+    db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+) -> List[AutopayAttemptOut]:
+    from backend.app.db.models import AutopayAttemptModel
+    q = db.query(AutopayAttemptModel)
+    if bill_id:
+        q = q.filter(AutopayAttemptModel.bill_id == bill_id)
+    if mandate_id:
+        q = q.filter(AutopayAttemptModel.mandate_id == mandate_id)
+    if status:
+        q = q.filter(AutopayAttemptModel.status == status)
+
+    attempts = q.order_by(AutopayAttemptModel.initiation_time.desc()).limit(limit).all()
+
+    return [
+        AutopayAttemptOut(
+            id=att.id,
+            mandate_id=att.mandate_id,
+            bill_id=att.bill_id,
+            amount=float(att.amount_paise) / 100.0,
+            amount_paise=att.amount_paise,
+            attempt_number=att.attempt_number,
+            status=att.status,
+            razorpay_payment_id=att.razorpay_payment_id,
+            razorpay_order_id=att.razorpay_order_id,
+            intended_collection_date=att.intended_collection_date.isoformat() if att.intended_collection_date else None,
+            notification_requirement=att.notification_requirement,
+            notification_status=att.notification_status,
+            notification_reference=att.notification_reference,
+            notification_timestamp=att.notification_timestamp,
+            eligibility_decision=att.eligibility_decision,
+            deferral_reason=att.deferral_reason,
+            next_retry_at=att.next_retry_at,
+            failure_code=att.failure_code,
+            initiation_time=att.initiation_time,
+            result_time=att.result_time,
+            failure_reason=att.failure_reason,
+            reconciliation_status=att.reconciliation_status,
+        )
+        for att in attempts
+    ]
+
+
+@router.post(
+    "/collection/reconcile/{attempt_id}",
+    response_model=AutopayAttemptOut,
+    summary="Reconcile Ambiguous Attempt with Razorpay",
+    description="Queries Razorpay to resolve a timeout or ambiguous payment attempt.",
+)
+def reconcile_attempt(
+    attempt_id: str,
+    db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+) -> AutopayAttemptOut:
+    att = collection_engine.reconcile_ambiguous_attempt(attempt_id=attempt_id, db=db)
+    return AutopayAttemptOut(
+        id=att.id,
+        mandate_id=att.mandate_id,
+        bill_id=att.bill_id,
+        amount=float(att.amount_paise) / 100.0,
+        amount_paise=att.amount_paise,
+        attempt_number=att.attempt_number,
+        status=att.status,
+        razorpay_payment_id=att.razorpay_payment_id,
+        razorpay_order_id=att.razorpay_order_id,
+        intended_collection_date=att.intended_collection_date.isoformat() if att.intended_collection_date else None,
+        notification_requirement=att.notification_requirement,
+        notification_status=att.notification_status,
+        notification_reference=att.notification_reference,
+        notification_timestamp=att.notification_timestamp,
+        eligibility_decision=att.eligibility_decision,
+        deferral_reason=att.deferral_reason,
+        next_retry_at=att.next_retry_at,
+        failure_code=att.failure_code,
+        initiation_time=att.initiation_time,
+        result_time=att.result_time,
+        failure_reason=att.failure_reason,
+        reconciliation_status=att.reconciliation_status,
+    )
+
+
+@router.get(
+    "/collection/bill/{bill_id}/eligibility",
+    summary="Evaluate Bill Collection Eligibility",
+    description="Calculates authoritative balance in integer paise and checks mandate eligibility.",
+)
+def evaluate_bill_eligibility(
+    bill_id: str,
+    bypass_notification_window: bool = Query(False),
+    db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+):
+    from decimal import Decimal
+    from backend.app.db.models import CreditTransactionModel
+    bill = db.query(CreditTransactionModel).filter_by(id=bill_id).first()
+    if not bill:
+        raise HTTPException(status_code=404, detail=f"Bill '{bill_id}' not found.")
+
+    balance_info = collection_engine.calculate_authoritative_balance(bill, db)
+    eligibility = collection_engine.evaluate_bill_eligibility(
+        bill,
+        db,
+        bypass_notification_window=bypass_notification_window,
+    )
+
+    return {
+        "bill_id": bill.id,
+        "reference": bill.reference,
+        "balance": {
+            "total_paise": balance_info["total_paise"],
+            "initial_paid_paise": balance_info["initial_paid_paise"],
+            "verified_repayments_paise": balance_info["verified_repayments_paise"],
+            "remaining_paise": balance_info["remaining_paise"],
+            "remaining_inr": float(balance_info["remaining_inr"]),
+            "is_fully_paid": balance_info["is_fully_paid"],
+        },
+        "eligibility": {
+            "is_eligible": eligibility["is_eligible"],
+            "decision": eligibility["decision"],
+            "collectible_paise": eligibility["collectible_paise"],
+            "collectible_inr": float(Decimal(eligibility["collectible_paise"]) / Decimal(100)),
+            "deferral_reason": eligibility["deferral_reason"],
+            "mandate_id": eligibility["mandate"].id if eligibility["mandate"] else None,
+        },
+    }

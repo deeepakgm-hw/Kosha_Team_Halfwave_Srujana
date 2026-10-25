@@ -102,4 +102,73 @@ describe("AutoPayCard Component", () => {
     expect(screen.getByRole("button", { name: /Pause Mandate/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Revoke Mandate/i })).toBeInTheDocument();
   });
+
+  it("renders collection engine activity including pre-debit notice, successful debit, and backoff retry", async () => {
+    vi.mocked(apiClient.getAutopayMandateByBill).mockResolvedValue({
+      mandate: {
+        id: "mnd_active_888",
+        customer_id: "cust_karthik_01",
+        business_id: "biz_apex_01",
+        bill_id: "bill_test_102",
+        business_name: "Apex Precision",
+        customer_name: "Karthik Verma",
+        bill_outstanding: 5000,
+        mandate_type: "upi_autopay",
+        amount_type: "variable",
+        max_amount: 5000,
+        max_amount_paise: 500000,
+        currency: "INR",
+        frequency: "as_presented",
+        status: "active",
+        effective_date: "2026-10-25",
+        consent_timestamp: "2026-10-25T14:00:00Z",
+        terms_version: "v1.0-2026",
+        collection_condition: "Collection will only be attempted after deadline if unpaid.",
+        cancellation_terms: "Can pause or revoke anytime.",
+      },
+      audit_logs: [],
+      attempts: [
+        {
+          id: "att_001",
+          mandate_id: "mnd_active_888",
+          bill_id: "bill_test_102",
+          amount: 5000,
+          amount_paise: 500000,
+          attempt_number: 1,
+          status: "awaiting_notification",
+          notification_requirement: "required",
+          notification_status: "delivered",
+          notification_timestamp: "2026-10-25T10:00:00Z",
+          initiation_time: "2026-10-25T10:00:00Z",
+          reconciliation_status: "unreconciled",
+        },
+        {
+          id: "att_002",
+          mandate_id: "mnd_active_888",
+          bill_id: "bill_test_102",
+          amount: 5000,
+          amount_paise: 500000,
+          attempt_number: 2,
+          status: "succeeded",
+          razorpay_payment_id: "pay_rzp_live_abc123",
+          initiation_time: "2026-10-26T10:30:00Z",
+          result_time: "2026-10-26T10:30:05Z",
+          reconciliation_status: "reconciled",
+        },
+      ],
+    });
+
+    render(
+      <AutoPayCard
+        billId="bill_test_102"
+        outstandingAmount={5000}
+        customerId="cust_karthik_01"
+      />
+    );
+
+    expect(await screen.findByText(/Collection Engine Activity/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pre-Debit Notice Recorded/i)).toBeInTheDocument();
+    expect(screen.getByText(/Collection Succeeded: ₹5,000/i)).toBeInTheDocument();
+    expect(screen.getByText(/pay_rzp_live_abc123/i)).toBeInTheDocument();
+  });
 });

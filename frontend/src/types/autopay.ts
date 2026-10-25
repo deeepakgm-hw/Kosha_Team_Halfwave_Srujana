@@ -88,19 +88,88 @@ export interface ConsentAudit {
   notes?: string | null;
 }
 
+export type AutopayAttemptStatus =
+  | "scheduled"
+  | "eligible"
+  | "awaiting_notification"
+  | "initiated"
+  | "pending"
+  | "succeeded"
+  | "failed"
+  | "cancelled"
+  | "reconciliation_required";
+
 export interface AutopayAttempt {
   id: string;
   mandate_id: string;
   bill_id: string;
+  customer_id?: string;
+  business_id?: string;
   amount: number;
   amount_paise: number;
   attempt_number: number;
-  status: "initiated" | "success" | "failed" | "rejected";
+  status: AutopayAttemptStatus | string;
+  intended_collection_date?: string | null;
+  notification_requirement?: string | null;
+  notification_status?: string | null;
+  notification_reference?: string | null;
+  notification_timestamp?: string | null;
+  eligibility_decision?: string | null;
+  deferral_reason?: string | null;
+  next_retry_at?: string | null;
   razorpay_payment_id?: string | null;
+  razorpay_order_id?: string | null;
+  failure_code?: string | null;
+  failure_reason?: string | null;
   initiation_time: string;
   result_time?: string | null;
-  failure_reason?: string | null;
   reconciliation_status: string;
+}
+
+export interface CollectionCycleTriggerRequest {
+  target_date?: string;
+  bypass_notification_window?: boolean;
+  bill_ids?: string[];
+}
+
+export interface CollectionCycleResponse {
+  success: boolean;
+  message: string;
+  cycle_timestamp: string;
+  total_bills_evaluated: number;
+  eligible_count: number;
+  notified_count: number;
+  initiated_count: number;
+  succeeded_count: number;
+  failed_count: number;
+  reconciliation_required_count: number;
+  total_collected_inr: number;
+  total_collected_paise: number;
+  details: any[];
+}
+
+export interface CollectionEngineStatusResponse {
+  engine_active: boolean;
+  scheduler_enabled: boolean;
+  collection_hour_utc: number;
+  active_mandates_count: number;
+  bills_awaiting_notification: number;
+  overdue_eligible_bills: number;
+  reconciliation_pending_count: number;
+  last_cycle_timestamp?: string | null;
+}
+
+export interface BillCollectionEligibilityResponse {
+  bill_id: string;
+  bill_reference?: string | null;
+  is_eligible: boolean;
+  decision: string;
+  deferral_reason?: string | null;
+  outstanding_amount: number;
+  collectible_amount: number;
+  mandate_id?: string | null;
+  mandate_status?: string | null;
+  pre_debit_notification_satisfied: boolean;
 }
 
 export interface AutopayMandateDetail {
