@@ -1287,19 +1287,34 @@ class RazorpayService:
                 is_test_mode=not self.is_live_configured(),
             )
 
+        # Parse optional line items
+        line_items_list = None
+        if getattr(bill, "line_items_json", None):
+            try:
+                from backend.app.schemas.customer import BillLineItem
+                raw_items = json.loads(bill.line_items_json)
+                line_items_list = [BillLineItem(**item) for item in raw_items]
+            except Exception:
+                line_items_list = None
+
         return BillPaymentHistoryOut(
             bill_id=bill.id,
             bill_reference=bill.reference,
             customer_id=bill.customer_id,
             customer_name=bill.customer.display_name if bill.customer else "Customer",
             customer_phone=bill.customer.phone if bill.customer else "",
+            customer_email=bill.customer.email if bill.customer else None,
             shop_id=bill.shop_id,
             shop_name=bill.shop.shop_name if bill.shop else "Shop",
+            shop_code=bill.shop.shop_code if bill.shop else None,
             description=bill.description,
+            notes=getattr(bill, "notes", None),
+            line_items=line_items_list,
             total_amount=float(bill.purchase_amount),
             initial_manual_paid=float(bill.initial_paid_amount),
             verified_razorpay_paid=float(self.paise_to_inr(verified_rzp_paise)),
             outstanding_amount=float(bill.outstanding_amount),
+            created_at=bill.created_at,
             agreed_repayment_date=bill.agreed_repayment_date,
             status=bill.status,
             active_payment_request=active_req_out,

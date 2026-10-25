@@ -301,6 +301,8 @@ class CreditTransactionModel(Base):
     transaction_date = Column(Date, nullable=False, index=True)
     agreed_repayment_date = Column(Date, nullable=False, index=True)
     status = Column(String(20), nullable=False, default="upcoming", index=True)  # upcoming, due_today, overdue, paid
+    notes = Column(Text, nullable=True)
+    line_items_json = Column(Text, nullable=True)
     idempotency_key = Column(String(100), unique=True, nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(

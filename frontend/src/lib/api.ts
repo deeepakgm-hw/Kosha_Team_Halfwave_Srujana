@@ -505,14 +505,51 @@ export const apiClient = {
   },
 
   // Shopkeeper Bill Creation & Management
-  async listShopkeeperCustomers(): Promise<CustomerProfile[]> {
-    return fetchApi<CustomerProfile[]>("/shopkeeper/customers");
+  async listShopkeeperCustomers(search?: string): Promise<CustomerProfile[]> {
+    let url = "/shopkeeper/customers";
+    if (search && search.trim()) url += `?search=${encodeURIComponent(search.trim())}`;
+    return fetchApi<CustomerProfile[]>(url);
+  },
+
+  async registerShopkeeperCustomer(payload: { display_name: string; phone: string; email?: string }): Promise<CustomerProfile> {
+    return fetchApi<CustomerProfile>("/shopkeeper/customers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
   },
 
   async createShopkeeperBill(payload: ShopkeeperBillCreatePayload, shopId = "shop_apex_01"): Promise<BillPaymentHistory> {
     return fetchApi<BillPaymentHistory>(`/shopkeeper/bills?shop_id=${shopId}`, {
       method: "POST",
       body: JSON.stringify(payload),
+    });
+  },
+
+  async getShopkeeperBill(billId: string, shopId = "shop_apex_01"): Promise<BillPaymentHistory> {
+    return fetchApi<BillPaymentHistory>(`/shopkeeper/bills/${billId}?shop_id=${shopId}`);
+  },
+
+  async updateBillRepaymentDate(
+    billId: string,
+    agreedRepaymentDate: string,
+    notes?: string,
+    shopId = "shop_apex_01"
+  ): Promise<BillPaymentHistory> {
+    return fetchApi<BillPaymentHistory>(`/shopkeeper/bills/${billId}/repayment-date?shop_id=${shopId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ agreed_repayment_date: agreedRepaymentDate, notes }),
+    });
+  },
+
+  async recordBillCashReceipt(
+    billId: string,
+    amount: number,
+    notes?: string,
+    shopId = "shop_apex_01"
+  ): Promise<BillPaymentHistory> {
+    return fetchApi<BillPaymentHistory>(`/shopkeeper/bills/${billId}/cash-receipt?shop_id=${shopId}`, {
+      method: "POST",
+      body: JSON.stringify({ amount, notes }),
     });
   },
 
@@ -527,5 +564,21 @@ export const apiClient = {
     let url = `/customer/bills?customer_id=${customerId}`;
     if (status && status !== "all") url += `&status=${status}`;
     return fetchApi<BillPaymentHistory[]>(url);
+  },
+
+  async getCustomerBill(billId: string, customerId = "cust_rahul_01"): Promise<BillPaymentHistory> {
+    return fetchApi<BillPaymentHistory>(`/customer/bills/${billId}?customer_id=${customerId}`);
+  },
+
+  async createCustomerBillPaymentRequest(
+    billId: string,
+    partialAmount?: number,
+    customerId = "cust_rahul_01"
+  ): Promise<RazorpayPaymentRequest> {
+    let url = `/customer/bills/${billId}/payment-request?customer_id=${customerId}`;
+    if (partialAmount && partialAmount > 0) url += `&partial_amount=${partialAmount}`;
+    return fetchApi<RazorpayPaymentRequest>(url, {
+      method: "POST",
+    });
   },
 };

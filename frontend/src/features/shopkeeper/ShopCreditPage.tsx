@@ -17,6 +17,7 @@ import {
   RefreshCw,
   PlusCircle,
   ExternalLink,
+  FileText,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { apiClient, formatApiError } from "../../lib/api";
@@ -24,9 +25,11 @@ import {
   Shop,
   ShopkeeperSummary,
   ShopkeeperTransaction,
+  BillPaymentHistory,
 } from "../../types/customer";
 import { formatINR } from "../../lib/utils";
 import { BusinessPaymentsSection } from "../payments/BusinessPaymentsSection";
+import { DigitalBillModal } from "../../components/bills/DigitalBillModal";
 
 export const ShopCreditPage: React.FC = () => {
   const [selectedShopCode, setSelectedShopCode] = useState<string>("KOSHA-APEX");
@@ -49,6 +52,7 @@ export const ShopCreditPage: React.FC = () => {
   // Modals
   const [selectedTxnForDetails, setSelectedTxnForDetails] = useState<ShopkeeperTransaction | null>(null);
   const [selectedTxnForPayment, setSelectedTxnForPayment] = useState<ShopkeeperTransaction | null>(null);
+  const [selectedBillForDigitalModal, setSelectedBillForDigitalModal] = useState<BillPaymentHistory | null>(null);
 
   // Payment Recording State
   const [repayAmount, setRepayAmount] = useState<string>("");
@@ -219,6 +223,15 @@ export const ShopCreditPage: React.FC = () => {
               <span className="px-3 text-slate-600">Apex Precision Works</span>
             )}
           </div>
+
+          <button
+            onClick={() => setActiveTab("razorpay_upi")}
+            className="px-5 py-2 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white font-bold text-xs shadow-paypal flex items-center gap-1.5 transition-all active:scale-[0.98]"
+            title="Create new customer bill with Razorpay UPI QR"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Create Customer Bill</span>
+          </button>
 
           <button
             onClick={loadShopData}
@@ -557,8 +570,22 @@ export const ShopCreditPage: React.FC = () => {
                       <td className="py-3.5 px-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            onClick={async () => {
+                              try {
+                                const bill = await apiClient.getShopkeeperBill(t.id);
+                                setSelectedBillForDigitalModal(bill);
+                              } catch {
+                                setSelectedTxnForDetails(t);
+                              }
+                            }}
+                            className="p-1.5 rounded-full text-[#0070E0] hover:bg-[#0070E0]/10 transition-colors"
+                            title="View Official Digital Bill & Itemized Breakdown"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => setSelectedTxnForDetails(t)}
-                            className="p-1.5 rounded-full text-[#545D68] hover:text-[#0070E0] hover:bg-[#F5F7FA] transition-colors"
+                            className="p-1.5 rounded-full text-[#545D68] hover:text-[#001C64] hover:bg-[#F5F7FA] transition-colors"
                             title="View Payment History"
                           >
                             <Eye className="w-4 h-4" />
@@ -846,6 +873,15 @@ export const ShopCreditPage: React.FC = () => {
         </div>
       )}
         </>
+      )}
+      {/* Digital Bill Modal */}
+      {selectedBillForDigitalModal && (
+        <DigitalBillModal
+          bill={selectedBillForDigitalModal}
+          onClose={() => setSelectedBillForDigitalModal(null)}
+          isBusinessOwner={true}
+          onRefresh={loadShopData}
+        />
       )}
     </div>
   );

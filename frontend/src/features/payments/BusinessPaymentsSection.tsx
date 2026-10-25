@@ -16,6 +16,9 @@ import {
   X,
   XCircle,
   Maximize2,
+  FileText,
+  Trash2,
+  UserPlus,
 } from "lucide-react";
 import { apiClient, formatApiError, getApiBaseUrl } from "../../lib/api";
 import {
@@ -26,6 +29,7 @@ import {
 } from "../../types/customer";
 import { formatINR, parseUtcDate } from "../../lib/utils";
 import { useRealTimeSync } from "../../hooks/useRealTimeSync";
+import { DigitalBillModal } from "../../components/bills/DigitalBillModal";
 
 export const BusinessPaymentsSection: React.FC = () => {
   const [bills, setBills] = useState<BillPaymentHistory[]>([]);
@@ -38,14 +42,27 @@ export const BusinessPaymentsSection: React.FC = () => {
 
   // Create Bill Form State
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [isNewCustomer, setIsNewCustomer] = useState<boolean>(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [newCustomerName, setNewCustomerName] = useState<string>("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState<string>("");
+  const [newCustomerEmail, setNewCustomerEmail] = useState<string>("");
   const [billDescription, setBillDescription] = useState<string>("");
   const [totalAmount, setTotalAmount] = useState<string>("");
-  const [initialManualPaid, setInitialManualPaid] = useState<string>("0");
+  const [initialPaymentMethod, setInitialPaymentMethod] = useState<"cash" | "razorpay_upi" | "none">("razorpay_upi");
+  const [initialPaymentAmount, setInitialPaymentAmount] = useState<string>("0");
   const [agreedRepaymentDate, setAgreedRepaymentDate] = useState<string>("");
-  const [generatePaymentReq, setGeneratePaymentReq] = useState<boolean>(true);
+  const [generatePaymentReq] = useState<boolean>(true);
+  const [billNotes, setBillNotes] = useState<string>("");
+  const [lineItems, setLineItems] = useState<
+    Array<{ item_name: string; quantity: number; unit_price: number; line_total: number }>
+  >([]);
+  const [showLineItemsBuilder, setShowLineItemsBuilder] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Digital Bill Modal State
+  const [digitalBillModalBill, setDigitalBillModalBill] = useState<BillPaymentHistory | null>(null);
 
   // Selected Bill for Payment History / QR Inspection
   const [selectedBillForDetail, setSelectedBillForDetail] = useState<BillPaymentHistory | null>(null);
@@ -333,17 +350,80 @@ export const BusinessPaymentsSection: React.FC = () => {
   }, [selectedBillForDetail?.active_payment_request?.id, selectedBillForDetail?.active_payment_request?.expires_at]);
 
 
+  const handleAddLineItem = () => {
+    setLineItems((prev) => [
+      ...prev,
+      { item_name: "", quantity: 1, unit_price: 0, line_total: 0 },
+    ]);
+  };
+
+  const handleUpdateLineItem = (
+    index: number,
+    field: "item_name" | "quantity" | "unit_price",
+    value: string | number
+  ) => {
+    setLineItems((prev) => {
+      const updated = [...prev];
+      const item = { ...updated[index], [field]: value };
+      const qty = Number(item.quantity) || 0;
+      const price = Number(item.unit_price) || 0;
+      item.line_total = qty * price;
+      updated[index] = item;
+
+      // Auto update total amount
+      const sumTotal = updated.reduce((acc, curr) => acc + curr.line_total, 0);
+      if (sumTotal > 0) {
+        setTotalAmount(sumTotal.toFixed(2));
+      }
+      return updated;
+    });
+  };
+
+  const handleRemoveLineItem = (index: number) => {
+    setLineItems((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      if (updated.length > 0) {
+        const sumTotal = updated.reduce((acc, curr) => acc + curr.line_total, 0);
+        setTotalAmount(sumTotal.toFixed(2));
+      }
+      return updated;
+    });
+  };
+
   const handleCreateBill = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedTotal = parseFloat(totalAmount);
-    const parsedInitial = parseFloat(initialManualPaid) || 0;
+    let parsedInitial = parseFloat(initialPaymentAmount) || 0;
+    if (initialPaymentMethod === "none") {
+      parsedInitial = 0;
+    }
 
-    if (!selectedCustomerId) {
-      setFormError("Please select a customer.");
+    if (!isNewCustomer && !selectedCustomerId) {
+      setFormError("Please select an existing customer or register a new one.");
       return;
     }
-    if (!billDescription.trim()) {
-      setFormError("Please enter a goods or order description.");
+    if (isNewCustomer) {
+      if (!newCustomerName.trim()) {
+        setFormError("Please enter customer's full name.");
+        return;
+      }
+      if (!newCustomerPhone.trim()) {
+        setFormError("Please enter customer's phone number.");
+        return;
+      }
+    }
+
+    const effectiveDesc =
+      billDescription.trim() ||
+      (lineItems.length > 0
+        ? lineItems
+            .map((i) => i.item_name.trim())
+            .filter(Boolean)
+            .join(", ")
+        : "Store Purchase Bill");
+
+    if (!effectiveDesc) {
+      setFormError("Please enter an order/goods description or add line items.");
       return;
     }
     if (isNaN(parsedTotal) || parsedTotal <= 0) {
@@ -351,7 +431,7 @@ export const BusinessPaymentsSection: React.FC = () => {
       return;
     }
     if (parsedInitial > parsedTotal) {
-      setFormError("Initial manual down-payment cannot exceed total bill amount.");
+      setFormError("Initial payment cannot exceed total bill amount.");
       return;
     }
     if (!agreedRepaymentDate) {
@@ -363,27 +443,65 @@ export const BusinessPaymentsSection: React.FC = () => {
     setFormError(null);
 
     try {
+      const validLineItems = lineItems
+        .filter((item) => item.item_name.trim().length > 0)
+        .map((item) => ({
+          name: item.item_name.trim(),
+          item_name: item.item_name.trim(),
+          quantity: Number(item.quantity) || 1,
+          unit_price: Number(item.unit_price) || 0,
+          total: (Number(item.quantity) || 1) * (Number(item.unit_price) || 0),
+          line_total: (Number(item.quantity) || 1) * (Number(item.unit_price) || 0),
+        }));
+
       const created = await apiClient.createShopkeeperBill(
         {
-          customer_id: selectedCustomerId,
-          description: billDescription.trim(),
+          customer_id: isNewCustomer ? undefined : selectedCustomerId,
+          new_customer: isNewCustomer
+            ? {
+                display_name: newCustomerName.trim(),
+                phone: newCustomerPhone.trim(),
+                email: newCustomerEmail.trim() || undefined,
+              }
+            : undefined,
+          description: effectiveDesc,
           total_amount: parsedTotal,
-          initial_manual_paid: parsedInitial,
+          initial_payment_amount: parsedInitial,
+          initial_payment_method: initialPaymentMethod,
+          line_items: validLineItems.length > 0 ? validLineItems : undefined,
+          notes: billNotes.trim() || undefined,
           agreed_repayment_date: agreedRepaymentDate,
-          generate_payment_request: generatePaymentReq,
+          generate_payment_request: initialPaymentMethod === "razorpay_upi" || generatePaymentReq,
         },
         selectedShop
       );
+
+      // Refresh customers list & financial summary
+      apiClient.listShopkeeperCustomers().then(setCustomers).catch(() => {});
+      apiClient.getShopkeeperFinancialSummary(selectedShop).then(setFinancialSummary).catch(() => {});
 
       // Add to list and select for display
       setBills([created, ...bills]);
       setSelectedBillForDetail(created);
       setShowCreateModal(false);
 
+      // If UPI QR requested, immediately pop the DigitalBillModal with the 5-min timer
+      if (initialPaymentMethod === "razorpay_upi" || created.active_payment_request) {
+        setDigitalBillModalBill(created);
+      }
+
       // Reset form
       setBillDescription("");
       setTotalAmount("");
-      setInitialManualPaid("0");
+      setInitialPaymentAmount("0");
+      setInitialPaymentMethod("razorpay_upi");
+      setLineItems([]);
+      setShowLineItemsBuilder(false);
+      setBillNotes("");
+      setIsNewCustomer(false);
+      setNewCustomerName("");
+      setNewCustomerPhone("");
+      setNewCustomerEmail("");
     } catch (err: unknown) {
       setFormError(formatApiError(err));
     } finally {
@@ -1186,24 +1304,38 @@ export const BusinessPaymentsSection: React.FC = () => {
                     </div>
 
                     {/* Breakdown strip */}
-                    <div className="mt-3 pt-3 border-t border-[#E1E7EC] flex items-center justify-between text-[11px] text-[#545D68] font-medium">
-                      <div className="flex items-center gap-4">
+                    <div className="mt-3 pt-3 border-t border-[#E1E7EC] flex items-center justify-between text-[11px] text-[#545D68] font-medium flex-wrap gap-2">
+                      <div className="flex items-center gap-3">
                         <span>
-                          Manual Cash:{" "}
+                          Cash:{" "}
                           <strong className="text-slate-800">
                             {formatINR(bill.initial_paid_amount ?? (bill as any).initial_manual_paid ?? 0)}
                           </strong>
                         </span>
                         <span>
-                          Razorpay Verified:{" "}
+                          UPI:{" "}
                           <strong className="text-emerald-700">
                             {formatINR(bill.total_verified_payments ?? (bill as any).verified_razorpay_paid ?? 0)}
                           </strong>
                         </span>
                       </div>
-                      <span className="text-[#0070E0] group-hover:translate-x-1 transition-transform flex items-center gap-1 font-bold">
-                        View QR &amp; History <ChevronRight className="w-3.5 h-3.5" />
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDigitalBillModalBill(bill);
+                          }}
+                          className="px-3 py-1 rounded-full bg-[#0070E0]/10 hover:bg-[#0070E0]/20 text-[#0070E0] text-[11px] font-bold inline-flex items-center gap-1 transition-colors"
+                          title="View Full Digital Bill & Invoice"
+                        >
+                          <FileText className="w-3 h-3" />
+                          <span>Digital Bill</span>
+                        </button>
+                        <span className="text-[#0070E0] group-hover:translate-x-1 transition-transform flex items-center gap-1 font-bold">
+                          QR &amp; History <ChevronRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1234,6 +1366,16 @@ export const BusinessPaymentsSection: React.FC = () => {
                   {getStatusBadge(selectedBillForDetail.status).label}
                 </span>
               </div>
+
+              {/* Full Digital Bill & Actions Action Button */}
+              <button
+                type="button"
+                onClick={() => setDigitalBillModalBill(selectedBillForDetail)}
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#001C64] to-[#003087] hover:from-[#001449] hover:to-[#002466] text-white font-bold text-xs shadow-paypal flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              >
+                <FileText className="w-4 h-4 text-[#FFC439]" />
+                <span>View Full Digital Bill &amp; Print / Actions</span>
+              </button>
 
               {/* Authoritative Financial Reconciliation Box */}
               <div className="bg-[#F5F7FA] rounded-2xl p-4 border border-[#E1E7EC] space-y-2 text-xs">
@@ -1655,12 +1797,12 @@ export const BusinessPaymentsSection: React.FC = () => {
       {/* CREATE BILL MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-7 border border-[#E1E7EC] my-8">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 sm:p-7 border border-[#E1E7EC] my-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3.5 border-b border-[#E1E7EC]">
               <div>
-                <h3 className="font-extrabold text-lg text-[#001C64]">Create Customer Bill</h3>
+                <h3 className="font-extrabold text-lg text-[#001C64]">Create Customer Bill &amp; Payment Request</h3>
                 <p className="text-xs text-[#545D68] font-medium">
-                  Register bill &amp; generate Razorpay UPI request
+                  Register genuine store bill, configure customer credit terms, and generate dynamic UPI QR.
                 </p>
               </div>
               <button
@@ -1679,41 +1821,182 @@ export const BusinessPaymentsSection: React.FC = () => {
             )}
 
             <form onSubmit={handleCreateBill} className="space-y-4 pt-3">
-              {/* Customer Selector */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Select Customer</label>
-                <select
-                  value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E1E7EC] text-xs font-semibold text-slate-800 bg-[#F5F7FA] focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
-                >
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.display_name} ({c.phone})
-                    </option>
-                  ))}
-                </select>
+              {/* Customer Selector / New Customer Mode */}
+              <div className="bg-[#F5F7FA] p-3.5 rounded-xl border border-[#E1E7EC] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#001C64] uppercase tracking-wider">
+                    Customer Account
+                  </span>
+                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-full border border-[#E1E7EC] text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setIsNewCustomer(false)}
+                      className={`px-3 py-1 rounded-full font-bold transition-all ${
+                        !isNewCustomer
+                          ? "bg-[#0070E0] text-white shadow-2xs"
+                          : "text-[#545D68] hover:text-[#001C64]"
+                      }`}
+                    >
+                      Existing Customer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsNewCustomer(true)}
+                      className={`px-3 py-1 rounded-full font-bold transition-all flex items-center gap-1 ${
+                        isNewCustomer
+                          ? "bg-[#0070E0] text-white shadow-2xs"
+                          : "text-[#545D68] hover:text-[#001C64]"
+                      }`}
+                    >
+                      <UserPlus className="w-3 h-3" />
+                      <span>+ Register New</span>
+                    </button>
+                  </div>
+                </div>
+
+                {!isNewCustomer ? (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Select Customer</label>
+                    <select
+                      value={selectedCustomerId}
+                      onChange={(e) => setSelectedCustomerId(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E1E7EC] text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
+                    >
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.display_name} ({c.phone})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Full Name <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newCustomerName}
+                        onChange={(e) => setNewCustomerName(e.target.value)}
+                        placeholder="e.g. Ramesh Kumar"
+                        className="w-full px-3 py-2 rounded-xl border border-[#E1E7EC] text-xs text-slate-800 bg-white focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Phone Number <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={newCustomerPhone}
+                        onChange={(e) => setNewCustomerPhone(e.target.value)}
+                        placeholder="9876543210"
+                        className="w-full px-3 py-2 rounded-xl border border-[#E1E7EC] text-xs text-slate-800 bg-white focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Email (Optional)</label>
+                      <input
+                        type="email"
+                        value={newCustomerEmail}
+                        onChange={(e) => setNewCustomerEmail(e.target.value)}
+                        placeholder="ramesh@example.com"
+                        className="w-full px-3 py-2 rounded-xl border border-[#E1E7EC] text-xs text-slate-800 bg-white focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Description */}
+              {/* Order / Bill Description */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Order / Goods Description
+                  Bill Summary / Goods Description <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={billDescription}
                   onChange={(e) => setBillDescription(e.target.value)}
-                  placeholder="e.g. Industrial fasteners, monthly hardware..."
+                  placeholder="e.g. 50mm Brass valves, monthly hardware supplies..."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#E1E7EC] text-xs text-slate-800 bg-[#F5F7FA] focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
                 />
               </div>
 
-              {/* Total Amount & Initial Payment Grid */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Line Items Builder Section */}
+              <div className="bg-[#F5F7FA] p-3.5 rounded-xl border border-[#E1E7EC] space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-[#001C64]">
+                      Itemized Line Items (Optional)
+                    </span>
+                    <span className="text-[11px] text-[#545D68] ml-2 font-medium">
+                      {lineItems.length} item{lineItems.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLineItemsBuilder(true);
+                      handleAddLineItem();
+                    }}
+                    className="text-xs font-bold text-[#0070E0] hover:text-[#003087] flex items-center gap-1"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>Add Line Item</span>
+                  </button>
+                </div>
+
+                {(showLineItemsBuilder || lineItems.length > 0) && (
+                  <div className="space-y-2 pt-1">
+                    {lineItems.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2 bg-white p-2 rounded-xl border border-[#E1E7EC]">
+                        <input
+                          type="text"
+                          value={item.item_name}
+                          onChange={(e) => handleUpdateLineItem(index, "item_name", e.target.value)}
+                          placeholder="Item Name (e.g. 10mm Steel Rod)"
+                          className="flex-3 px-2.5 py-1.5 rounded-lg border border-[#E1E7EC] text-xs text-slate-800"
+                        />
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => handleUpdateLineItem(index, "quantity", Number(e.target.value))}
+                          placeholder="Qty"
+                          className="w-16 px-2.5 py-1.5 rounded-lg border border-[#E1E7EC] text-xs text-slate-800 text-center"
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.unit_price || ""}
+                          onChange={(e) => handleUpdateLineItem(index, "unit_price", Number(e.target.value))}
+                          placeholder="Unit ₹"
+                          className="w-24 px-2.5 py-1.5 rounded-lg border border-[#E1E7EC] text-xs text-slate-800 text-right"
+                        />
+                        <span className="w-24 text-right font-mono font-bold text-xs text-[#001C64]">
+                          {formatINR(item.line_total)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveLineItem(index)}
+                          className="text-slate-400 hover:text-rose-600 p-1 rounded transition-colors"
+                          title="Remove item"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Total Amount & Repayment Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Total Bill Amount (₹)
+                    Total Bill Amount (₹) <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -1728,49 +2011,144 @@ export const BusinessPaymentsSection: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Initial Down-payment (₹)
+                    Agreed Repayment Due Date <span className="text-rose-500">*</span>
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={initialManualPaid}
-                    onChange={(e) => setInitialManualPaid(e.target.value)}
-                    placeholder="0.00"
+                    type="date"
+                    value={agreedRepaymentDate}
+                    onChange={(e) => setAgreedRepaymentDate(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#E1E7EC] text-xs text-slate-800 bg-[#F5F7FA] focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
                   />
                 </div>
               </div>
 
-              {/* Agreed Repayment Date */}
+              {/* "Amount Customer Is Paying Now" Section */}
+              <div className="bg-white p-4 rounded-xl border-2 border-[#0070E0]/30 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-xs font-black text-[#001C64] uppercase tracking-wider">
+                    Amount Customer Is Paying Now
+                  </span>
+                  <div className="flex items-center gap-1 bg-[#F5F7FA] p-0.5 rounded-full border border-[#E1E7EC] text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setInitialPaymentMethod("razorpay_upi")}
+                      className={`px-3 py-1 rounded-full font-bold transition-all ${
+                        initialPaymentMethod === "razorpay_upi"
+                          ? "bg-[#0070E0] text-white shadow-2xs"
+                          : "text-[#545D68] hover:text-[#001C64]"
+                      }`}
+                    >
+                      Razorpay UPI QR
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInitialPaymentMethod("cash")}
+                      className={`px-3 py-1 rounded-full font-bold transition-all ${
+                        initialPaymentMethod === "cash"
+                          ? "bg-slate-800 text-white shadow-2xs"
+                          : "text-[#545D68] hover:text-[#001C64]"
+                      }`}
+                    >
+                      Cash at Counter
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInitialPaymentMethod("none");
+                        setInitialPaymentAmount("0");
+                      }}
+                      className={`px-3 py-1 rounded-full font-bold transition-all ${
+                        initialPaymentMethod === "none"
+                          ? "bg-amber-600 text-white shadow-2xs"
+                          : "text-[#545D68] hover:text-[#001C64]"
+                      }`}
+                    >
+                      Pay Later (100% Credit)
+                    </button>
+                  </div>
+                </div>
+
+                {initialPaymentMethod !== "none" ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3.5 top-2.5 text-xs font-bold text-slate-500">₹</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={initialPaymentAmount}
+                          onChange={(e) => setInitialPaymentAmount(e.target.value)}
+                          placeholder="0.00"
+                          className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-[#E1E7EC] text-xs font-black text-slate-800 bg-[#F5F7FA] focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setInitialPaymentAmount(totalAmount || "0")}
+                        className="px-3 py-2 rounded-xl bg-blue-50 text-[#0070E0] text-xs font-bold hover:bg-blue-100 transition-colors"
+                      >
+                        Full (₹{totalAmount || 0})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const half = ((parseFloat(totalAmount) || 0) / 2).toFixed(2);
+                          setInitialPaymentAmount(half);
+                        }}
+                        className="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors"
+                      >
+                        50%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setInitialPaymentAmount("0")}
+                        className="px-3 py-2 rounded-xl bg-slate-100 text-slate-500 text-xs font-bold hover:bg-slate-200 transition-colors"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-[#545D68]">
+                      {initialPaymentMethod === "razorpay_upi"
+                        ? "A dynamic 5-minute Razorpay UPI QR code will be generated immediately for the customer to scan and pay."
+                        : "Counter cash collected in hand will be recorded as a verified repayment immediately."}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 font-medium">
+                    100% of this purchase (₹{totalAmount || 0}) will be added to the customer&apos;s shop credit balance, due on {agreedRepaymentDate || "agreed date"}.
+                  </p>
+                )}
+
+                {/* Dynamic Calculation Summary Strip */}
+                <div className="pt-2 border-t border-[#E1E7EC] flex items-center justify-between text-xs font-medium text-[#545D68]">
+                  <span>Total: <strong>{formatINR(parseFloat(totalAmount) || 0)}</strong></span>
+                  <span>Paying Now: <strong>- {formatINR(parseFloat(initialPaymentAmount) || 0)}</strong></span>
+                  <span className="font-bold text-[#001C64]">
+                    Remaining Credit Due:{" "}
+                    <strong className="text-rose-600 font-mono text-sm">
+                      {formatINR(Math.max(0, (parseFloat(totalAmount) || 0) - (parseFloat(initialPaymentAmount) || 0)))}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Notes */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Agreed Repayment Date
+                  Internal Invoice Notes (Optional)
                 </label>
                 <input
-                  type="date"
-                  value={agreedRepaymentDate}
-                  onChange={(e) => setAgreedRepaymentDate(e.target.value)}
+                  type="text"
+                  value={billNotes}
+                  onChange={(e) => setBillNotes(e.target.value)}
+                  placeholder="e.g. Customer promised settlement by end of month"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#E1E7EC] text-xs text-slate-800 bg-[#F5F7FA] focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
                 />
               </div>
 
-              {/* Auto-generate Razorpay Request Checkbox */}
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="genReq"
-                  checked={generatePaymentReq}
-                  onChange={(e) => setGeneratePaymentReq(e.target.checked)}
-                  className="rounded text-[#0070E0] focus:ring-[#0070E0]"
-                />
-                <label htmlFor="genReq" className="text-xs font-medium text-slate-700 cursor-pointer">
-                  Automatically generate Razorpay UPI QR code for remaining balance
-                </label>
-              </div>
-
-              {/* Submit Button */}
-              <div className="pt-3 border-t border-[#E1E7EC] flex items-center justify-end gap-2">
+              {/* Submit Buttons */}
+              <div className="pt-3 border-t border-[#E1E7EC] flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
@@ -1781,14 +2159,41 @@ export const BusinessPaymentsSection: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2.5 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white font-bold text-xs shadow-paypal disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white font-bold text-xs shadow-paypal disabled:opacity-50 flex items-center gap-1.5 active:scale-[0.98]"
                 >
-                  {isSubmitting ? "Creating Bill..." : "Create Bill & Generate QR"}
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Creating Bill...</span>
+                    </>
+                  ) : initialPaymentMethod === "razorpay_upi" ? (
+                    <>
+                      <QrCode className="w-3.5 h-3.5" />
+                      <span>Create Bill &amp; Show UPI QR</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Create Customer Bill</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
           </div>
         </div>
+      )}
+
+      {/* DIGITAL BILL MODAL */}
+      {digitalBillModalBill && (
+        <DigitalBillModal
+          bill={digitalBillModalBill}
+          onClose={() => setDigitalBillModalBill(null)}
+          isBusinessOwner={true}
+          onRefresh={() => {
+            loadInitialData();
+          }}
+        />
       )}
     </div>
   );

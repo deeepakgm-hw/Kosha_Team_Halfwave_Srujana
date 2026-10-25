@@ -263,20 +263,39 @@ export interface RazorpayPaymentVerification {
   verified_at: string;
 }
 
+export interface BillLineItem {
+  name: string;
+  item_name?: string;
+  quantity: number;
+  unit_price: number;
+  line_total?: number;
+  total?: number;
+}
+
+export interface CustomerRegisterPayload {
+  display_name: string;
+  phone: string;
+  email?: string;
+}
+
 export interface BillPaymentHistory {
   bill_id: string;
   bill_reference: string;
   customer_id: string;
   customer_name: string;
   customer_phone?: string;
+  customer_email?: string;
   shop_id?: string;
   shop_code?: string;
   shop_name: string;
   description: string;
+  notes?: string;
+  line_items?: BillLineItem[];
   total_amount: number;
   initial_manual_paid: number;
   verified_razorpay_paid: number;
   outstanding_amount: number;
+  created_at?: string;
   agreed_repayment_date: string;
   status: "upcoming" | "due_today" | "overdue" | "paid";
   active_payment_request?: RazorpayPaymentRequest | null;
@@ -295,10 +314,16 @@ export interface BillPaymentHistory {
 }
 
 export interface ShopkeeperBillCreatePayload {
-  customer_id: string;
+  customer_id?: string;
+  new_customer?: CustomerRegisterPayload;
   description: string;
   total_amount: number;
+  initial_payment_amount?: number;
   initial_manual_paid?: number;
+  initial_payment_method?: "cash" | "razorpay_upi" | "none";
+  line_items?: BillLineItem[];
+  notes?: string;
   agreed_repayment_date: string;
   generate_payment_request?: boolean;
+  idempotency_key?: string;
 }

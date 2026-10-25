@@ -32,6 +32,8 @@ def init_db(engine_instance=None) -> None:
         for stmt in [
             "ALTER TABLE shops ADD COLUMN status VARCHAR(20) DEFAULT 'active'",
             "ALTER TABLE customer_repayments ADD COLUMN recorded_by VARCHAR(50) DEFAULT 'customer'",
+            "ALTER TABLE customer_credit_transactions ADD COLUMN notes TEXT",
+            "ALTER TABLE customer_credit_transactions ADD COLUMN line_items_json TEXT",
             "ALTER TABLE customer_credit_transactions ADD COLUMN idempotency_key VARCHAR(100)",
             "ALTER TABLE customer_repayments ADD COLUMN idempotency_key VARCHAR(100)",
             "ALTER TABLE invoice_payments ADD COLUMN idempotency_key VARCHAR(100)",

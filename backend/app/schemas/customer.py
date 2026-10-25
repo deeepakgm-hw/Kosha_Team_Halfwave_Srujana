@@ -301,31 +301,73 @@ class RazorpayPaymentVerificationOut(BaseModel):
         return dt.isoformat()
 
 
+class BillLineItem(BaseModel):
+    name: str = Field(..., min_length=1, max_length=150, description="Item or service name")
+    quantity: int = Field(1, ge=1, description="Item quantity")
+    unit_price: Decimal = Field(..., ge=0, description="Unit price in INR")
+    line_total: Optional[Decimal] = Field(None, ge=0, description="Calculated line total")
+
+
+class CustomerRegisterCreate(BaseModel):
+    display_name: str = Field(..., min_length=2, max_length=200, description="Customer full name")
+    phone: str = Field(..., min_length=10, max_length=20, description="Customer phone number")
+    email: Optional[str] = Field(None, max_length=100, description="Optional customer email")
+
+
+class BillRepaymentDateUpdate(BaseModel):
+    agreed_repayment_date: date = Field(..., description="Updated agreed repayment date")
+    notes: Optional[str] = Field(None, max_length=255, description="Reason for date extension")
+
+
+class BillCashReceiptCreate(BaseModel):
+    amount: Decimal = Field(..., gt=0, description="Cash amount received in INR")
+    notes: Optional[str] = Field(None, max_length=255, description="Optional receipt notes")
+    idempotency_key: Optional[str] = Field(None, max_length=100)
+
+
 class BillPaymentHistoryOut(BaseModel):
     bill_id: str
     bill_reference: str
     customer_id: str
     customer_name: str
     customer_phone: Optional[str] = None
+    customer_email: Optional[str] = None
     shop_id: str
     shop_name: str
+    shop_code: Optional[str] = None
     description: str
+    notes: Optional[str] = None
+    line_items: Optional[List[BillLineItem]] = None
     total_amount: float
     initial_manual_paid: float
     verified_razorpay_paid: float
     outstanding_amount: float
+    created_at: Optional[datetime] = None
     agreed_repayment_date: date
     status: str
     active_payment_request: Optional[RazorpayPaymentRequestOut] = None
     verified_payments: List[RazorpayPaymentVerificationOut] = []
     all_repayments: List[RepaymentOut] = []
 
+    @field_serializer("created_at")
+    def serialize_created_at(self, dt: Optional[datetime], _info) -> Optional[str]:
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
+
 
 class ShopkeeperBillCreate(BaseModel):
-    customer_id: str = Field(..., description="Target customer ID from customer directory")
+    customer_id: Optional[str] = Field(None, description="Target customer ID from directory")
+    new_customer: Optional[CustomerRegisterCreate] = Field(None, description="Register new customer on the fly")
     description: str = Field(..., min_length=2, max_length=255, description="Goods or service description")
     total_amount: Decimal = Field(..., gt=0, description="Total bill amount in INR")
-    initial_manual_paid: Decimal = Field(Decimal("0.00"), ge=0, description="Optional immediate downpayment at counter")
+    initial_payment_amount: Decimal = Field(Decimal("0.00"), ge=0, description="Amount customer is paying now")
+    initial_manual_paid: Decimal = Field(Decimal("0.00"), ge=0, description="Backwards compatibility alias for initial payment")
+    initial_payment_method: str = Field("none", description="'cash', 'razorpay_upi', 'none'")
+    line_items: Optional[List[BillLineItem]] = Field(None, description="Optional bill line items")
+    notes: Optional[str] = Field(None, max_length=500, description="Optional notes on the bill")
     agreed_repayment_date: date = Field(..., description="Agreed date to clear balance")
     generate_payment_request: bool = Field(True, description="Automatically generate Razorpay payment request")
     idempotency_key: Optional[str] = Field(None, max_length=100)

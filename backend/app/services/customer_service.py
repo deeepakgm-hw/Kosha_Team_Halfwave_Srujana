@@ -716,7 +716,21 @@ class CustomerService:
                 total_outstanding += t.outstanding_amount
 
         if filter_status and filter_status.lower() != "all":
-            filtered = [t for t in all_serialized if t.status.lower() == filter_status.lower()]
+            fs = filter_status.lower()
+            if fs == "outstanding":
+                filtered = [t for t in all_serialized if t.outstanding_amount > 0]
+            elif fs == "partially_paid":
+                filtered = [
+                    t for t in all_serialized
+                    if t.outstanding_amount > 0 and (t.purchase_amount - t.outstanding_amount) > 0
+                ]
+            elif fs == "awaiting_payment":
+                filtered = [
+                    t for t in all_serialized
+                    if t.outstanding_amount > 0 and (t.purchase_amount - t.outstanding_amount) == 0
+                ]
+            else:
+                filtered = [t for t in all_serialized if t.status.lower() == fs]
         else:
             filtered = all_serialized
 
@@ -1197,13 +1211,17 @@ class CustomerService:
             self._sync_transaction_status(b)
 
             p_amt = b.purchase_amount or Decimal("0.00")
-            i_amt = b.initial_paid_amount or Decimal("0.00")
             tot_billed += p_amt
-            tot_counter_cash += i_amt
 
-            for r in (b.repayments or []):
-                if r.payment_status == "completed" and r.payment_method in ("shopkeeper_cash", "cash", "manual_cash"):
-                    tot_counter_cash += (r.amount or Decimal("0.00"))
+            cash_from_repayments = sum(
+                (r.amount or Decimal("0.00"))
+                for r in (b.repayments or [])
+                if r.payment_status == "completed" and r.payment_method in ("shopkeeper_cash", "cash", "manual_cash", "initial_downpayment")
+            )
+            if cash_from_repayments > Decimal("0.00"):
+                tot_counter_cash += cash_from_repayments
+            else:
+                tot_counter_cash += (b.initial_paid_amount or Decimal("0.00"))
 
             for v in (b.payment_verifications or []):
                 if v.status == "captured":
@@ -1310,7 +1328,21 @@ class CustomerService:
 
         # Filter by status if provided
         if filter_status and filter_status.lower() != "all":
-            results = [r for r in results if r.status.lower() == filter_status.lower()]
+            fs = filter_status.lower()
+            if fs == "outstanding":
+                results = [r for r in results if r.outstanding_amount > 0]
+            elif fs == "partially_paid":
+                results = [
+                    r for r in results
+                    if r.outstanding_amount > 0 and (r.purchase_amount - r.outstanding_amount) > 0
+                ]
+            elif fs == "awaiting_payment":
+                results = [
+                    r for r in results
+                    if r.outstanding_amount > 0 and (r.purchase_amount - r.outstanding_amount) == 0
+                ]
+            else:
+                results = [r for r in results if r.status.lower() == fs]
 
         # Filter by search string (reference or customer name)
         if search and search.strip():

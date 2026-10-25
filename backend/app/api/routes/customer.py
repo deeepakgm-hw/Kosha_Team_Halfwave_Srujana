@@ -1,4 +1,5 @@
 from typing import List, Optional
+from decimal import Decimal
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,7 @@ from backend.app.schemas.customer import (
     CreditTransactionOut,
     CustomerDashboardSummary,
     CustomerDuesResponse,
+    RazorpayPaymentRequestOut,
     ReminderItemOut,
     RepaymentCreate,
 )
@@ -52,6 +54,55 @@ def get_customer_bill_detail(
 ) -> BillPaymentHistoryOut:
     return razorpay_service.get_bill_payment_history(
         bill_id=bill_id, customer_id=customer_id, db=db
+    )
+
+
+@router.post(
+    "/bills/{bill_id}/payment-request",
+    response_model=RazorpayPaymentRequestOut,
+    summary="Initiate UPI Payment for Customer Bill",
+    description="Creates or retrieves an active Razorpay payment request for full or partial bill payment.",
+)
+def create_customer_bill_payment_request(
+    bill_id: str,
+    partial_amount: Optional[Decimal] = Query(None, gt=0, description="Optional custom partial payment in INR"),
+    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    db: Session = Depends(get_db),
+) -> RazorpayPaymentRequestOut:
+    amount_paise = None
+    if partial_amount is not None:
+        amount_paise = razorpay_service.inr_to_paise(partial_amount)
+
+    req = razorpay_service.create_payment_request(
+        bill_id=bill_id,
+        amount_paise=amount_paise,
+        customer_id=customer_id,
+        force_new=bool(partial_amount is not None),
+        db=db,
+    )
+
+    return RazorpayPaymentRequestOut(
+        id=req.id,
+        bill_id=req.bill_id,
+        customer_id=req.customer_id,
+        business_id=req.business_id,
+        shop_id=req.shop_id,
+        amount_paise=req.amount_paise,
+        amount_inr=float(razorpay_service.paise_to_inr(req.amount_paise)),
+        currency=req.currency,
+        razorpay_order_id=req.razorpay_order_id,
+        razorpay_payment_link_id=req.razorpay_payment_link_id,
+        razorpay_qr_id=req.razorpay_qr_id,
+        upi_qr_payload=req.upi_qr_payload,
+        qr_image_url=req.qr_image_url,
+        short_url=req.short_url,
+        status=req.status,
+        failure_reason=req.failure_reason,
+        idempotency_key=req.idempotency_key,
+        expires_at=req.expires_at,
+        created_at=req.created_at,
+        is_test_mode=not razorpay_service.is_live_configured(),
+        key_id=razorpay_service.get_public_config().key_id,
     )
 
 

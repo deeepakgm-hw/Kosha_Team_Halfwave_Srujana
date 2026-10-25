@@ -12,12 +12,14 @@ import {
   ShieldCheck,
   Bell,
   Smartphone,
+  FileText,
 } from "lucide-react";
 import { apiClient, formatApiError } from "../../lib/api";
 import { CustomerDashboardSummary, CreditTransaction, BillPaymentHistory } from "../../types/customer";
 import { formatINR } from "../../lib/utils";
 import { RepayModal } from "./RepayModal";
 import { RazorpayCheckoutModal } from "../payments/RazorpayCheckoutModal";
+import { DigitalBillModal } from "../../components/bills/DigitalBillModal";
 import { useRealTimeSync } from "../../hooks/useRealTimeSync";
 
 export const CustomerDashboardPage: React.FC = () => {
@@ -27,6 +29,7 @@ export const CustomerDashboardPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedTxnForRepay, setSelectedTxnForRepay] = useState<CreditTransaction | null>(null);
   const [selectedBillForCheckout, setSelectedBillForCheckout] = useState<BillPaymentHistory | null>(null);
+  const [selectedBillForDigitalModal, setSelectedBillForDigitalModal] = useState<BillPaymentHistory | null>(null);
 
   const fetchDashboard = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
@@ -481,6 +484,23 @@ export const CustomerDashboardPage: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={async () => {
+                          const custId = data?.customer?.id || "cust_rahul_01";
+                          try {
+                            const b = await apiClient.getBillPaymentHistory(txn.id, custId);
+                            setSelectedBillForDigitalModal(b);
+                          } catch {
+                            handleOpenUpiCheckout(txn);
+                          }
+                        }}
+                        className="px-3 py-2 rounded-full border border-[#E1E7EC] hover:bg-slate-100 text-[#001C64] text-xs font-bold transition-all flex items-center gap-1"
+                        title="View Official Digital Bill & Itemized Breakdown"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-[#0070E0]" />
+                        <span>View Bill</span>
+                      </button>
+
                       {/* PayPal Gold Action Button */}
                       <button
                         onClick={() => handleOpenUpiCheckout(txn)}
@@ -569,6 +589,16 @@ export const CustomerDashboardPage: React.FC = () => {
             fetchDashboard(true);
           }}
           customerId={data.customer.id}
+        />
+      )}
+
+      {selectedBillForDigitalModal && (
+        <DigitalBillModal
+          bill={selectedBillForDigitalModal}
+          onClose={() => setSelectedBillForDigitalModal(null)}
+          isBusinessOwner={false}
+          customerId={data.customer.id}
+          onRefresh={() => fetchDashboard(true)}
         />
       )}
     </div>

@@ -11,12 +11,14 @@ import {
   Search,
   Smartphone,
   ShieldCheck,
+  FileText,
 } from "lucide-react";
 import { apiClient, formatApiError } from "../../lib/api";
 import { BillPaymentHistory, CreditTransaction, CustomerDuesResponse } from "../../types/customer";
 import { formatINR } from "../../lib/utils";
 import { RepayModal } from "./RepayModal";
 import { RazorpayCheckoutModal } from "../payments/RazorpayCheckoutModal";
+import { DigitalBillModal } from "../../components/bills/DigitalBillModal";
 import { useRealTimeSync } from "../../hooks/useRealTimeSync";
 
 export const CustomerDuesPage: React.FC = () => {
@@ -34,6 +36,7 @@ export const CustomerDuesPage: React.FC = () => {
   const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
   const [selectedTxnForRepay, setSelectedTxnForRepay] = useState<CreditTransaction | null>(null);
   const [selectedBillForCheckout, setSelectedBillForCheckout] = useState<BillPaymentHistory | null>(null);
+  const [selectedBillForDigitalModal, setSelectedBillForDigitalModal] = useState<BillPaymentHistory | null>(null);
   const [isResolvingCheckout, setIsResolvingCheckout] = useState<boolean>(false);
 
   const fetchDues = useCallback(async (filter: string, isSilent = false) => {
@@ -378,6 +381,15 @@ export const CustomerDuesPage: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedBillForDigitalModal(bill)}
+                          className="px-3.5 py-2.5 rounded-full border border-[#E1E7EC] hover:bg-slate-50 text-[#001C64] text-xs font-bold transition-all flex items-center gap-1.5"
+                          title="View Official Digital Bill & Itemized Breakdown"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-[#0070E0]" />
+                          <span>View Bill</span>
+                        </button>
+
                         {bill.outstanding_amount > 0 && (
                           <button
                             onClick={() => setSelectedBillForCheckout(bill)}
@@ -529,6 +541,22 @@ export const CustomerDuesPage: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const b = await apiClient.getBillPaymentHistory(txn.id, currentCustomerId);
+                            setSelectedBillForDigitalModal(b);
+                          } catch {
+                            handleInitiateUpiPayment(txn.id, txn);
+                          }
+                        }}
+                        className="px-3.5 py-2 rounded-full border border-[#E1E7EC] hover:bg-slate-50 text-[#001C64] text-xs font-bold transition-all flex items-center gap-1.5"
+                        title="View Official Digital Bill & Itemized Breakdown"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-[#0070E0]" />
+                        <span>View Bill</span>
+                      </button>
+
                       {!isPaid && (
                         <>
                           <button
@@ -623,6 +651,16 @@ export const CustomerDuesPage: React.FC = () => {
           onClose={() => setSelectedBillForCheckout(null)}
           onSuccess={handleCheckoutSuccess}
           customerId={currentCustomerId}
+        />
+      )}
+
+      {selectedBillForDigitalModal && (
+        <DigitalBillModal
+          bill={selectedBillForDigitalModal}
+          onClose={() => setSelectedBillForDigitalModal(null)}
+          isBusinessOwner={false}
+          customerId={currentCustomerId}
+          onRefresh={() => fetchDues(activeFilter, true)}
         />
       )}
     </div>
