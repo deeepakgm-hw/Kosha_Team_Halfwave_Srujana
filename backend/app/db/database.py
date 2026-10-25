@@ -23,7 +23,7 @@ Base = declarative_base()
 
 
 def init_db(engine_instance=None) -> None:
-    """Initialize all database tables safely and seed default synthetic personas."""
+    """Initialize all database tables safely without inserting demo transactions."""
     target_engine = engine_instance or engine
     Base.metadata.create_all(bind=target_engine)
 
@@ -43,18 +43,6 @@ def init_db(engine_instance=None) -> None:
                 conn.commit()
             except Exception:
                 pass
-
-    # Seed demo entities into SQLite
-    try:
-        from backend.app.db.seeder import seed_demo_data
-        session = SessionLocal(bind=target_engine)
-        try:
-            seed_demo_data(session)
-        finally:
-            session.close()
-    except Exception:
-        # Ignore seeding errors during test runs or alternate databases
-        pass
 
 
 def get_db():

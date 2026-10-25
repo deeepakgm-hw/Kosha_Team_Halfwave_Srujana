@@ -32,12 +32,23 @@ import {
   Shop,
   ShopQr,
   ShopkeeperBillCreatePayload,
+  ShopkeeperFinancialSummary,
   ShopkeeperRepaymentCreatePayload,
   ShopkeeperSummary,
   ShopkeeperTransaction,
 } from "../types/customer";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+export const getApiBaseUrl = (): string => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== "undefined" && window.location.port === "5173") {
+    return "http://localhost:8000/api";
+  }
+  return "/api";
+};
+
+const BASE_URL = getApiBaseUrl();
 
 export class ApiError extends Error {
   status: number;
@@ -350,6 +361,10 @@ export const apiClient = {
     return fetchApi<ShopkeeperSummary>(`/shopkeeper/shop/summary?shop_id=${shopId}`);
   },
 
+  async getShopkeeperFinancialSummary(shopId = "shop_apex_01"): Promise<ShopkeeperFinancialSummary> {
+    return fetchApi<ShopkeeperFinancialSummary>(`/shopkeeper/financial-summary?shop_id=${encodeURIComponent(shopId)}`);
+  },
+
   async getShopkeeperTransactions(
     shopId = "shop_apex_01",
     status?: string,
@@ -386,21 +401,32 @@ export const apiClient = {
   },
 
   async createRazorpayPaymentRequest(params: {
-    billId: string;
+    billId?: string;
+    bill_id?: string;
     amountPaise?: number;
+    amount_paise?: number;
     partialAmount?: number;
+    partial_amount?: number;
     customerId?: string;
+    customer_id?: string;
     businessId?: string;
+    business_id?: string;
     idempotencyKey?: string;
+    idempotency_key?: string;
   }): Promise<RazorpayPaymentRequest> {
-    const q = params.customerId ? `?customer_id=${params.customerId}` : "";
+    const custId = params.customerId || params.customer_id;
+    const bizId = params.businessId || params.business_id;
+    const qParts: string[] = [];
+    if (custId) qParts.push(`customer_id=${encodeURIComponent(custId)}`);
+    if (bizId) qParts.push(`business_id=${encodeURIComponent(bizId)}`);
+    const q = qParts.length > 0 ? `?${qParts.join("&")}` : "";
     return fetchApi<RazorpayPaymentRequest>(`/payment-gateway/requests${q}`, {
       method: "POST",
       body: JSON.stringify({
-        bill_id: params.billId,
-        amount_paise: params.amountPaise,
-        partial_amount: params.partialAmount,
-        idempotency_key: params.idempotencyKey,
+        bill_id: params.billId || params.bill_id,
+        amount_paise: params.amountPaise ?? params.amount_paise,
+        partial_amount: params.partialAmount ?? params.partial_amount,
+        idempotency_key: params.idempotencyKey || params.idempotency_key,
       }),
     });
   },

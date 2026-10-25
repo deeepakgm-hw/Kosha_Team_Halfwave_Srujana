@@ -11,10 +11,11 @@ import {
   CreditCard,
   ExternalLink,
   ShieldCheck,
+  Maximize2,
 } from "lucide-react";
-import { apiClient, formatApiError } from "../../lib/api";
+import { apiClient, formatApiError, getApiBaseUrl } from "../../lib/api";
 import { BillPaymentHistory, RazorpayPaymentRequest, RazorpayConfig } from "../../types/customer";
-import { formatINR } from "../../lib/utils";
+import { formatINR, parseUtcDate } from "../../lib/utils";
 
 interface RazorpayCheckoutModalProps {
   bill: BillPaymentHistory | null;
@@ -57,7 +58,8 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
       setCountdownSeconds(300);
       return;
     }
-    const expiresTime = paymentRequest.expires_at ? new Date(paymentRequest.expires_at).getTime() : Date.now() + 300000;
+    const parsed = parseUtcDate(paymentRequest.expires_at);
+    const expiresTime = parsed ? parsed.getTime() : Date.now() + 300000;
     const diff = Math.max(0, Math.floor((expiresTime - Date.now()) / 1000));
     setCountdownSeconds(Math.min(300, diff));
 
@@ -283,6 +285,422 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
     }
   };
 
+  const handleOpenQrInNewWindow = () => {
+    if (!paymentRequest || !paymentRequest.qr_image_url || !bill) return;
+
+    const popupWidth = 520;
+    const popupHeight = 780;
+    const left = window.screen.width ? (window.screen.width - popupWidth) / 2 : 100;
+    const top = window.screen.height ? (window.screen.height - popupHeight) / 2 : 100;
+
+    const popup = window.open(
+      "",
+      `KoshaQR_${paymentRequest.id}`,
+      `width=${popupWidth},height=${popupHeight},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no`
+    );
+
+    if (!popup) {
+      alert("Popup blocked! Please allow popups for this site to open the standalone clear QR window.");
+      return;
+    }
+
+    const merchantName = gatewayConfig?.merchant_name || bill.shop_name || "KOSHA MSME Treasury";
+    const billRef = bill.bill_number || bill.bill_reference || bill.id?.slice(0, 8) || "INV";
+    const custName = bill.customer_name || "Customer";
+    const amountFormatted = formatINR(paymentRequest.amount_inr);
+    const upiPayload = paymentRequest.upi_qr_payload || "";
+    const shortUrl = paymentRequest.short_url || "";
+    const qrImg = paymentRequest.qr_image_url;
+    const requestId = paymentRequest.id;
+    const expiresUtcIso = paymentRequest.expires_at || new Date(Date.now() + 300000).toISOString();
+    const apiBase = getApiBaseUrl();
+
+    const popupHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KOSHA Real-Time UPI QR - ${billRef}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0b132b 0%, #1c2541 50%, #0b132b 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.98);
+      color: #0f172a;
+      border-radius: 28px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      padding: 28px 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .top-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .merchant {
+      font-size: 13px;
+      font-weight: 700;
+      color: #475569;
+      margin-top: 8px;
+    }
+    .bill-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-top: 2px;
+    }
+    .amount-box {
+      margin: 14px 0 12px;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 1.5px solid #86efac;
+      border-radius: 18px;
+      padding: 12px 16px;
+    }
+    .amount-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #166534;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .amount-value {
+      font-size: 32px;
+      font-weight: 900;
+      color: #14532d;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.02em;
+    }
+    .qr-container {
+      background: #ffffff;
+      border: 2px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 14px;
+      display: inline-block;
+      margin: 8px auto 14px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.06);
+    }
+    .qr-container img {
+      width: 270px;
+      height: 270px;
+      display: block;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+    .timer-bar-wrap {
+      width: 100%;
+      background: #e2e8f0;
+      border-radius: 9999px;
+      height: 6px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .timer-bar {
+      height: 100%;
+      background: #2563eb;
+      transition: width 1s linear, background-color 0.3s;
+    }
+    .timer-text {
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .timer-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .upi-apps {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .btn {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+    .success-view {
+      display: none;
+      padding: 20px 10px;
+      text-align: center;
+    }
+    .success-icon {
+      width: 72px;
+      height: 72px;
+      background: #dcfce7;
+      color: #16a34a;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      margin-bottom: 16px;
+      animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .success-title {
+      font-size: 24px;
+      font-weight: 900;
+      color: #14532d;
+    }
+    .success-sub {
+      font-size: 13px;
+      color: #475569;
+      margin-top: 6px;
+    }
+    .pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      background: #f1f5f9;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #0f172a;
+      display: inline-block;
+      margin: 12px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="mainCard">
+    <div id="activeView">
+      <div class="top-badge">
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#2563eb;"></span>
+        Official Razorpay UPI QR
+      </div>
+      <div class="merchant">${merchantName}</div>
+      <h2 class="bill-title">${custName} &bull; ${billRef}</h2>
+
+      <div class="amount-box">
+        <div class="amount-label">Amount Payable</div>
+        <div class="amount-value">${amountFormatted}</div>
+      </div>
+
+      <div class="qr-container">
+        <img src="${qrImg}" alt="Crisp Razorpay UPI QR" id="qrImage" />
+      </div>
+
+      <div class="timer-bar-wrap">
+        <div class="timer-bar" id="progressBar" style="width: 100%;"></div>
+      </div>
+
+      <div class="timer-text">
+        <span>Session Expiry:</span>
+        <span class="timer-badge" id="timerBadge">⏳ 05:00</span>
+      </div>
+
+      <div class="upi-apps">
+        <span>Scan via Google Pay &bull; PhonePe &bull; Paytm &bull; BHIM &bull; Any UPI</span>
+      </div>
+
+      <div class="btn-row">
+        ${upiPayload ? `<a href="${upiPayload}" class="btn btn-secondary" id="btnOpenUpi">📱 Pay via App</a>` : ""}
+        ${shortUrl ? `<a href="${shortUrl}" target="_blank" class="btn btn-primary">💳 Open Checkout</a>` : ""}
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="copyUpi()" id="btnCopy">📋 Copy UPI Link</button>
+        <button class="btn btn-secondary" onclick="window.close()">✕ Close</button>
+      </div>
+    </div>
+
+    <!-- Success View -->
+    <div class="success-view" id="successView">
+      <div class="success-icon">✓</div>
+      <h1 class="success-title">Payment Received!</h1>
+      <p class="success-sub">Recognized & verified instantly via Razorpay Real-Time UPI Engine.</p>
+      <div><span class="pill" id="txnPill">Payment ID: ...</span></div>
+      <div class="amount-box" style="margin: 10px 0 16px;">
+        <div class="amount-label">Verified Amount</div>
+        <div class="amount-value" id="successAmount">${amountFormatted}</div>
+      </div>
+      <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="window.close()">Done & Close Window</button>
+    </div>
+  </div>
+
+  <script>
+    const expiresUtcStr = "${expiresUtcIso}";
+    const expiresTime = new Date(expiresUtcStr.endsWith("Z") || expiresUtcStr.includes("+") ? expiresUtcStr : expiresUtcStr.replace(" ", "T") + "Z").getTime();
+    const requestId = "${requestId}";
+    const upiPayload = "${upiPayload.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}";
+    const apiBase = "${apiBase}";
+
+    function copyUpi() {
+      if (!upiPayload) return;
+      navigator.clipboard.writeText(upiPayload);
+      const btn = document.getElementById("btnCopy");
+      btn.innerText = "✓ Copied!";
+      setTimeout(() => { btn.innerText = "📋 Copy UPI Link"; }, 2000);
+    }
+
+    function playSuccessChime() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.setValueAtTime(880.0, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.7);
+      } catch (e) {}
+    }
+
+    let countdownInterval = setInterval(() => {
+      const now = Date.now();
+      const diffSec = Math.max(0, Math.floor((expiresTime - now) / 1000));
+      const m = Math.floor(diffSec / 60);
+      const s = diffSec % 60;
+      const timerBadge = document.getElementById("timerBadge");
+      const progressBar = document.getElementById("progressBar");
+
+      if (timerBadge) {
+        timerBadge.innerText = "⏳ " + String(m).padStart(2, '0') + ":" + String(s).padStart(2, '0');
+      }
+      if (progressBar) {
+        const pct = Math.max(0, Math.min(100, (diffSec / 300) * 100));
+        progressBar.style.width = pct + "%";
+        if (diffSec < 60) {
+          progressBar.style.backgroundColor = "#ef4444";
+        } else if (diffSec < 120) {
+          progressBar.style.backgroundColor = "#f59e0b";
+        }
+      }
+
+      if (diffSec <= 0) {
+        clearInterval(countdownInterval);
+        if (timerBadge) {
+          timerBadge.innerText = "🔒 Window Expired";
+          timerBadge.style.background = "#fee2e2";
+          timerBadge.style.color = "#991b1b";
+        }
+      }
+    }, 1000);
+
+    let isPolling = true;
+    async function checkStatus() {
+      if (!isPolling) return;
+      try {
+        const res = await fetch(apiBase + "/v1/payments/gateway/requests/" + requestId + "/sync", {
+          method: "POST"
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.outcome === "success" && data.verified) {
+            isPolling = false;
+            clearInterval(countdownInterval);
+            playSuccessChime();
+
+            document.getElementById("activeView").style.display = "none";
+            document.getElementById("successView").style.display = "block";
+            document.getElementById("txnPill").innerText = "Payment ID: " + (data.payment_id || "Captured");
+            if (data.amount_inr) {
+              document.getElementById("successAmount").innerText = "₹" + Number(data.amount_inr).toFixed(2);
+            }
+
+            if (window.opener && !window.opener.closed) {
+              window.opener.postMessage({
+                type: "KOSHA_PAYMENT_SUCCESS",
+                paymentId: data.payment_id,
+                amount: data.amount_inr,
+                newOutstanding: data.new_outstanding
+              }, "*");
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    const pollInterval = setInterval(checkStatus, 2500);
+    checkStatus();
+  </script>
+</body>
+</html>
+    `;
+
+    popup.document.open();
+    popup.document.write(popupHtml);
+    popup.document.close();
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-7 border border-slate-200 my-8">
@@ -442,13 +860,23 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
                   For your security, QR codes expire after 5 minutes. Click below to generate a fresh QR code.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => handleGenerateRequest(payAmountType === "full" ? bill.outstanding_amount : parseFloat(customAmount) || bill.outstanding_amount)}
-                className="w-full py-2.5 rounded-xl bg-kosha-blue hover:bg-kosha-deep text-white font-bold text-xs shadow-xs transition-colors"
-              >
-                Generate Fresh QR (New 5-Min Window)
-              </button>
+              <div className="flex flex-col gap-2 w-full">
+                <button
+                  type="button"
+                  onClick={handleOpenQrInNewWindow}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-kosha-deep hover:from-blue-700 hover:to-indigo-800 text-white font-extrabold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>Generate &amp; Open QR in New Window Clearly</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleGenerateRequest(payAmountType === "full" ? bill.outstanding_amount : parseFloat(customAmount) || bill.outstanding_amount)}
+                  className="w-full py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
+                >
+                  Generate Fresh QR (Here)
+                </button>
+              </div>
             </div>
           ) : (
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex flex-col items-center text-center space-y-3">
@@ -496,35 +924,46 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
             </div>
 
             {/* Quick Action Buttons */}
-            <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
+            <div className="w-full flex flex-col gap-2 pt-1">
               <button
                 type="button"
-                onClick={handleOpenRazorpayCheckout}
-                className="w-full sm:w-auto flex-1 py-2 px-3 rounded-xl bg-kosha-blue hover:bg-kosha-deep text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                onClick={handleOpenQrInNewWindow}
+                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-kosha-deep hover:from-blue-700 hover:to-indigo-800 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-[0.98]"
               >
-                <CreditCard className="w-3.5 h-3.5" />
-                <span>Open Razorpay Checkout</span>
+                <Maximize2 className="w-4 h-4" />
+                <span>Open QR in New Window Clearly</span>
               </button>
 
-              {paymentRequest.short_url && (
+              <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-2">
                 <button
                   type="button"
-                  onClick={() => window.open(paymentRequest.short_url, "_blank")}
-                  className="w-full sm:w-auto py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                  onClick={handleOpenRazorpayCheckout}
+                  className="w-full sm:w-auto flex-1 py-2 px-3 rounded-xl bg-kosha-blue hover:bg-kosha-deep text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                 >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Open Payment Link</span>
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Open Razorpay Checkout</span>
                 </button>
-              )}
 
-              <button
-                type="button"
-                onClick={handleCopyUpiLink}
-                className="w-full sm:w-auto px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
-              >
-                {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedLink ? "Link Copied" : "Copy Link"}</span>
-              </button>
+                {paymentRequest.short_url && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(paymentRequest.short_url, "_blank")}
+                    className="w-full sm:w-auto py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open Payment Link</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleCopyUpiLink}
+                  className="w-full sm:w-auto px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedLink ? "Link Copied" : "Copy Link"}</span>
+                </button>
+              </div>
             </div>
           </div>
           )

@@ -8,6 +8,7 @@ from backend.app.services.customer_service import customer_service
 
 def test_customer_dashboard_seeded_and_derived_totals(db_session):
     """Verify customer dashboard initializes demo data and derives correct aggregates."""
+    customer_service.ensure_demo_seeds(db_session)
     dash = customer_service.get_dashboard("cust_rahul_01", db_session)
     assert dash.customer.id == "cust_rahul_01"
     assert dash.customer.display_name == "Rahul Sharma"

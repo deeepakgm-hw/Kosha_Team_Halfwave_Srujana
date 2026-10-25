@@ -335,6 +335,27 @@ class RazorpayConfigOut(BaseModel):
     key_id: str
     mode: str = "test"
     is_test_mode: bool = True
+    is_configured: bool = False
+    has_live_credentials: bool = False
     upi_flow: str = "payment_link"
     merchant_name: str = "KOSHA MSME Treasury"
     upi_vpa: str = "kosha.msme@razorpay"
+
+
+class ShopkeeperFinancialSummaryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    shop_id: str
+    shop_name: str
+    total_billed_volume: float
+    counter_cash_paid: float
+    razorpay_verified_collections: float
+    total_collected: float
+    remaining_customer_dues: float
+    active_bills_count: int
+    settled_bills_count: int
+    total_bills_count: int
+    settlement_rate_percentage: float
+    collections_settlement_percentage: float
+    unresolved_discrepancy: float
+    is_reconciled: bool

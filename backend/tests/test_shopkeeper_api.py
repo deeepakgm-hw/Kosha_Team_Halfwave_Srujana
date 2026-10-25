@@ -1,13 +1,10 @@
 import pytest
-from fastapi.testclient import TestClient
-
-from backend.app.main import app
-
-client = TestClient(app)
+from backend.app.services.customer_service import customer_service
 
 
-def test_get_shop_qr_code():
+def test_get_shop_qr_code(client, db_session):
     """Verifies that shop QR endpoint generates non-sensitive SVG QR code."""
+    customer_service.ensure_system_metadata(db_session)
     res = client.get("/api/shops/KOSHA-APEX/qr")
     assert res.status_code == 200
     data = res.json()
@@ -21,8 +18,9 @@ def test_get_shop_qr_code():
     assert "balance" not in data["qr_payload"]
 
 
-def test_get_shopkeeper_summary():
+def test_get_shopkeeper_summary(client, db_session):
     """Verifies shopkeeper receivables summary KPIs calculated from authoritative records."""
+    customer_service.ensure_demo_seeds(db_session)
     res = client.get("/api/shopkeeper/shop/summary?shop_id=shop_apex_01")
     assert res.status_code == 200
     data = res.json()
@@ -35,8 +33,9 @@ def test_get_shopkeeper_summary():
     assert "collected_today" in data
 
 
-def test_shopkeeper_transaction_list_and_filters():
+def test_shopkeeper_transaction_list_and_filters(client, db_session):
     """Verifies that shopkeeper transactions list supports status filters and search."""
+    customer_service.ensure_demo_seeds(db_session)
     # List all
     res = client.get("/api/shopkeeper/shop/transactions?shop_id=shop_apex_01&status=all")
     assert res.status_code == 200
@@ -59,11 +58,12 @@ def test_shopkeeper_transaction_list_and_filters():
     assert searched[0]["reference"] == first_ref
 
 
-def test_shopkeeper_records_counter_payment():
+def test_shopkeeper_records_counter_payment(client, db_session):
     """
     Verifies that a shopkeeper can record a payment received directly from a customer,
     which updates the shared source of truth.
     """
+    customer_service.ensure_demo_seeds(db_session)
     # 1. Fetch transactions for Apex shop to find an outstanding one
     res = client.get("/api/shopkeeper/shop/transactions?shop_id=shop_apex_01&status=overdue")
     assert res.status_code == 200
@@ -103,8 +103,9 @@ def test_shopkeeper_records_counter_payment():
     )
 
 
-def test_shopkeeper_cannot_modify_other_shop_transaction():
+def test_shopkeeper_cannot_modify_other_shop_transaction(client, db_session):
     """Verifies that Shop A cannot record repayment on Shop B's transaction."""
+    customer_service.ensure_demo_seeds(db_session)
     # Find a transaction belonging to City Hardware (shop_city_03)
     res = client.get("/api/shopkeeper/shop/transactions?shop_id=shop_city_03")
     assert res.status_code == 200
@@ -120,8 +121,9 @@ def test_shopkeeper_cannot_modify_other_shop_transaction():
     assert hack_res.status_code in (404, 403, 400)
 
 
-def test_shopkeeper_overpayment_rejected():
+def test_shopkeeper_overpayment_rejected(client, db_session):
     """Verifies that shopkeeper overpayments are rejected with 422."""
+    customer_service.ensure_demo_seeds(db_session)
     res = client.get("/api/shopkeeper/shop/transactions?shop_id=shop_apex_01&status=due_today")
     assert res.status_code == 200
     txns = res.json()
@@ -142,8 +144,9 @@ def test_shopkeeper_overpayment_rejected():
     assert "exceeds" in err_msg
 
 
-def test_customer_reminders_endpoint():
+def test_customer_reminders_endpoint(client, db_session):
     """Verifies that customer reminders are returned sorted by urgency."""
+    customer_service.ensure_demo_seeds(db_session)
     res = client.get("/api/customer/reminders?customer_id=cust_rahul_01")
     assert res.status_code == 200
     reminders = res.json()
@@ -157,8 +160,9 @@ def test_customer_reminders_endpoint():
         assert r["urgency"] in ("overdue", "due_today", "approaching", "upcoming", "completed")
 
 
-def test_payment_gateway_boundary():
+def test_payment_gateway_boundary(client, db_session):
     """Verifies payment gateway status and sandbox initiation."""
+    customer_service.ensure_demo_seeds(db_session)
     status_res = client.get("/api/payment-gateway/status")
     assert status_res.status_code == 200
     status_data = status_res.json()

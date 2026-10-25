@@ -73,13 +73,16 @@ class RazorpayService:
     def get_public_config(self) -> RazorpayConfigOut:
         """Returns safe public Razorpay client configuration. NEVER returns secret keys."""
         is_live = self.is_live_configured()
+        is_conf = bool(self.key_id and self.key_secret)
         mode = "live" if is_live else "test"
-        public_key = self.key_id if (self.key_id and self.key_secret) else "rzp_test_kosha_sandbox"
+        public_key = self.key_id if is_conf else ""
 
         return RazorpayConfigOut(
             key_id=public_key,
             mode=mode,
             is_test_mode=(not is_live),
+            is_configured=is_conf,
+            has_live_credentials=is_live,
             upi_flow=self.upi_flow,
             merchant_name=self.merchant_name,
             upi_vpa=self.upi_vpa,

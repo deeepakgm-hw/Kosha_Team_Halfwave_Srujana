@@ -15,14 +15,16 @@ import {
   Receipt,
   X,
   XCircle,
+  Maximize2,
 } from "lucide-react";
-import { apiClient, formatApiError } from "../../lib/api";
+import { apiClient, formatApiError, getApiBaseUrl } from "../../lib/api";
 import {
   BillPaymentHistory,
   CustomerProfile,
   RazorpayConfig,
+  ShopkeeperFinancialSummary,
 } from "../../types/customer";
-import { formatINR } from "../../lib/utils";
+import { formatINR, parseUtcDate } from "../../lib/utils";
 import { useRealTimeSync } from "../../hooks/useRealTimeSync";
 
 export const BusinessPaymentsSection: React.FC = () => {
@@ -71,6 +73,7 @@ export const BusinessPaymentsSection: React.FC = () => {
 
   // Config
   const [razorpayConfig, setRazorpayConfig] = useState<RazorpayConfig | null>(null);
+  const [financialSummary, setFinancialSummary] = useState<ShopkeeperFinancialSummary | null>(null);
 
   // Web Audio synthesizer chime for Soundbox-style real-time payment audio confirmation
   const playSound = (type: "success" | "failed") => {
@@ -121,14 +124,16 @@ export const BusinessPaymentsSection: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [billsRes, custsRes, cfgRes] = await Promise.all([
+      const [billsRes, custsRes, cfgRes, finRes] = await Promise.all([
         apiClient.listShopkeeperBills(selectedShop, statusFilter, searchQuery),
         apiClient.listShopkeeperCustomers(),
         apiClient.getRazorpayConfig(),
+        apiClient.getShopkeeperFinancialSummary(selectedShop),
       ]);
       setBills(billsRes);
       setCustomers(custsRes);
       setRazorpayConfig(cfgRes);
+      setFinancialSummary(finRes);
       if (custsRes.length > 0 && !selectedCustomerId) {
         setSelectedCustomerId(custsRes[0].id);
       }
@@ -141,8 +146,12 @@ export const BusinessPaymentsSection: React.FC = () => {
 
   const loadBillsOnly = async () => {
     try {
-      const billsRes = await apiClient.listShopkeeperBills(selectedShop, statusFilter, searchQuery);
+      const [billsRes, finRes] = await Promise.all([
+        apiClient.listShopkeeperBills(selectedShop, statusFilter, searchQuery),
+        apiClient.getShopkeeperFinancialSummary(selectedShop),
+      ]);
       setBills(billsRes);
+      setFinancialSummary(finRes);
       if (selectedBillForDetail) {
         const targetId = selectedBillForDetail.bill_id || selectedBillForDetail.id;
         const updated = billsRes.find((b) => (b.bill_id || b.id) === targetId);
@@ -269,6 +278,25 @@ export const BusinessPaymentsSection: React.FC = () => {
     }
   };
 
+  // Listen for real-time payment success broadcasts from standalone QR popup window
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "KOSHA_PAYMENT_SUCCESS") {
+        playSound("success");
+        setRecognitionOutcome({
+          type: "success",
+          paymentId: event.data.paymentId,
+          amount: event.data.amount,
+          newOutstanding: event.data.newOutstanding,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+        loadBillsOnly();
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
   // 5-Minute Payment Window Countdown Effect
   useEffect(() => {
     const activeReq = selectedBillForDetail?.active_payment_request;
@@ -279,9 +307,12 @@ export const BusinessPaymentsSection: React.FC = () => {
 
     const calculateRemaining = () => {
       if (activeReq.expires_at) {
-        const expiresTime = new Date(activeReq.expires_at).getTime();
-        const diff = Math.max(0, Math.floor((expiresTime - Date.now()) / 1000));
-        return Math.min(300, diff);
+        const parsed = parseUtcDate(activeReq.expires_at);
+        if (parsed) {
+          const expiresTime = parsed.getTime();
+          const diff = Math.max(0, Math.floor((expiresTime - Date.now()) / 1000));
+          return Math.min(300, diff);
+        }
       }
       return 300;
     };
@@ -301,21 +332,6 @@ export const BusinessPaymentsSection: React.FC = () => {
     return () => clearInterval(timer);
   }, [selectedBillForDetail?.active_payment_request?.id, selectedBillForDetail?.active_payment_request?.expires_at]);
 
-  // Exact Financial Dues & Reconciliation Calculations for Dashboard
-  const totalBilled = bills.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-  const totalOutstanding = bills.reduce((sum, b) => sum + (b.outstanding_amount || 0), 0);
-  const totalCashPaid = bills.reduce(
-    (sum, b) => sum + ((b.initial_paid_amount ?? (b as any).initial_manual_paid) || 0),
-    0
-  );
-  const totalRazorpayPaid = bills.reduce(
-    (sum, b) => sum + ((b.total_verified_payments ?? (b as any).verified_razorpay_paid) || 0),
-    0
-  );
-  const totalCollected = totalCashPaid + totalRazorpayPaid;
-  const activeBillsCount = bills.filter((b) => b.outstanding_amount > 0).length;
-  const settledBillsCount = bills.filter((b) => b.outstanding_amount === 0).length;
-  const settlementPercentage = totalBilled > 0 ? Math.round((totalCollected / totalBilled) * 100) : 0;
 
   const handleCreateBill = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -401,6 +417,466 @@ export const BusinessPaymentsSection: React.FC = () => {
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
+  const handleOpenQrInNewWindow = async (billToOpen?: BillPaymentHistory) => {
+    const targetBill = billToOpen || selectedBillForDetail;
+    if (!targetBill) return;
+
+    let activeReq = targetBill.active_payment_request;
+
+    // Check if request is missing or expired, regenerate if needed
+    const isExpired =
+      !activeReq ||
+      activeReq.status === "expired" ||
+      (activeReq.expires_at && (parseUtcDate(activeReq.expires_at)?.getTime() || 0) <= Date.now());
+
+    if (isExpired) {
+      try {
+        setIsRegenerating(true);
+        if (activeReq) {
+          activeReq = await apiClient.regenerateRazorpayPaymentRequest(activeReq.id);
+        } else {
+          activeReq = await apiClient.createRazorpayPaymentRequest({
+            bill_id: targetBill.bill_id || targetBill.id || "",
+            partial_amount: targetBill.outstanding_amount,
+          });
+        }
+        const updatedBill: BillPaymentHistory = {
+          ...targetBill,
+          active_payment_request: activeReq,
+        };
+        setSelectedBillForDetail(updatedBill);
+        setBills((prev) =>
+          prev.map((b) =>
+            (b.bill_id || b.id) === (updatedBill.bill_id || updatedBill.id) ? updatedBill : b
+          )
+        );
+      } catch (err: unknown) {
+        setError("Failed to generate fresh QR code for new window: " + formatApiError(err));
+        setIsRegenerating(false);
+        return;
+      } finally {
+        setIsRegenerating(false);
+      }
+    }
+
+    if (!activeReq || !activeReq.qr_image_url) {
+      setError("QR code image data is not available yet.");
+      return;
+    }
+
+    const popupWidth = 520;
+    const popupHeight = 780;
+    const left = window.screen.width ? (window.screen.width - popupWidth) / 2 : 100;
+    const top = window.screen.height ? (window.screen.height - popupHeight) / 2 : 100;
+
+    const popup = window.open(
+      "",
+      `KoshaQR_${activeReq.id}`,
+      `width=${popupWidth},height=${popupHeight},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no`
+    );
+
+    if (!popup) {
+      alert("Popup blocked! Please allow popups for this site to open the standalone clear QR window.");
+      return;
+    }
+
+    const merchantName = razorpayConfig?.merchant_name || "KOSHA MSME Treasury";
+    const billRef = targetBill.bill_number || targetBill.bill_reference || targetBill.id?.slice(0, 8) || "INV";
+    const custName = targetBill.customer_name || "Customer";
+    const amountFormatted = formatINR(activeReq.amount_inr);
+    const upiPayload = activeReq.upi_qr_payload || "";
+    const shortUrl = activeReq.short_url || "";
+    const qrImg = activeReq.qr_image_url;
+    const requestId = activeReq.id;
+    const expiresUtcIso = activeReq.expires_at || new Date(Date.now() + 300000).toISOString();
+    const apiBase = getApiBaseUrl();
+
+    const popupHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KOSHA Real-Time UPI QR - ${billRef}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0b132b 0%, #1c2541 50%, #0b132b 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.98);
+      color: #0f172a;
+      border-radius: 28px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      padding: 28px 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .top-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .merchant {
+      font-size: 13px;
+      font-weight: 700;
+      color: #475569;
+      margin-top: 8px;
+    }
+    .bill-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-top: 2px;
+    }
+    .amount-box {
+      margin: 14px 0 12px;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 1.5px solid #86efac;
+      border-radius: 18px;
+      padding: 12px 16px;
+    }
+    .amount-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #166534;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .amount-value {
+      font-size: 32px;
+      font-weight: 900;
+      color: #14532d;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.02em;
+    }
+    .qr-container {
+      background: #ffffff;
+      border: 2px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 14px;
+      display: inline-block;
+      margin: 8px auto 14px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.06);
+    }
+    .qr-container img {
+      width: 270px;
+      height: 270px;
+      display: block;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+    .timer-bar-wrap {
+      width: 100%;
+      background: #e2e8f0;
+      border-radius: 9999px;
+      height: 6px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .timer-bar {
+      height: 100%;
+      background: #2563eb;
+      transition: width 1s linear, background-color 0.3s;
+    }
+    .timer-text {
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .timer-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .upi-apps {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .btn {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+    .success-view {
+      display: none;
+      padding: 20px 10px;
+      text-align: center;
+    }
+    .success-icon {
+      width: 72px;
+      height: 72px;
+      background: #dcfce7;
+      color: #16a34a;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      margin-bottom: 16px;
+      animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .success-title {
+      font-size: 24px;
+      font-weight: 900;
+      color: #14532d;
+    }
+    .success-sub {
+      font-size: 13px;
+      color: #475569;
+      margin-top: 6px;
+    }
+    .pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      background: #f1f5f9;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #0f172a;
+      display: inline-block;
+      margin: 12px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="mainCard">
+    <div id="activeView">
+      <div class="top-badge">
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#2563eb;"></span>
+        Official Razorpay UPI QR
+      </div>
+      <div class="merchant">${merchantName}</div>
+      <h2 class="bill-title">${custName} &bull; ${billRef}</h2>
+
+      <div class="amount-box">
+        <div class="amount-label">Amount Payable</div>
+        <div class="amount-value">${amountFormatted}</div>
+      </div>
+
+      <div class="qr-container">
+        <img src="${qrImg}" alt="Crisp Razorpay UPI QR" id="qrImage" />
+      </div>
+
+      <div class="timer-bar-wrap">
+        <div class="timer-bar" id="progressBar" style="width: 100%;"></div>
+      </div>
+
+      <div class="timer-text">
+        <span>Session Expiry:</span>
+        <span class="timer-badge" id="timerBadge">⏳ 05:00</span>
+      </div>
+
+      <div class="upi-apps">
+        <span>Scan via Google Pay &bull; PhonePe &bull; Paytm &bull; BHIM &bull; Any UPI</span>
+      </div>
+
+      <div class="btn-row">
+        ${upiPayload ? `<a href="${upiPayload}" class="btn btn-secondary" id="btnOpenUpi">📱 Pay via App</a>` : ""}
+        ${shortUrl ? `<a href="${shortUrl}" target="_blank" class="btn btn-primary">💳 Open Checkout</a>` : ""}
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="copyUpi()" id="btnCopy">📋 Copy UPI Link</button>
+        <button class="btn btn-secondary" onclick="window.close()">✕ Close</button>
+      </div>
+    </div>
+
+    <!-- Success View -->
+    <div class="success-view" id="successView">
+      <div class="success-icon">✓</div>
+      <h1 class="success-title">Payment Received!</h1>
+      <p class="success-sub">Recognized & verified instantly via Razorpay Real-Time UPI Engine.</p>
+      <div><span class="pill" id="txnPill">Payment ID: ...</span></div>
+      <div class="amount-box" style="margin: 10px 0 16px;">
+        <div class="amount-label">Verified Amount</div>
+        <div class="amount-value" id="successAmount">${amountFormatted}</div>
+      </div>
+      <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="window.close()">Done & Close Window</button>
+    </div>
+  </div>
+
+  <script>
+    const expiresUtcStr = "${expiresUtcIso}";
+    const expiresTime = new Date(expiresUtcStr.endsWith("Z") || expiresUtcStr.includes("+") ? expiresUtcStr : expiresUtcStr.replace(" ", "T") + "Z").getTime();
+    const requestId = "${requestId}";
+    const upiPayload = "${upiPayload.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}";
+    const apiBase = "${apiBase}";
+
+    function copyUpi() {
+      if (!upiPayload) return;
+      navigator.clipboard.writeText(upiPayload);
+      const btn = document.getElementById("btnCopy");
+      btn.innerText = "✓ Copied!";
+      setTimeout(() => { btn.innerText = "📋 Copy UPI Link"; }, 2000);
+    }
+
+    function playSuccessChime() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.setValueAtTime(880.0, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.7);
+      } catch (e) {}
+    }
+
+    let countdownInterval = setInterval(() => {
+      const now = Date.now();
+      const diffSec = Math.max(0, Math.floor((expiresTime - now) / 1000));
+      const m = Math.floor(diffSec / 60);
+      const s = diffSec % 60;
+      const timerBadge = document.getElementById("timerBadge");
+      const progressBar = document.getElementById("progressBar");
+
+      if (timerBadge) {
+        timerBadge.innerText = "⏳ " + String(m).padStart(2, '0') + ":" + String(s).padStart(2, '0');
+      }
+      if (progressBar) {
+        const pct = Math.max(0, Math.min(100, (diffSec / 300) * 100));
+        progressBar.style.width = pct + "%";
+        if (diffSec < 60) {
+          progressBar.style.backgroundColor = "#ef4444";
+        } else if (diffSec < 120) {
+          progressBar.style.backgroundColor = "#f59e0b";
+        }
+      }
+
+      if (diffSec <= 0) {
+        clearInterval(countdownInterval);
+        if (timerBadge) {
+          timerBadge.innerText = "🔒 Window Expired";
+          timerBadge.style.background = "#fee2e2";
+          timerBadge.style.color = "#991b1b";
+        }
+      }
+    }, 1000);
+
+    let isPolling = true;
+    async function checkStatus() {
+      if (!isPolling) return;
+      try {
+        const res = await fetch(apiBase + "/v1/payments/gateway/requests/" + requestId + "/sync", {
+          method: "POST"
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.outcome === "success" && data.verified) {
+            isPolling = false;
+            clearInterval(countdownInterval);
+            playSuccessChime();
+
+            document.getElementById("activeView").style.display = "none";
+            document.getElementById("successView").style.display = "block";
+            document.getElementById("txnPill").innerText = "Payment ID: " + (data.payment_id || "Captured");
+            if (data.amount_inr) {
+              document.getElementById("successAmount").innerText = "₹" + Number(data.amount_inr).toFixed(2);
+            }
+
+            if (window.opener && !window.opener.closed) {
+              window.opener.postMessage({
+                type: "KOSHA_PAYMENT_SUCCESS",
+                paymentId: data.payment_id,
+                amount: data.amount_inr,
+                newOutstanding: data.new_outstanding
+              }, "*");
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    const pollInterval = setInterval(checkStatus, 2500);
+    checkStatus();
+  </script>
+</body>
+</html>
+    `;
+
+    popup.document.open();
+    popup.document.write(popupHtml);
+    popup.document.close();
+  };
+
   // Derive status badge styling and text
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -449,13 +925,17 @@ export const BusinessPaymentsSection: React.FC = () => {
                 <span>Razorpay UPI Engine</span>
               </span>
               <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                (razorpayConfig?.mode !== "live" && razorpayConfig?.is_test_mode !== false)
+                !razorpayConfig?.is_configured
+                  ? "bg-slate-100 text-slate-700 border-slate-300"
+                  : (razorpayConfig?.mode === "live" || razorpayConfig?.has_live_credentials)
                   ? "bg-emerald-100 text-emerald-800 border-emerald-200"
                   : "bg-amber-100 text-amber-800 border-amber-200"
               }`}>
-                {(razorpayConfig?.mode !== "live" && razorpayConfig?.is_test_mode !== false)
-                  ? "Test Mode Active"
-                  : "Live Processing"}
+                {!razorpayConfig?.is_configured
+                  ? "Razorpay Not Configured"
+                  : (razorpayConfig?.mode === "live" || razorpayConfig?.has_live_credentials)
+                  ? "Live Gateway Active"
+                  : "Test Sandbox Mode"}
               </span>
               {isRealTime && (
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1.5">
@@ -492,12 +972,12 @@ export const BusinessPaymentsSection: React.FC = () => {
               Remaining Customer Dues
             </span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-              {activeBillsCount} Active {activeBillsCount === 1 ? "Bill" : "Bills"}
+              {financialSummary?.active_bills_count ?? 0} Active {(financialSummary?.active_bills_count ?? 0) === 1 ? "Bill" : "Bills"}
             </span>
           </div>
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-black text-rose-600 font-mono tracking-tight">
-              {formatINR(totalOutstanding)}
+              {formatINR(financialSummary?.remaining_customer_dues ?? 0)}
             </div>
             <p className="text-[11px] text-slate-400 font-medium mt-0.5">
               Across all customers &amp; credit commitments
@@ -518,7 +998,7 @@ export const BusinessPaymentsSection: React.FC = () => {
           </div>
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-black text-emerald-700 font-mono tracking-tight">
-              {formatINR(totalRazorpayPaid)}
+              {formatINR(financialSummary?.razorpay_verified_collections ?? 0)}
             </div>
             <p className="text-[11px] text-slate-400 font-medium mt-0.5">
               Direct bank settlements via UPI QR &amp; links
@@ -538,10 +1018,10 @@ export const BusinessPaymentsSection: React.FC = () => {
           </div>
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-black text-slate-800 font-mono tracking-tight">
-              {formatINR(totalCashPaid)}
+              {formatINR(financialSummary?.counter_cash_paid ?? 0)}
             </div>
             <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-              Initial counter payments recorded at booking
+              Initial downpayments &amp; counter settlements
             </p>
           </div>
         </div>
@@ -553,19 +1033,39 @@ export const BusinessPaymentsSection: React.FC = () => {
               Total Billed Volume
             </span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-              {settledBillsCount} Settled
+              {financialSummary?.settled_bills_count ?? 0} Settled
             </span>
           </div>
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-black text-kosha-navy font-mono tracking-tight">
-              {formatINR(totalBilled)}
+              {formatINR(financialSummary?.total_billed_volume ?? 0)}
             </div>
             <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 font-medium">
               <span>Settlement Rate:</span>
-              <strong className="text-slate-800 font-bold">{settlementPercentage}% Settled</strong>
+              <strong className="text-slate-800 font-bold">
+                {financialSummary?.settlement_rate_percentage ?? 0}% Settled
+              </strong>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Authoritative Single Source of Truth Invariant Strip */}
+      <div className="bg-white/80 rounded-2xl px-5 py-3 border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span className="font-bold text-slate-700">Financial Invariant:</span>
+          <span className="font-mono text-slate-600">
+            {formatINR(financialSummary?.total_billed_volume ?? 0)} Billed = {formatINR(financialSummary?.remaining_customer_dues ?? 0)} Due + {formatINR(financialSummary?.counter_cash_paid ?? 0)} Cash + {formatINR(financialSummary?.razorpay_verified_collections ?? 0)} Razorpay
+          </span>
+        </div>
+        <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] border ${
+          (financialSummary?.is_reconciled ?? true)
+            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+            : "bg-rose-50 text-rose-800 border-rose-200"
+        }`}>
+          {(financialSummary?.is_reconciled ?? true) ? "✓ 100% Mathematically Reconciled" : "⚠ Reconciliation Discrepancy"}
+        </span>
       </div>
 
       {/* Error alert */}
@@ -880,15 +1380,26 @@ export const BusinessPaymentsSection: React.FC = () => {
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleRegenerateRequest(selectedBillForDetail.active_payment_request!.id)}
-                    disabled={isRegenerating}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-kosha-blue to-kosha-deep hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isRegenerating ? "animate-spin" : ""}`} />
-                    <span>Generate Fresh QR (New 5-Min Window)</span>
-                  </button>
+                  <div className="flex flex-col gap-2 w-full">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenQrInNewWindow(selectedBillForDetail)}
+                      disabled={isRegenerating}
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-kosha-deep hover:from-blue-700 hover:to-indigo-800 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                      <span>Generate &amp; Open QR in New Window Clearly</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRegenerateRequest(selectedBillForDetail.active_payment_request!.id)}
+                      disabled={isRegenerating}
+                      className="w-full py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? "animate-spin" : ""}`} />
+                      <span>Regenerate Here (Fresh 5-Min Window)</span>
+                    </button>
+                  </div>
                 </div>
               ) : selectedBillForDetail.active_payment_request &&
               selectedBillForDetail.status !== "paid" ? (
@@ -959,7 +1470,18 @@ export const BusinessPaymentsSection: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Actions: Copy UPI Link & Hosted Link */}
+                  {/* Actions: Standalone Window, Copy UPI Link & Hosted Link */}
+                  <div className="w-full pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenQrInNewWindow(selectedBillForDetail)}
+                      className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-kosha-deep hover:from-blue-700 hover:to-indigo-800 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                      <span>Open QR in New Window Clearly</span>
+                    </button>
+                  </div>
+
                   <div className="w-full flex items-center justify-center gap-2">
                     <button
                       type="button"
@@ -968,7 +1490,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                           selectedBillForDetail.active_payment_request?.upi_qr_payload
                         )
                       }
-                      className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                      className="flex-1 py-1.5 px-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
                     >
                       {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                       <span>{copiedLink ? "Link Copied" : "Copy UPI Link"}</span>
@@ -979,7 +1501,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                         href={selectedBillForDetail.active_payment_request.short_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3 py-1.5 rounded-xl bg-kosha-blue hover:bg-kosha-deep text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+                        className="flex-1 py-1.5 px-3 rounded-xl bg-kosha-blue hover:bg-kosha-deep text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         <span>Open Checkout</span>
@@ -1044,21 +1566,39 @@ export const BusinessPaymentsSection: React.FC = () => {
                   <p className="text-[11px] text-slate-400">
                     Click below to generate a fresh Razorpay UPI request for the remaining balance.
                   </p>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const req = await apiClient.createRazorpayPaymentRequest({
-                        billId: selectedBillForDetail.bill_id || selectedBillForDetail.id || "",
-                      });
-                      setSelectedBillForDetail({
-                        ...selectedBillForDetail,
-                        active_payment_request: req,
-                      });
-                    }}
-                    className="px-4 py-2 rounded-xl bg-kosha-blue text-white font-bold text-xs"
-                  >
-                    Generate Payment Request
-                  </button>
+                  <div className="flex flex-col gap-2 w-full pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenQrInNewWindow(selectedBillForDetail)}
+                      disabled={isRegenerating}
+                      className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                      <span>Generate &amp; Open QR in New Window</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const req = await apiClient.createRazorpayPaymentRequest({
+                          bill_id: selectedBillForDetail.bill_id || selectedBillForDetail.id || "",
+                          partial_amount: selectedBillForDetail.outstanding_amount,
+                        });
+                        const updated = {
+                          ...selectedBillForDetail,
+                          active_payment_request: req,
+                        };
+                        setSelectedBillForDetail(updated);
+                        setBills((prev) =>
+                          prev.map((b) =>
+                            (b.bill_id || b.id) === (updated.bill_id || updated.id) ? updated : b
+                          )
+                        );
+                      }}
+                      className="w-full py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs"
+                    >
+                      Generate QR Here
+                    </button>
+                  </div>
                 </div>
               )}
 

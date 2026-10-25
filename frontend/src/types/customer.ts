@@ -188,11 +188,30 @@ export interface RazorpayConfig {
   key_id: string;
   mode: "test" | "live";
   is_test_mode?: boolean;
+  is_configured?: boolean;
+  has_live_credentials?: boolean;
   upi_flow?: string;
   merchant_name: string;
   upi_vpa: string;
   currency?: string;
   upi_flow_enabled?: boolean;
+}
+
+export interface ShopkeeperFinancialSummary {
+  shop_id: string;
+  shop_name: string;
+  total_billed_volume: number;
+  counter_cash_paid: number;
+  razorpay_verified_collections: number;
+  total_collected: number;
+  remaining_customer_dues: number;
+  active_bills_count: number;
+  settled_bills_count: number;
+  total_bills_count: number;
+  settlement_rate_percentage: number;
+  collections_settlement_percentage: number;
+  unresolved_discrepancy: number;
+  is_reconciled: boolean;
 }
 
 export interface RazorpayPaymentRequest {

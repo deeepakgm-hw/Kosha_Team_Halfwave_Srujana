@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   Calendar,
   Building2,
-  Sparkles,
   RefreshCw,
   ChevronRight,
   ShieldCheck,
@@ -133,8 +132,8 @@ export const CustomerDashboardPage: React.FC = () => {
               {getGreeting()}, {data.customer.display_name.split(" ")[0]}
             </h1>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-kosha-blue border border-blue-200/80">
-              <Sparkles className="w-3 h-3 text-kosha-blue" />
-              <span>Synthetic Demo</span>
+              <ShieldCheck className="w-3 h-3 text-kosha-blue" />
+              <span>Verified Account</span>
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">

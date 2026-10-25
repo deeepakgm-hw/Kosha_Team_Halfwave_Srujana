@@ -289,7 +289,7 @@ export const ShopCreditPage: React.FC = () => {
             <span className="text-xl sm:text-2xl font-black text-emerald-700 font-mono">
               {summary ? formatINR(summary.collected_today) : "₹0"}
             </span>
-            <p className="text-[10px] text-slate-400 mt-0.5">Counter & demo payments</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Counter cash & verified digital</p>
           </div>
         </div>
 

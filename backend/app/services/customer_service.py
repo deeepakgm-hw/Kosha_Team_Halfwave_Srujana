@@ -35,6 +35,7 @@ from backend.app.schemas.customer import (
     RepaymentOut,
     ShopOut,
     ShopQrOut,
+    ShopkeeperFinancialSummaryOut,
     ShopkeeperRepaymentCreate,
     ShopkeeperSummaryOut,
     ShopkeeperTransactionOut,
@@ -49,6 +50,95 @@ def generate_reference() -> str:
 
 class CustomerService:
     """Shared financial service connecting customer and shopkeeper records."""
+
+    def ensure_system_metadata(self, db: Session) -> None:
+        """
+        Ensures baseline master shop and customer directory profiles exist
+        without inserting ANY financial transactions, repayments, or activities.
+        """
+        shops_data = [
+            {
+                "id": "shop_apex_01",
+                "shop_name": "Apex Precision Works",
+                "shop_code": "KOSHA-APEX",
+                "category": "Industrial Spares & Hardware",
+                "owner_name": "Vikram Mehta",
+                "phone": "+91 98220 11223",
+                "upi_id": "apexworks@upi",
+                "qr_payload": "kosha://shop/KOSHA-APEX",
+                "status": "active",
+            },
+            {
+                "id": "shop_lakshmi_02",
+                "shop_name": "Sri Lakshmi Provisions",
+                "shop_code": "KOSHA-LAKSHMI",
+                "category": "Grocery & Daily Provisions",
+                "owner_name": "Lakshmi Narayanan",
+                "phone": "+91 98440 22334",
+                "upi_id": "lakshmiprovisions@upi",
+                "qr_payload": "kosha://shop/KOSHA-LAKSHMI",
+                "status": "active",
+            },
+            {
+                "id": "shop_city_03",
+                "shop_name": "City Hardware & Tools",
+                "shop_code": "KOSHA-CITY",
+                "category": "Tools & Electrical Goods",
+                "owner_name": "Rajesh Patil",
+                "phone": "+91 98110 33445",
+                "upi_id": "cityhardware@upi",
+                "qr_payload": "kosha://shop/KOSHA-CITY",
+                "status": "active",
+            },
+        ]
+        for s in shops_data:
+            if not db.query(ShopModel).filter_by(id=s["id"]).first():
+                db.add(
+                    ShopModel(
+                        id=s["id"],
+                        shop_name=s["shop_name"],
+                        shop_code=s["shop_code"],
+                        category=s["category"],
+                        owner_name=s["owner_name"],
+                        phone=s["phone"],
+                        upi_id=s["upi_id"],
+                        qr_payload=s["qr_payload"],
+                        is_verified=True,
+                        status=s["status"],
+                    )
+                )
+
+        customers_data = [
+            {
+                "id": "cust_rahul_01",
+                "display_name": "Rahul Sharma",
+                "phone": "+91 98765 43210",
+                "email": "rahul.sharma@example.in",
+            },
+            {
+                "id": "cust_priya_02",
+                "display_name": "Priya Patel",
+                "phone": "+91 98234 56789",
+                "email": "priya.patel@example.in",
+            },
+            {
+                "id": "cust_amit_03",
+                "display_name": "Amit Kumar",
+                "phone": "+91 98345 67890",
+                "email": "amit.kumar@example.in",
+            },
+        ]
+        for c in customers_data:
+            if not db.query(CustomerModel).filter_by(id=c["id"]).first():
+                db.add(
+                    CustomerModel(
+                        id=c["id"],
+                        display_name=c["display_name"],
+                        phone=c["phone"],
+                        email=c["email"],
+                    )
+                )
+        db.flush()
 
     def ensure_demo_seeds(self, db: Session) -> CustomerModel:
         """
@@ -464,10 +554,10 @@ class CustomerService:
 
     def get_dashboard(self, customer_id: str, db: Session) -> CustomerDashboardSummary:
         """Aggregates realistic KPI totals, upcoming commitments, and recent activity."""
-        self.ensure_demo_seeds(db)
+        self.ensure_system_metadata(db)
         customer = db.query(CustomerModel).filter_by(id=customer_id).first()
         if not customer:
-            customer = self.ensure_demo_seeds(db)
+            raise NotFoundException(f"Customer '{customer_id}' not found.")
 
         txns = db.query(CreditTransactionModel).filter_by(customer_id=customer.id).all()
 
@@ -592,8 +682,10 @@ class CustomerService:
         self, customer_id: str, filter_status: Optional[str], db: Session
     ) -> CustomerDuesResponse:
         """Returns customer transactions filtered by status with ledger totals."""
-        self.ensure_demo_seeds(db)
-        customer = db.query(CustomerModel).filter_by(id=customer_id).first() or self.ensure_demo_seeds(db)
+        self.ensure_system_metadata(db)
+        customer = db.query(CustomerModel).filter_by(id=customer_id).first()
+        if not customer:
+            raise NotFoundException(f"Customer '{customer_id}' not found.")
 
         txns = db.query(CreditTransactionModel).filter_by(customer_id=customer.id).all()
 
@@ -664,7 +756,7 @@ class CustomerService:
         self, transaction_id: str, customer_id: str, db: Session
     ) -> CreditTransactionOut:
         """Fetches a single transaction ensuring customer privacy."""
-        self.ensure_demo_seeds(db)
+        self.ensure_system_metadata(db)
         txn = (
             db.query(CreditTransactionModel)
             .filter_by(id=transaction_id, customer_id=customer_id)
@@ -699,8 +791,10 @@ class CustomerService:
         Enforces decimal calculations: remaining = purchase_amount - initial_paid_now.
         Validates shop existence and constraints.
         """
-        self.ensure_demo_seeds(db)
-        customer = db.query(CustomerModel).filter_by(id=customer_id).first() or self.ensure_demo_seeds(db)
+        self.ensure_system_metadata(db)
+        customer = db.query(CustomerModel).filter_by(id=customer_id).first()
+        if not customer:
+            raise NotFoundException(f"Customer '{customer_id}' not found.")
 
         # 1. Resolve shop by shop_code
         if data.idempotency_key:
@@ -840,10 +934,10 @@ class CustomerService:
         self, transaction_id: str, customer_id: str, data: RepaymentCreate, db: Session
     ) -> CreditTransactionOut:
         """
-        Records an auditable demo repayment towards an outstanding credit balance.
+        Records an auditable repayment towards an outstanding credit balance.
         Recalculates server-side balance atomically.
         """
-        self.ensure_demo_seeds(db)
+        self.ensure_system_metadata(db)
 
         if data.idempotency_key:
             existing_rep = (
@@ -939,13 +1033,13 @@ class CustomerService:
 
     def list_shops(self, db: Session) -> List[ShopOut]:
         """Lists all participating verified shops."""
-        self.ensure_demo_seeds(db)
+        self.ensure_system_metadata(db)
         shops = db.query(ShopModel).filter_by(is_verified=True).all()
         return [ShopOut.model_validate(s) for s in shops]
 
     def get_shop_by_code(self, shop_code: str, db: Session) -> ShopOut:
         """Resolves a shop by its unique QR or manual code."""
-        self.ensure_demo_seeds(db)
+        self.ensure_system_metadata(db)
         clean_code = shop_code.strip()
         shop = db.query(ShopModel).filter(ShopModel.shop_code.ilike(clean_code)).first()
         if not shop:
@@ -956,8 +1050,10 @@ class CustomerService:
         self, customer_id: str, limit: int, db: Session
     ) -> List[ActivityEventOut]:
         """Fetches customer activity events."""
-        self.ensure_demo_seeds(db)
-        customer = db.query(CustomerModel).filter_by(id=customer_id).first() or self.ensure_demo_seeds(db)
+        self.ensure_system_metadata(db)
+        customer = db.query(CustomerModel).filter_by(id=customer_id).first()
+        if not customer:
+            raise NotFoundException(f"Customer '{customer_id}' not found.")
         acts = (
             db.query(ActivityEventModel)
             .filter_by(customer_id=customer.id)
@@ -988,9 +1084,15 @@ class CustomerService:
     # Shopkeeper APIs
     # =========================================================================
 
-    def _resolve_shop(self, shop_id_or_code: str, db: Session) -> ShopModel:
+    def _resolve_shop(self, shop_id_or_code: Optional[str], db: Session) -> ShopModel:
         """Helper to find shop by ID or code."""
-        self.ensure_demo_seeds(db)
+        self.ensure_system_metadata(db)
+        if not shop_id_or_code or not shop_id_or_code.strip():
+            shop = db.query(ShopModel).filter_by(id="shop_apex_01").first()
+            if not shop:
+                raise NotFoundException("Default shop not found.")
+            return shop
+
         clean = shop_id_or_code.strip()
         shop = (
             db.query(ShopModel)
@@ -998,10 +1100,7 @@ class CustomerService:
             .first()
         )
         if not shop:
-            # Default to Apex Precision Works for demo continuity
-            shop = db.query(ShopModel).filter_by(id="shop_apex_01").first()
-            if not shop:
-                raise NotFoundException(f"Shop '{shop_id_or_code}' not found.")
+            raise NotFoundException(f"Shop '{shop_id_or_code}' not found.")
         return shop
 
     def get_shopkeeper_shop(self, shop_id_or_code: Optional[str], db: Session) -> ShopOut:
@@ -1074,6 +1173,81 @@ class CustomerService:
             total_online_verified=float(total_online),
             settled_transactions_count=settled_txns,
             active_transactions_count=active_txns,
+        )
+
+    def get_financial_summary(
+        self, shop_id_or_code: str, db: Session
+    ) -> ShopkeeperFinancialSummaryOut:
+        """
+        Authoritative backend calculation of all financial metrics for the shopkeeper dashboard.
+        Guarantees integer paise / Decimal precision and enforces the invariant:
+        Total Billed Volume = Remaining Customer Dues + Counter Cash Paid + Razorpay Verified Collections
+        """
+        shop = self._resolve_shop(shop_id_or_code, db)
+        bills = db.query(CreditTransactionModel).filter_by(shop_id=shop.id).all()
+
+        tot_billed = Decimal("0.00")
+        tot_counter_cash = Decimal("0.00")
+        tot_razorpay = Decimal("0.00")
+        tot_outstanding = Decimal("0.00")
+        active_count = 0
+        settled_count = 0
+
+        for b in bills:
+            self._sync_transaction_status(b)
+
+            p_amt = b.purchase_amount or Decimal("0.00")
+            i_amt = b.initial_paid_amount or Decimal("0.00")
+            tot_billed += p_amt
+            tot_counter_cash += i_amt
+
+            for r in (b.repayments or []):
+                if r.payment_status == "completed" and r.payment_method in ("shopkeeper_cash", "cash", "manual_cash"):
+                    tot_counter_cash += (r.amount or Decimal("0.00"))
+
+            for v in (b.payment_verifications or []):
+                if v.status == "captured":
+                    tot_razorpay += (Decimal(v.amount_paise) / Decimal("100")).quantize(Decimal("0.01"))
+
+            out_amt = b.outstanding_amount or Decimal("0.00")
+            tot_outstanding += out_amt
+
+            if out_amt <= Decimal("0.00"):
+                settled_count += 1
+            else:
+                active_count += 1
+
+        tot_collected = (tot_counter_cash + tot_razorpay).quantize(Decimal("0.01"))
+        discrepancy = abs(tot_billed - (tot_outstanding + tot_collected))
+        is_reconciled = discrepancy == Decimal("0.00")
+
+        total_bills = len(bills)
+        settlement_rate = (
+            float((Decimal(settled_count) / Decimal(total_bills) * Decimal("100")).quantize(Decimal("0.1")))
+            if total_bills > 0
+            else 0.0
+        )
+        collections_rate = (
+            float((tot_collected / tot_billed * Decimal("100")).quantize(Decimal("0.1")))
+            if tot_billed > 0
+            else 0.0
+        )
+
+        return ShopkeeperFinancialSummaryOut(
+            shop_id=shop.id,
+            shop_name=shop.shop_name,
+            total_billed_volume=float(tot_billed),
+            counter_cash_paid=float(tot_counter_cash),
+            razorpay_verified_collections=float(tot_razorpay),
+            total_collected=float(tot_collected),
+            remaining_customer_dues=float(tot_outstanding),
+            active_bills_count=active_count,
+            settled_bills_count=settled_count,
+            total_bills_count=total_bills,
+            settlement_rate_percentage=settlement_rate,
+            collections_settlement_percentage=collections_rate,
+            unresolved_discrepancy=float(discrepancy),
+            is_reconciled=is_reconciled,
         )
 
     def get_shopkeeper_transactions(

@@ -8,6 +8,7 @@ from backend.app.schemas.customer import (
     CustomerProfileOut,
     ShopOut,
     ShopkeeperBillCreate,
+    ShopkeeperFinancialSummaryOut,
     ShopkeeperRepaymentCreate,
     ShopkeeperSummaryOut,
     ShopkeeperTransactionOut,
@@ -27,7 +28,7 @@ DEFAULT_SHOP_ID = "shop_apex_01"
     description="Lists all customer profiles available for credit billing and payment requests.",
 )
 def list_shopkeeper_customers(db: Session = Depends(get_db)) -> List[CustomerProfileOut]:
-    customer_service.ensure_demo_seeds(db)
+    customer_service.ensure_system_metadata(db)
     from backend.app.db.models import CustomerModel
     customers = db.query(CustomerModel).order_by(CustomerModel.display_name.asc()).all()
     return [CustomerProfileOut.model_validate(c) for c in customers]
@@ -46,7 +47,7 @@ def create_shopkeeper_bill(
     db: Session = Depends(get_db),
 ) -> BillPaymentHistoryOut:
     shop = customer_service._resolve_shop(shop_id or DEFAULT_SHOP_ID, db)
-    customer_service.ensure_demo_seeds(db)
+    customer_service.ensure_system_metadata(db)
 
     # 1. Check customer exists
     from backend.app.db.models import CustomerModel
@@ -141,6 +142,19 @@ def get_shopkeeper_summary(
     db: Session = Depends(get_db),
 ) -> ShopkeeperSummaryOut:
     return customer_service.get_shopkeeper_summary(shop_id_or_code=shop_id or DEFAULT_SHOP_ID, db=db)
+
+
+@router.get(
+    "/financial-summary",
+    response_model=ShopkeeperFinancialSummaryOut,
+    summary="Get Authoritative Real-Time Financial Summary",
+    description="Authoritative backend calculation of all financial metrics: Remaining Customer Dues, Razorpay Verified Collections, Counter Cash Paid, Total Billed Volume, Active Bills, and Settled Bills.",
+)
+def get_financial_summary(
+    shop_id: Optional[str] = Query(DEFAULT_SHOP_ID, description="Target shop ID or code"),
+    db: Session = Depends(get_db),
+) -> ShopkeeperFinancialSummaryOut:
+    return customer_service.get_financial_summary(shop_id_or_code=shop_id or DEFAULT_SHOP_ID, db=db)
 
 
 @router.get(
