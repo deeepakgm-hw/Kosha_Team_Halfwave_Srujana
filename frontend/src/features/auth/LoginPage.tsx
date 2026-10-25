@@ -122,11 +122,23 @@ export const LoginPage: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     setErrorMessage(null);
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    let googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    if (!googleClientId) {
+      try {
+        const confRes = await fetch("/api/auth/config");
+        if (confRes.ok) {
+          const conf = await confRes.json();
+          googleClientId = conf.google_client_id;
+        }
+      } catch {
+        // Fall through
+      }
+    }
 
     if (!googleClientId) {
       setErrorMessage(
-        "Google Sign-In is not configured yet for this environment (VITE_GOOGLE_CLIENT_ID missing). Please use standard email/password."
+        "Google Sign-In is not configured yet for this environment (GOOGLE_CLIENT_ID missing). Please use standard email/password."
       );
       return;
     }

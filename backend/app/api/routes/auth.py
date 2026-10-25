@@ -15,9 +15,21 @@ from backend.app.schemas.auth import (
     ResetPasswordRequest,
     UserOut,
 )
+from backend.app.core.config import settings
 from backend.app.services.auth_service import auth_service
 
 router = APIRouter()
+
+
+@router.get(
+    "/config",
+    summary="Get Public Auth Configuration",
+    description="Returns public configuration including Google Client ID for frontend clients.",
+)
+def get_auth_config():
+    return {
+        "google_client_id": settings.GOOGLE_CLIENT_ID or "",
+    }
 
 
 def set_auth_cookie(response: Response, token: str) -> None:
