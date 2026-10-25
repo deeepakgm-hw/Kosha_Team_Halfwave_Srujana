@@ -136,18 +136,20 @@ describe("Razorpay UPI Payment Integration Frontend Tests", () => {
 
     vi.spyOn(apiClient, "getRazorpayConfig").mockResolvedValue(mockRazorpayConfig);
     vi.spyOn(apiClient, "getShopkeeperFinancialSummary").mockResolvedValue({
-      total_invoiced_paise: 500000,
-      total_invoiced_inr: 5000.0,
-      total_verified_paid_paise: 200000,
-      total_verified_paid_inr: 2000.0,
-      total_outstanding_paise: 300000,
-      total_outstanding_inr: 3000.0,
-      total_bills_count: 2,
+      shop_id: "shop_apex_01",
+      shop_name: "Apex Precision Works",
+      total_billed_volume: 5000.0,
+      counter_cash_paid: 2000.0,
+      razorpay_verified_collections: 2000.0,
+      total_collected: 4000.0,
+      remaining_customer_dues: 1000.0,
       active_bills_count: 1,
       settled_bills_count: 1,
-      today_collections_inr: 0,
-      today_transactions_count: 0,
-      active_upi_requests_count: 1,
+      total_bills_count: 2,
+      settlement_rate_percentage: 50.0,
+      collections_settlement_percentage: 80.0,
+      unresolved_discrepancy: 0,
+      is_reconciled: true,
     });
     vi.spyOn(apiClient, "listShopkeeperCustomers").mockResolvedValue(mockCustomers);
     vi.spyOn(apiClient, "listShopkeeperBills").mockResolvedValue(mockBills);
