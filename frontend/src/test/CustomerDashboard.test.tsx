@@ -173,24 +173,16 @@ describe("Customer Entry and Dashboard Experiences", () => {
         expect(screen.getByText(/Good (morning|afternoon|evening)/i)).toBeInTheDocument();
       });
 
-      // Verify 4 KPI cards
-      expect(screen.getByText("Total Outstanding")).toBeInTheDocument();
+      // Verify Level 1 UPI Quick Action buttons
+      expect(screen.getByText(/Scan & Pay/i)).toBeInTheDocument();
+      expect(screen.getByText(/My QR Code/i)).toBeInTheDocument();
+      expect(screen.getByText(/Pay Bills/i)).toBeInTheDocument();
+      expect(screen.getByText(/History/i)).toBeInTheDocument();
+
+      // Verify Outstanding Dues section
+      expect(screen.getByText("Current Outstanding Dues")).toBeInTheDocument();
       expect(screen.getByText("₹6,700")).toBeInTheDocument();
-
-      expect(screen.getByText("Due in 7 Days")).toBeInTheDocument();
-      expect(screen.getAllByText("₹2,200").length).toBeGreaterThanOrEqual(1);
-
-      expect(screen.getByText("Overdue Amount")).toBeInTheDocument();
-      expect(screen.getByText("₹1,500")).toBeInTheDocument();
-
-      expect(screen.getByText("Active Shops")).toBeInTheDocument();
-      expect(screen.getByText("3")).toBeInTheDocument();
-
-      // Verify Quick Action buttons
-      expect(screen.getByText(/Scan Shop QR/i)).toBeInTheDocument();
-      expect(screen.getByText(/Pay a Due/i)).toBeInTheDocument();
-      expect(screen.getByText(/View My Dues/i)).toBeInTheDocument();
-      expect(screen.getByText(/Enter Shop Code/i)).toBeInTheDocument();
+      expect(screen.getByText(/₹1,500 Overdue/i)).toBeInTheDocument();
 
       // Verify upcoming repayment card
       expect(screen.getByText("Lakshmi Kirana Stores")).toBeInTheDocument();

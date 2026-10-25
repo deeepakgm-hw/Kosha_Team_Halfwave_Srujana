@@ -86,10 +86,10 @@ export const MobileBottomNav: React.FC = () => {
                   className="flex flex-col items-center justify-center -mt-5 relative group focus:outline-hidden cursor-pointer"
                   aria-label={tab.name}
                 >
-                  <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-600/30 ring-4 ring-white group-active:scale-95 transition-all">
+                  <div className="w-12 h-12 rounded-full bg-[#0070E0] text-white flex items-center justify-center shadow-lg shadow-blue-600/35 ring-4 ring-white group-active:scale-95 transition-all">
                     <Icon className="w-6 h-6" />
                   </div>
-                  <span className="text-[10px] font-bold text-emerald-700 mt-1">{tab.name}</span>
+                  <span className="text-[10px] font-bold text-[#0070E0] mt-1">{tab.name}</span>
                 </button>
               );
             }
@@ -101,7 +101,7 @@ export const MobileBottomNav: React.FC = () => {
                   onClick={() => setShowMoreDrawer(true)}
                   className={cn(
                     "flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors focus:outline-hidden cursor-pointer",
-                    active ? "text-emerald-700" : "text-slate-500 hover:text-slate-800"
+                    active ? "text-[#0070E0]" : "text-slate-500 hover:text-slate-800"
                   )}
                   aria-label="More Features"
                 >
@@ -117,11 +117,11 @@ export const MobileBottomNav: React.FC = () => {
                 onClick={() => navigate(tab.path)}
                 className={cn(
                   "flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors focus:outline-hidden cursor-pointer",
-                  active ? "text-emerald-700 font-bold" : "text-slate-500 hover:text-slate-800 font-medium"
+                  active ? "text-[#0070E0] font-bold" : "text-slate-500 hover:text-slate-800 font-medium"
                 )}
                 aria-label={tab.name}
               >
-                <Icon className={cn("w-5 h-5 mb-0.5", active && "text-emerald-600")} />
+                <Icon className={cn("w-5 h-5 mb-0.5", active && "text-[#0070E0]")} />
                 <span className="text-[10px] tracking-tight">{tab.name}</span>
               </button>
             );
@@ -155,9 +155,9 @@ export const MobileBottomNav: React.FC = () => {
                   navigate("/understand-cash-flow");
                   setShowMoreDrawer(false);
                 }}
-                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-300 text-left transition-all cursor-pointer"
+                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left transition-all cursor-pointer"
               >
-                <TrendingUp className="w-5 h-5 text-emerald-600 mb-1.5" />
+                <TrendingUp className="w-5 h-5 text-[#0070E0] mb-1.5" />
                 <span className="block text-xs font-bold text-slate-900">Cash Flow Forecast</span>
                 <span className="block text-[10px] text-slate-500">90-Day Simulation</span>
               </button>
@@ -167,9 +167,9 @@ export const MobileBottomNav: React.FC = () => {
                   navigate("/receivables");
                   setShowMoreDrawer(false);
                 }}
-                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-300 text-left transition-all cursor-pointer"
+                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left transition-all cursor-pointer"
               >
-                <FileText className="w-5 h-5 text-emerald-600 mb-1.5" />
+                <FileText className="w-5 h-5 text-[#0070E0] mb-1.5" />
                 <span className="block text-xs font-bold text-slate-900">MSMED Receivables</span>
                 <span className="block text-[10px] text-slate-500">Late Interest Law</span>
               </button>
@@ -179,9 +179,9 @@ export const MobileBottomNav: React.FC = () => {
                   navigate("/calendar");
                   setShowMoreDrawer(false);
                 }}
-                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-300 text-left transition-all cursor-pointer"
+                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left transition-all cursor-pointer"
               >
-                <CalendarDays className="w-5 h-5 text-emerald-600 mb-1.5" />
+                <CalendarDays className="w-5 h-5 text-[#0070E0] mb-1.5" />
                 <span className="block text-xs font-bold text-slate-900">Cash Calendar</span>
                 <span className="block text-[10px] text-slate-500">42-Day Outflows</span>
               </button>
@@ -191,9 +191,9 @@ export const MobileBottomNav: React.FC = () => {
                   navigate("/test-scenarios");
                   setShowMoreDrawer(false);
                 }}
-                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-300 text-left transition-all cursor-pointer"
+                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left transition-all cursor-pointer"
               >
-                <SlidersHorizontal className="w-5 h-5 text-emerald-600 mb-1.5" />
+                <SlidersHorizontal className="w-5 h-5 text-[#0070E0] mb-1.5" />
                 <span className="block text-xs font-bold text-slate-900">Scenarios &amp; Plan</span>
                 <span className="block text-[10px] text-slate-500">Action Simulator</span>
               </button>
@@ -203,9 +203,9 @@ export const MobileBottomNav: React.FC = () => {
                   navigate("/load");
                   setShowMoreDrawer(false);
                 }}
-                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-300 text-left transition-all cursor-pointer"
+                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left transition-all cursor-pointer"
               >
-                <UploadCloud className="w-5 h-5 text-emerald-600 mb-1.5" />
+                <UploadCloud className="w-5 h-5 text-[#0070E0] mb-1.5" />
                 <span className="block text-xs font-bold text-slate-900">Import Data</span>
                 <span className="block text-[10px] text-slate-500">CSV &amp; Bank Books</span>
               </button>
@@ -215,9 +215,9 @@ export const MobileBottomNav: React.FC = () => {
                   navigate("/reliability");
                   setShowMoreDrawer(false);
                 }}
-                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-300 text-left transition-all cursor-pointer"
+                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left transition-all cursor-pointer"
               >
-                <ShieldCheck className="w-5 h-5 text-emerald-600 mb-1.5" />
+                <ShieldCheck className="w-5 h-5 text-[#0070E0] mb-1.5" />
                 <span className="block text-xs font-bold text-slate-900">Model Reliability</span>
                 <span className="block text-[10px] text-slate-500">Trust Metrics</span>
               </button>

@@ -215,8 +215,8 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ onCloseMobile })
           className={cn(
             "text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border tracking-wide",
             isBusinessOwner
-              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-              : "bg-blue-50 text-blue-800 border-blue-200"
+              ? "bg-[#001C64]/10 text-[#001C64] border-[#001C64]/20"
+              : "bg-[#0070E0]/10 text-[#0070E0] border-[#0070E0]/20"
           )}
         >
           {isBusinessOwner ? "Merchant" : "Customer"}
@@ -231,7 +231,7 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ onCloseMobile })
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
               Payments
             </span>
-            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-full">
+            <span className="text-[10px] font-bold text-[#0070E0] bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded-full">
               UPI-First
             </span>
           </div>
@@ -249,7 +249,7 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ onCloseMobile })
                   className={cn(
                     "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left",
                     active
-                      ? "bg-emerald-600 text-white shadow-xs font-bold"
+                      ? "bg-[#0070E0] text-white shadow-sm shadow-blue-500/25 font-bold"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                   )}
                 >
@@ -261,7 +261,7 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ onCloseMobile })
                     <span
                       className={cn(
                         "text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wide",
-                        active ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800"
+                        active ? "bg-white/20 text-white" : "bg-blue-50 text-[#0070E0] border border-blue-200"
                       )}
                     >
                       {item.badge}
@@ -294,7 +294,7 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ onCloseMobile })
                   className={cn(
                     "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left",
                     active
-                      ? "bg-emerald-600 text-white shadow-xs font-bold"
+                      ? "bg-[#0070E0] text-white shadow-sm shadow-blue-500/25 font-bold"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                   )}
                 >
@@ -346,7 +346,7 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ onCloseMobile })
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-emerald-400" : "text-slate-400 group-hover:text-slate-700")} />
+                      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-blue-400" : "text-slate-400 group-hover:text-slate-700")} />
                       <div className="min-w-0">
                         <span className="block truncate text-xs">{item.name}</span>
                         {item.desc && (
@@ -369,7 +369,7 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ onCloseMobile })
         <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-200">
+              <div className="w-8 h-8 rounded-full bg-blue-50 text-[#0070E0] flex items-center justify-center font-bold text-xs shrink-0 border border-blue-200">
                 {(user?.full_name || user?.email || "U").charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">

@@ -605,7 +605,7 @@ export const AutoPayCard: React.FC<AutoPayCardProps> = ({
                   type="button"
                   onClick={handleInitiateAutoPay}
                   disabled={!explicitConsent || !termsAccepted || isSettingUp || outstandingAmount <= 0}
-                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-[#0070E0] to-[#003087] hover:from-[#005bb5] hover:to-[#001C64] shadow-md shadow-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <Lock className="w-3.5 h-3.5" />
                   <span>

@@ -140,7 +140,7 @@ export const RepayModal: React.FC<RepayModalProps> = ({
               <button
                 type="button"
                 onClick={() => handlePreset(1)}
-                className="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                className="px-3 py-1 rounded-lg text-xs font-bold bg-blue-50 text-[#0070E0] border border-blue-200 hover:bg-blue-100 transition-colors"
               >
                 Pay Full ({formatINR(outstanding)})
               </button>
@@ -245,7 +245,7 @@ export const RepayModal: React.FC<RepayModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-[#0070E0] hover:bg-[#003087] text-white text-xs font-bold shadow-md shadow-blue-600/25 hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>

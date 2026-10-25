@@ -77,8 +77,8 @@ export const BusinessOverviewPage: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
               {activeBusiness?.trade_name || activeShopObj?.shop_name || "Merchant Portal"}
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-[#0070E0] border border-blue-200">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#0070E0]" />
               <span>Razorpay Verified</span>
             </span>
           </div>
@@ -109,8 +109,8 @@ export const BusinessOverviewPage: React.FC = () => {
           )}
 
           {isRealTime && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 text-[#0070E0] border border-blue-200 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-[#0070E0] animate-pulse" />
               <span>Live Payments</span>
             </span>
           )}
@@ -133,31 +133,31 @@ export const BusinessOverviewPage: React.FC = () => {
         </div>
       )}
 
-      {/* B. LEVEL 1: Primary UPI Payment Actions Grid (Prominent & Touch-Friendly) */}
+      {/* B. LEVEL 1: Primary UPI Payment Actions Grid (Prominent & Touch-Friendly in Kosha Blue) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {/* Action 1: Receive Payment */}
         <button
           onClick={() => navigate("/payments")}
-          className="p-4 sm:p-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-left transition-all group flex flex-col justify-between gap-3 shadow-md shadow-emerald-600/20 active:scale-[0.98] cursor-pointer"
+          className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#0070E0] to-[#003087] hover:from-[#005bb5] hover:to-[#001C64] text-white text-left transition-all group flex flex-col justify-between gap-3 shadow-md shadow-blue-600/30 active:scale-[0.98] cursor-pointer"
         >
-          <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0 shadow-xs">
             <ArrowDownLeft className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold block">Receive Payment</span>
-              <ChevronRight className="w-4 h-4 text-emerald-200 group-hover:translate-x-1 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-blue-200 group-hover:translate-x-1 transition-transform" />
             </div>
-            <span className="text-[11px] text-emerald-100 block mt-0.5">Instant dynamic UPI QR</span>
+            <span className="text-[11px] text-blue-100 block mt-0.5 font-medium">Instant dynamic UPI QR</span>
           </div>
         </button>
 
         {/* Action 2: My Business QR */}
         <button
           onClick={() => navigate("/shop-credit?tab=qr")}
-          className="p-4 sm:p-5 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200/90 text-left transition-all group flex flex-col justify-between gap-3 shadow-xs hover:border-emerald-300 active:scale-[0.98] cursor-pointer"
+          className="p-4 sm:p-5 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200/90 text-left transition-all group flex flex-col justify-between gap-3 shadow-xs hover:border-blue-300 active:scale-[0.98] cursor-pointer"
         >
-          <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 text-[#0070E0] flex items-center justify-center shrink-0 group-hover:bg-[#0070E0] group-hover:text-white transition-colors">
             <QrCode className="w-6 h-6" />
           </div>
           <div>
@@ -165,16 +165,16 @@ export const BusinessOverviewPage: React.FC = () => {
               <span className="text-sm font-bold text-slate-900 block">My Business QR</span>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
             </div>
-            <span className="text-[11px] text-slate-500 block mt-0.5">Shop standee &amp; VPA</span>
+            <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">Shop standee &amp; VPA</span>
           </div>
         </button>
 
         {/* Action 3: Create Digital Bill */}
         <button
           onClick={() => navigate("/payments?create=true")}
-          className="p-4 sm:p-5 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200/90 text-left transition-all group flex flex-col justify-between gap-3 shadow-xs hover:border-emerald-300 active:scale-[0.98] cursor-pointer"
+          className="p-4 sm:p-5 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200/90 text-left transition-all group flex flex-col justify-between gap-3 shadow-xs hover:border-blue-300 active:scale-[0.98] cursor-pointer"
         >
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 group-hover:bg-[#0070E0] group-hover:text-white transition-colors">
             <PlusCircle className="w-6 h-6" />
           </div>
           <div>
@@ -182,16 +182,16 @@ export const BusinessOverviewPage: React.FC = () => {
               <span className="text-sm font-bold text-slate-900 block">Create Bill</span>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
             </div>
-            <span className="text-[11px] text-slate-500 block mt-0.5">Itemized bill with QR</span>
+            <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">Itemized bill with QR</span>
           </div>
         </button>
 
         {/* Action 4: View Transactions */}
         <button
           onClick={() => navigate("/shop-credit?tab=transactions")}
-          className="p-4 sm:p-5 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200/90 text-left transition-all group flex flex-col justify-between gap-3 shadow-xs hover:border-emerald-300 active:scale-[0.98] cursor-pointer"
+          className="p-4 sm:p-5 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200/90 text-left transition-all group flex flex-col justify-between gap-3 shadow-xs hover:border-blue-300 active:scale-[0.98] cursor-pointer"
         >
-          <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center shrink-0 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+          <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center shrink-0 group-hover:bg-[#0070E0] group-hover:text-white transition-colors">
             <Clock className="w-6 h-6" />
           </div>
           <div>
@@ -199,7 +199,7 @@ export const BusinessOverviewPage: React.FC = () => {
               <span className="text-sm font-bold text-slate-900 block">Transactions</span>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
             </div>
-            <span className="text-[11px] text-slate-500 block mt-0.5">Authoritative history</span>
+            <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">Authoritative history</span>
           </div>
         </button>
       </div>
@@ -211,10 +211,10 @@ export const BusinessOverviewPage: React.FC = () => {
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="w-2 h-2 rounded-full bg-[#0070E0]" />
                 <span>Today's Collections</span>
               </span>
-              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              <span className="text-[10px] font-bold text-[#0070E0] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
                 Authoritative
               </span>
             </div>
@@ -257,7 +257,7 @@ export const BusinessOverviewPage: React.FC = () => {
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
             <button
               onClick={() => navigate("/shop-credit")}
-              className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer"
+              className="text-xs font-bold text-[#0070E0] hover:text-[#003087] flex items-center gap-1 cursor-pointer transition-colors"
             >
               <span>Manage Customer Dues</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -313,14 +313,14 @@ export const BusinessOverviewPage: React.FC = () => {
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-emerald-600" />
+              <Clock className="w-4 h-4 text-[#0070E0]" />
               <span>Recent Payment Transactions</span>
             </h2>
             <p className="text-xs text-slate-500">Live feed of verified customer repayments and QR settlements</p>
           </div>
           <button
             onClick={() => navigate("/shop-credit?tab=transactions")}
-            className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer"
+            className="text-xs font-bold text-[#0070E0] hover:text-[#003087] flex items-center gap-1 cursor-pointer transition-colors"
           >
             <span>View All</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -333,7 +333,7 @@ export const BusinessOverviewPage: React.FC = () => {
             <p className="text-xs font-medium">No payment transactions recorded yet.</p>
             <button
               onClick={() => navigate("/payments")}
-              className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-[#0070E0] text-white text-xs font-bold shadow-xs hover:bg-[#003087] transition-colors cursor-pointer"
             >
               Receive First Payment
             </button>
@@ -346,7 +346,7 @@ export const BusinessOverviewPage: React.FC = () => {
                 className="p-4 flex items-center justify-between hover:bg-slate-50/70 transition-colors text-xs"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#0070E0] flex items-center justify-center shrink-0 border border-blue-100">
                     <ArrowDownLeft className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
@@ -386,14 +386,14 @@ export const BusinessOverviewPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-700/80">
           <div>
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-emerald-400" />
+              <TrendingUp className="w-5 h-5 text-blue-400" />
               <h3 className="text-base font-bold text-white">Financial Management &amp; Treasury Intelligence</h3>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
               Predictive 90-day cash flow runway, MSMED compliance, and cash calendar
             </p>
           </div>
-          <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+          <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
             Tier 1 Forecasting
           </span>
         </div>
@@ -404,7 +404,7 @@ export const BusinessOverviewPage: React.FC = () => {
             className="p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-emerald-300">90-Day Simulation</span>
+              <span className="text-xs font-bold text-blue-300">90-Day Simulation</span>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
             </div>
             <h4 className="text-sm font-bold text-white">Understand Cash Flow</h4>
@@ -416,7 +416,7 @@ export const BusinessOverviewPage: React.FC = () => {
             className="p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-emerald-300">MSMED Act 2006</span>
+              <span className="text-xs font-bold text-blue-300">MSMED Act 2006</span>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
             </div>
             <h4 className="text-sm font-bold text-white">Receivables Law</h4>
@@ -428,7 +428,7 @@ export const BusinessOverviewPage: React.FC = () => {
             className="p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-emerald-300">42-Day Timeline</span>
+              <span className="text-xs font-bold text-blue-300">42-Day Timeline</span>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
             </div>
             <h4 className="text-sm font-bold text-white">Cash Calendar</h4>

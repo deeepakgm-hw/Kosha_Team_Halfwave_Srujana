@@ -211,8 +211,8 @@ export const CustomerDuesPage: React.FC = () => {
           )}
 
           {isRealTime && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-[#0070E0] border border-blue-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0070E0] animate-pulse" />
               <span>Live Sync</span>
             </span>
           )}
