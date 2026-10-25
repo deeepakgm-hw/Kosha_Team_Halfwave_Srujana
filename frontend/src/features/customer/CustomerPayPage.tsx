@@ -504,8 +504,8 @@ export const CustomerPayPage: React.FC = () => {
 
   const handleOpenRazorpayCheckout = () => {
     const win = window as any;
-    const publicRazorpayKey = "rzp_test_kosha_sandbox";
-    const merchantDisplayName = selectedShop?.shop_name || "KOSHA Merchant Treasury";
+    const publicRazorpayKey = "rzp_live_TrsmB6EVXk1e5d";
+    const merchantDisplayName = "Halfwave KOSHA Payments";
 
     if (win.Razorpay) {
       const options = {
@@ -980,7 +980,7 @@ export const CustomerPayPage: React.FC = () => {
                 </div>
 
                 <p className="text-[11px] text-[#545D68] leading-relaxed">
-                  Pay {formatINR(parsedPaid)} now to <span className="font-bold text-slate-800">{selectedShop.shop_name}</span> (<span className="font-mono text-[#0070E0]">{selectedShop.upi_id || "kosha.msme@razorpay"}</span>). The remaining balance of <span className="font-bold text-[#001C64]">{formatINR(remainingDue)}</span> will be automatically issued as an active credit bill.
+                  Pay {formatINR(parsedPaid)} now to <span className="font-bold text-slate-800">{selectedShop.shop_name}</span> (<span className="font-mono text-[#0070E0]">{selectedShop.upi_id || "halfwave@razorpay"}</span>). The remaining balance of <span className="font-bold text-[#001C64]">{formatINR(remainingDue)}</span> will be automatically issued as an active credit bill.
                 </p>
 
                 {/* PRIMARY: Razorpay Real-Time Payment Gateway Button */}
@@ -1084,7 +1084,7 @@ export const CustomerPayPage: React.FC = () => {
                     </span>
                     <img src={downpaymentQrUrl} alt="Downpayment UPI QR" className="w-48 h-48 mx-auto rounded-lg border border-slate-100 shadow-xs" />
                     <div className="text-[11px] font-mono text-[#001C64] font-bold">
-                      Pay Exact: {formatINR(parsedPaid)} • VPA: {selectedShop.upi_id || "kosha.msme@razorpay"}
+                      Pay Exact: {formatINR(parsedPaid)} • VPA: {selectedShop.upi_id || "halfwave@razorpay"}
                     </div>
                     {isShopDemoVpa && (
                       <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-800 text-left">

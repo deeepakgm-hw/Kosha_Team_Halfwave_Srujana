@@ -41,10 +41,10 @@ class Settings:
     RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "")
     RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "")
     RAZORPAY_WEBHOOK_SECRET: str = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
-    RAZORPAY_MODE: str = os.getenv("RAZORPAY_MODE", "test").lower()  # "test" or "live"
+    RAZORPAY_MODE: str = os.getenv("RAZORPAY_MODE", "live").lower()  # "test" or "live"
     RAZORPAY_UPI_FLOW: str = os.getenv("RAZORPAY_UPI_FLOW", "payment_link")  # "payment_link", "qr_code", or "order"
-    RAZORPAY_MERCHANT_NAME: str = os.getenv("RAZORPAY_MERCHANT_NAME", "KOSHA MSME Treasury")
-    RAZORPAY_UPI_VPA: str = os.getenv("RAZORPAY_UPI_VPA", "kosha.msme@razorpay")
+    RAZORPAY_MERCHANT_NAME: str = os.getenv("RAZORPAY_MERCHANT_NAME", "Halfwave KOSHA Treasury")
+    RAZORPAY_UPI_VPA: str = os.getenv("RAZORPAY_UPI_VPA", "halfwave@razorpay")
 
     # AutoPay Deadline Collection Engine Configuration
     AUTOPAY_COLLECTION_ENABLED: bool = os.getenv("AUTOPAY_COLLECTION_ENABLED", "True").lower() in ("true", "1", "yes")

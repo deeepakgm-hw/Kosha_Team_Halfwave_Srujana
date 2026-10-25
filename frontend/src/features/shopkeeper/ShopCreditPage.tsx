@@ -109,7 +109,7 @@ export const ShopCreditPage: React.FC = () => {
 
       // Generate crisp QR code data URL client-side with standard NPCI UPI specification
       try {
-        const vpa = sumRes?.shop?.upi_id || "kosha.msme@razorpay";
+        const vpa = sumRes?.shop?.upi_id || "halfwave@razorpay";
         const shopName = sumRes?.shop?.shop_name || "Merchant";
         const qrPayload = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(shopName)}&cu=INR&tn=${encodeURIComponent(selectedShopCode)}`;
         const url = await QRCode.toDataURL(qrPayload, {
@@ -1124,7 +1124,7 @@ export const ShopCreditPage: React.FC = () => {
               </div>
               <div className="flex justify-between font-mono font-bold text-slate-700">
                 <span>Current VPA:</span>
-                <span className="text-[#001C64]">{summary?.shop?.upi_id || "kosha.msme@razorpay"}</span>
+                <span className="text-[#001C64]">{summary?.shop?.upi_id || "halfwave@razorpay"}</span>
               </div>
             </div>
 

@@ -66,8 +66,8 @@ class CustomerService:
                 "category": "Industrial Spares & Hardware",
                 "owner_name": "Vikram Mehta",
                 "phone": "+91 98220 11223",
-                "upi_id": "apexworks@upi",
-                "qr_payload": "upi://pay?pa=apexworks@upi&pn=Apex+Precision+Works&cu=INR&tn=KOSHA-APEX",
+                "upi_id": "halfwave@razorpay",
+                "qr_payload": "upi://pay?pa=halfwave@razorpay&pn=Apex+Precision+Works&cu=INR&tn=KOSHA-APEX",
                 "status": "active",
             },
             {
@@ -77,8 +77,8 @@ class CustomerService:
                 "category": "Grocery & Daily Provisions",
                 "owner_name": "Lakshmi Narayanan",
                 "phone": "+91 98440 22334",
-                "upi_id": "lakshmiprovisions@upi",
-                "qr_payload": "upi://pay?pa=lakshmiprovisions@upi&pn=Sri+Lakshmi+Provisions&cu=INR&tn=KOSHA-LAKSHMI",
+                "upi_id": "halfwave@razorpay",
+                "qr_payload": "upi://pay?pa=halfwave@razorpay&pn=Sri+Lakshmi+Provisions&cu=INR&tn=KOSHA-LAKSHMI",
                 "status": "active",
             },
             {
@@ -88,8 +88,8 @@ class CustomerService:
                 "category": "Tools & Electrical Goods",
                 "owner_name": "Rajesh Patil",
                 "phone": "+91 98110 33445",
-                "upi_id": "cityhardware@upi",
-                "qr_payload": "upi://pay?pa=cityhardware@upi&pn=City+Hardware+%26+Tools&cu=INR&tn=KOSHA-CITY",
+                "upi_id": "halfwave@razorpay",
+                "qr_payload": "upi://pay?pa=halfwave@razorpay&pn=City+Hardware+%26+Tools&cu=INR&tn=KOSHA-CITY",
                 "status": "active",
             },
         ]
@@ -158,8 +158,8 @@ class CustomerService:
                 "category": "Industrial Spares & Hardware",
                 "owner_name": "Vikram Mehta",
                 "phone": "+91 98220 11223",
-                "upi_id": "apexworks@upi",
-                "qr_payload": "upi://pay?pa=apexworks@upi&pn=Apex+Precision+Works&cu=INR&tn=KOSHA-APEX",
+                "upi_id": "halfwave@razorpay",
+                "qr_payload": "upi://pay?pa=halfwave@razorpay&pn=Apex+Precision+Works&cu=INR&tn=KOSHA-APEX",
                 "status": "active",
             },
             {
@@ -169,8 +169,8 @@ class CustomerService:
                 "category": "Grocery & Daily Provisions",
                 "owner_name": "Lakshmi Narayanan",
                 "phone": "+91 98440 22334",
-                "upi_id": "lakshmiprovisions@upi",
-                "qr_payload": "upi://pay?pa=lakshmiprovisions@upi&pn=Sri+Lakshmi+Provisions&cu=INR&tn=KOSHA-LAKSHMI",
+                "upi_id": "halfwave@razorpay",
+                "qr_payload": "upi://pay?pa=halfwave@razorpay&pn=Sri+Lakshmi+Provisions&cu=INR&tn=KOSHA-LAKSHMI",
                 "status": "active",
             },
             {
@@ -180,8 +180,8 @@ class CustomerService:
                 "category": "Tools & Electrical Goods",
                 "owner_name": "Rajesh Patil",
                 "phone": "+91 98110 33445",
-                "upi_id": "cityhardware@upi",
-                "qr_payload": "upi://pay?pa=cityhardware@upi&pn=City+Hardware+%26+Tools&cu=INR&tn=KOSHA-CITY",
+                "upi_id": "halfwave@razorpay",
+                "qr_payload": "upi://pay?pa=halfwave@razorpay&pn=City+Hardware+%26+Tools&cu=INR&tn=KOSHA-CITY",
                 "status": "active",
             },
         ]
@@ -1109,7 +1109,7 @@ class CustomerService:
         # 6. Auto-register scanned merchant so the customer can pay immediately!
         clean_name = clean.replace("_", " ").replace("-", " ").strip()
         code_slug = "KSH-" + uuid.uuid4().hex[:6].upper()
-        merchant_upi = clean if "@" in clean else f"{code_slug.lower()}@upi"
+        merchant_upi = clean if "@" in clean else "halfwave@razorpay"
         new_shop = ShopModel(
             id=str(uuid.uuid4()),
             shop_name=clean_name.title() if len(clean_name) <= 60 else clean_name[:60],

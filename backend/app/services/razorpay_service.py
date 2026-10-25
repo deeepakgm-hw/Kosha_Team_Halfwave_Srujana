@@ -54,10 +54,10 @@ class RazorpayService:
         self.key_id = settings.RAZORPAY_KEY_ID or os.getenv("RAZORPAY_KEY_ID", "")
         self.key_secret = settings.RAZORPAY_KEY_SECRET or os.getenv("RAZORPAY_KEY_SECRET", "")
         self.webhook_secret = settings.RAZORPAY_WEBHOOK_SECRET or os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
-        self.mode = (settings.RAZORPAY_MODE or os.getenv("RAZORPAY_MODE", "test")).lower()
+        self.mode = (settings.RAZORPAY_MODE or os.getenv("RAZORPAY_MODE", "live")).lower()
         self.upi_flow = settings.RAZORPAY_UPI_FLOW or os.getenv("RAZORPAY_UPI_FLOW", "payment_link")
-        self.merchant_name = settings.RAZORPAY_MERCHANT_NAME or "KOSHA MSME Treasury"
-        self.upi_vpa = settings.RAZORPAY_UPI_VPA or "kosha.msme@razorpay"
+        self.merchant_name = settings.RAZORPAY_MERCHANT_NAME or "Halfwave KOSHA Treasury"
+        self.upi_vpa = settings.RAZORPAY_UPI_VPA or "halfwave@razorpay"
 
     def is_live_configured(self) -> bool:
         """Determines if live payment processing is explicitly and validly configured."""
@@ -377,9 +377,10 @@ class RazorpayService:
 
         # Real UPI Intent URI standard (NPCI UPI specification)
         # Scan with Google Pay, PhonePe, Paytm, BHIM, CRED
-        merchant_vpa = (shop.upi_id if shop and shop.upi_id else None) or self.upi_vpa or "kosha.msme@razorpay"
+        # Central routing via Halfwave Razorpay Account for all business accounts
+        merchant_vpa = self.upi_vpa or "halfwave@razorpay"
         amount_inr_str = f"{amount_paise / 100:.2f}"
-        pn = quote_plus(shop.shop_name if shop else self.merchant_name)
+        pn = quote_plus("Halfwave - " + (shop.shop_name if shop else self.merchant_name))
         ref_tr = f"KSH_{(bill.reference or bill.id[:8]).replace('-', '')}_{order_uuid[:6]}"
         bill_desc = getattr(bill, "description", None) or getattr(bill, "reference", None) or "Bill Payment"
         note = quote_plus(bill_desc[:40])

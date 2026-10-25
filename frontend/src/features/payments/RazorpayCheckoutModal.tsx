@@ -222,9 +222,9 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
     if (!paymentRequest) return;
 
     const publicRazorpayKey =
-      paymentRequest.key_id || gatewayConfig?.key_id || "rzp_test_kosha_sandbox";
+      paymentRequest.key_id || gatewayConfig?.key_id || "rzp_live_TrsmB6EVXk1e5d";
     const merchantDisplayName =
-      gatewayConfig?.merchant_name || bill.shop_name || "KOSHA Merchant Treasury";
+      gatewayConfig?.merchant_name || "Halfwave KOSHA Treasury";
 
     const win = window as any;
     if (win.Razorpay) {
