@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from backend.app.db.database import get_db
 from backend.app.schemas.customer import (
     ActivityEventOut,
+    BillPaymentHistoryOut,
     CreditTransactionCreate,
     CreditTransactionOut,
     CustomerDashboardSummary,
@@ -13,10 +14,45 @@ from backend.app.schemas.customer import (
     RepaymentCreate,
 )
 from backend.app.services.customer_service import customer_service
+from backend.app.services.razorpay_service import razorpay_service
 
 router = APIRouter()
 
 DEFAULT_CUSTOMER_ID = "cust_rahul_01"
+
+
+@router.get(
+    "/bills",
+    response_model=List[BillPaymentHistoryOut],
+    summary="List Customer Bills with Razorpay Payment Requests",
+    description="Returns all bills belonging to this customer with payment requests, verified payments, and outstanding balances.",
+)
+def list_customer_bills(
+    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    status: Optional[str] = Query(None, description="'all', 'upcoming', 'due_today', 'overdue', 'paid'"),
+    db: Session = Depends(get_db),
+) -> List[BillPaymentHistoryOut]:
+    dues = customer_service.get_dues(customer_id=customer_id, filter_status=status, db=db)
+    return [
+        razorpay_service.get_bill_payment_history(bill_id=t.id, customer_id=customer_id, db=db)
+        for t in dues.transactions
+    ]
+
+
+@router.get(
+    "/bills/{bill_id}",
+    response_model=BillPaymentHistoryOut,
+    summary="Get Specific Customer Bill Payment Details",
+    description="Returns detailed bill breakdown and verified payments, enforcing customer ownership.",
+)
+def get_customer_bill_detail(
+    bill_id: str,
+    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    db: Session = Depends(get_db),
+) -> BillPaymentHistoryOut:
+    return razorpay_service.get_bill_payment_history(
+        bill_id=bill_id, customer_id=customer_id, db=db
+    )
 
 
 @router.get(

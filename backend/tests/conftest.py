@@ -37,6 +37,20 @@ def db_session():
         Base.metadata.drop_all(bind=test_engine)
 
 
+@pytest.fixture(autouse=True)
+def hermetic_test_environment(monkeypatch):
+    """Ensures test suite runs hermetically in test mode without network dependency."""
+    from backend.app.core.config import settings
+    from backend.app.services.razorpay_service import razorpay_service
+    webhook_secret = settings.RAZORPAY_WEBHOOK_SECRET or "kosha_rzp_webhook_secret_2026"
+    monkeypatch.setattr(settings, "RAZORPAY_MODE", "test")
+    monkeypatch.setattr(settings, "RAZORPAY_WEBHOOK_SECRET", webhook_secret)
+    monkeypatch.setattr(razorpay_service, "mode", "test")
+    monkeypatch.setattr(razorpay_service, "key_id", "rzp_test_fixture_key")
+    monkeypatch.setattr(razorpay_service, "key_secret", "test_secret_fixture_123")
+    monkeypatch.setattr(razorpay_service, "webhook_secret", webhook_secret)
+
+
 @pytest.fixture(scope="function")
 def client(db_session):
     """Test client with isolated database session injected via dependency override."""

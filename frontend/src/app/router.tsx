@@ -9,6 +9,7 @@ import { ReceivablesPage } from "../features/receivables/ReceivablesPage";
 import { CalendarPage } from "../features/calendar/CalendarPage";
 import { TrustPage } from "../features/trust/TrustPage";
 import { ShopCreditPage } from "../features/shopkeeper/ShopCreditPage";
+import { BusinessPaymentsSection } from "../features/payments/BusinessPaymentsSection";
 import { LoginPage } from "../features/auth/LoginPage";
 import { LandingPage } from "../features/landing/LandingPage";
 import { CustomerLayout } from "../components/layout/CustomerLayout";
@@ -169,6 +170,19 @@ export const router = createBrowserRouter([
       {
         path: "shopkeeper-credit",
         element: <ShopCreditPage />,
+      },
+      // Razorpay UPI Payment Gateway & Bill Management
+      {
+        path: "payments",
+        element: <BusinessPaymentsSection />,
+      },
+      {
+        path: "upi-payments",
+        element: <BusinessPaymentsSection />,
+      },
+      {
+        path: "razorpay",
+        element: <BusinessPaymentsSection />,
       },
       {
         path: "calendar",

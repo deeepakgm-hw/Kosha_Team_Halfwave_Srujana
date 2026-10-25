@@ -24,3 +24,20 @@ global.ResizeObserver = class ResizeObserver {
   unobserve() {}
   disconnect() {}
 };
+
+// Polyfill EventSource for SSE in JSDOM tests
+if (!global.EventSource) {
+  // @ts-expect-error simple polyfill for tests
+  global.EventSource = class MockEventSource {
+    url: string;
+    onopen: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    onmessage: (() => void) | null = null;
+    constructor(url: string) {
+      this.url = url;
+    }
+    addEventListener() {}
+    removeEventListener() {}
+    close() {}
+  };
+}

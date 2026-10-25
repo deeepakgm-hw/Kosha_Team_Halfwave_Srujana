@@ -178,6 +178,19 @@ class ImportService:
         opening_bal = account.opening_balance if account else None
         closing_bal = (opening_bal + net_movement) if opening_bal is not None else None
 
+        try:
+            from backend.app.core.events import event_broadcaster
+            event_broadcaster.publish("statement_imported", {
+                "batch_id": batch.id,
+                "business_id": business_id,
+                "total_rows": batch.total_rows,
+                "accepted_rows": batch.accepted_rows,
+                "duplicate_rows": batch.duplicate_rows,
+                "net_movement": float(net_movement),
+            })
+        except Exception:
+            pass
+
         return {
             "batch_id": batch.id,
             "business_id": business_id,

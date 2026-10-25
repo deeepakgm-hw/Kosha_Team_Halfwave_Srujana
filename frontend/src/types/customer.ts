@@ -92,15 +92,25 @@ export interface CustomerDashboardSummary {
   upcoming_repayments: CreditTransaction[];
   recent_activity: ActivityEvent[];
   reminders: ReminderItem[];
+  total_purchase_amount?: number;
+  total_initial_paid?: number;
+  total_verified_online_paid?: number;
+  total_paid_amount?: number;
+  active_bills_count?: number;
+  settled_bills_count?: number;
 }
 
 export interface CustomerDuesResponse {
+  customer?: CustomerProfile;
   total_outstanding: number;
   overdue_amount: number;
   due_today_amount: number;
   upcoming_amount: number;
   paid_amount: number;
   transactions: CreditTransaction[];
+  total_purchase_amount?: number;
+  total_initial_paid?: number;
+  total_verified_online_paid?: number;
 }
 
 export interface CreditTransactionCreatePayload {
@@ -129,6 +139,11 @@ export interface ShopkeeperSummary {
   overdue_receivables: number;
   customers_with_balance_count: number;
   total_transactions_count: number;
+  total_billed_amount?: number;
+  total_cash_collected?: number;
+  total_online_verified?: number;
+  settled_transactions_count?: number;
+  active_transactions_count?: number;
 }
 
 export interface ShopkeeperTransaction {
@@ -163,4 +178,108 @@ export interface PaymentGatewayStatus {
   supported_methods: string[];
   is_sandbox: boolean;
   instructions: string;
+}
+
+// =========================================================================
+// Razorpay UPI Integration Types
+// =========================================================================
+
+export interface RazorpayConfig {
+  key_id: string;
+  mode: "test" | "live";
+  is_test_mode?: boolean;
+  upi_flow?: string;
+  merchant_name: string;
+  upi_vpa: string;
+  currency?: string;
+  upi_flow_enabled?: boolean;
+}
+
+export interface RazorpayPaymentRequest {
+  id: string;
+  bill_id: string;
+  customer_id: string;
+  business_id?: string;
+  shop_id?: string;
+  amount_paise: number;
+  amount_inr: number;
+  currency: string;
+  razorpay_order_id?: string;
+  gateway_order_id?: string;
+  gateway_payment_link?: string;
+  razorpay_payment_link_id?: string;
+  razorpay_qr_id?: string;
+  upi_qr_payload?: string;
+  upi_qr_svg?: string;
+  qr_image_url?: string;
+  short_url?: string;
+  is_partial_allowed?: boolean;
+  status: "active" | "pending_verification" | "partially_paid" | "paid" | "failed" | "expired" | "cancelled";
+  failure_reason?: string;
+  idempotency_key?: string;
+  expires_at?: string;
+  created_at: string;
+  is_test_mode?: boolean;
+  key_id?: string;
+}
+
+export interface RazorpayPaymentVerification {
+  id: string;
+  payment_request_id?: string;
+  bill_id: string;
+  razorpay_payment_id: string;
+  payment_id?: string;
+  razorpay_order_id?: string;
+  order_id?: string;
+  signature?: string;
+  amount_paise: number;
+  amount_inr: number;
+  currency: string;
+  payment_method: string;
+  method?: string;
+  vpa?: string;
+  status: string;
+  verification_source?: string;
+  verified_by?: string;
+  verified_at: string;
+}
+
+export interface BillPaymentHistory {
+  bill_id: string;
+  bill_reference: string;
+  customer_id: string;
+  customer_name: string;
+  customer_phone?: string;
+  shop_id?: string;
+  shop_code?: string;
+  shop_name: string;
+  description: string;
+  total_amount: number;
+  initial_manual_paid: number;
+  verified_razorpay_paid: number;
+  outstanding_amount: number;
+  agreed_repayment_date: string;
+  status: "upcoming" | "due_today" | "overdue" | "paid";
+  active_payment_request?: RazorpayPaymentRequest | null;
+  payment_requests?: RazorpayPaymentRequest[];
+  verified_payments: RazorpayPaymentVerification[];
+  all_repayments?: Repayment[];
+
+  // Optional aliases for interoperability
+  id?: string;
+  bill_number?: string;
+  initial_paid_amount?: number;
+  total_verified_payments?: number;
+  payment_status?: "unpaid" | "partially_paid" | "paid" | "failed" | "pending_verification";
+  purchase_date?: string;
+  repayment_due_date?: string;
+}
+
+export interface ShopkeeperBillCreatePayload {
+  customer_id: string;
+  description: string;
+  total_amount: number;
+  initial_manual_paid?: number;
+  agreed_repayment_date: string;
+  generate_payment_request?: boolean;
 }

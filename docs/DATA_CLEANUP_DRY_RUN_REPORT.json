@@ -1,0 +1,112 @@
+{
+  "dry_run": true,
+  "timestamp": "2026-10-25T01:51:33.751728+00:00",
+  "businesses_merged_count": 1,
+  "businesses_merged": [
+    {
+      "duplicate_id": "apex-precision",
+      "canonical_id": "apex_precision_mfg",
+      "legal_name": "Apex Precision Components Pvt Ltd",
+      "dependent_accounts_migrated": 0,
+      "dependent_transactions_migrated": 0,
+      "action": "planned_merge"
+    }
+  ],
+  "bank_transactions_deduped_count": 0,
+  "bank_transactions_deduped": [],
+  "bills_deduped_count": 2,
+  "bills_deduped": [
+    {
+      "duplicate_id": "7b811aba-6928-47bb-b80e-048ebdf0cc40",
+      "duplicate_reference": "TXN-A744FC35",
+      "canonical_id": "96039566-722b-4384-9d46-e40057884086",
+      "canonical_reference": "TXN-C91C320C",
+      "customer_id": "cust_rahul_01",
+      "amount": 3500.0,
+      "description": "Custom Machined Shafts & Bearings",
+      "action": "planned_dedup"
+    },
+    {
+      "duplicate_id": "582720c4-faff-476c-b698-1b2018ed3bc2",
+      "duplicate_reference": "TXN-34F9ADB6",
+      "canonical_id": "96039566-722b-4384-9d46-e40057884086",
+      "canonical_reference": "TXN-C91C320C",
+      "customer_id": "cust_rahul_01",
+      "amount": 3500.0,
+      "description": "Custom Machined Shafts & Bearings",
+      "action": "planned_dedup"
+    }
+  ],
+  "repayments_deduped_count": 0,
+  "repayments_deduped": [],
+  "payment_requests_cleaned_count": 0,
+  "balances_reconciled_count": 1,
+  "balances_reconciled": [
+    {
+      "bill_id": "ctx_demo_05",
+      "reference": "TXN-8812E505",
+      "customer_id": "cust_amit_03",
+      "purchase_amount": 1500.0,
+      "initial_paid_amount": 500.0,
+      "repayments_sum": 0.0,
+      "old_outstanding": 1000.0,
+      "new_outstanding": 1000.0,
+      "old_status": "due_today",
+      "new_status": "overdue"
+    }
+  ],
+  "flagged_for_review_count": 0,
+  "flagged_for_review": [],
+  "before_counts": {
+    "businesses": 5,
+    "bank_accounts": 4,
+    "bank_transactions": 28,
+    "import_batches": 4,
+    "customer_invoices": 4,
+    "vendor_bills": 3,
+    "operating_expenses": 8,
+    "shops": 3,
+    "customers": 3,
+    "customer_credit_transactions": 15,
+    "customer_repayments": 28,
+    "customer_activities": 32,
+    "payment_requests": 5,
+    "payment_verifications": 0,
+    "payment_attempts": 13,
+    "webhook_events": 0
+  },
+  "after_counts": {
+    "businesses": 5,
+    "bank_accounts": 4,
+    "bank_transactions": 28,
+    "import_batches": 4,
+    "customer_invoices": 4,
+    "vendor_bills": 3,
+    "operating_expenses": 8,
+    "shops": 3,
+    "customers": 3,
+    "customer_credit_transactions": 15,
+    "customer_repayments": 28,
+    "customer_activities": 32,
+    "payment_requests": 5,
+    "payment_verifications": 0,
+    "payment_attempts": 13,
+    "webhook_events": 0
+  },
+  "before_totals": {
+    "total_credit_purchases": 23289.0,
+    "total_credit_initial_paid": 5622.0,
+    "total_credit_outstanding": 15967.0,
+    "total_completed_repayments": 4872.0,
+    "total_invoices_ar": 420000.0,
+    "total_bills_ap": 265000.0
+  },
+  "after_totals": {
+    "total_credit_purchases": 23289.0,
+    "total_credit_initial_paid": 5622.0,
+    "total_credit_outstanding": 15967.0,
+    "total_completed_repayments": 4872.0,
+    "total_invoices_ar": 420000.0,
+    "total_bills_ap": 265000.0
+  }
+}

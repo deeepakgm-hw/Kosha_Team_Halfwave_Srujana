@@ -3,9 +3,13 @@ from pathlib import Path
 from typing import List
 from dotenv import load_dotenv
 
-# Automatically load .env if present
-env_path = Path(__file__).resolve().parent.parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
+# Automatically load .env if present (supports root directory and backend directory)
+root_env = Path(__file__).resolve().parents[3] / ".env"
+backend_env = Path(__file__).resolve().parents[2] / ".env"
+if root_env.exists():
+    load_dotenv(dotenv_path=root_env, override=True)
+if backend_env.exists():
+    load_dotenv(dotenv_path=backend_env, override=True)
 
 
 class Settings:
@@ -32,6 +36,15 @@ class Settings:
 
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./kosha.db")
+
+    # Razorpay Payment Gateway Configuration
+    RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "")
+    RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "")
+    RAZORPAY_WEBHOOK_SECRET: str = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
+    RAZORPAY_MODE: str = os.getenv("RAZORPAY_MODE", "test").lower()  # "test" or "live"
+    RAZORPAY_UPI_FLOW: str = os.getenv("RAZORPAY_UPI_FLOW", "payment_link")  # "payment_link", "qr_code", or "order"
+    RAZORPAY_MERCHANT_NAME: str = os.getenv("RAZORPAY_MERCHANT_NAME", "KOSHA MSME Treasury")
+    RAZORPAY_UPI_VPA: str = os.getenv("RAZORPAY_UPI_VPA", "kosha.msme@razorpay")
 
 
 settings = Settings()

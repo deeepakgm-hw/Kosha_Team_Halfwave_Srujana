@@ -312,6 +312,8 @@ class CreditTransactionModel(Base):
     customer = relationship("CustomerModel", back_populates="transactions")
     shop = relationship("ShopModel", back_populates="transactions")
     repayments = relationship("RepaymentModel", back_populates="transaction", cascade="all, delete-orphan")
+    payment_requests = relationship("PaymentRequestModel", back_populates="bill", cascade="all, delete-orphan")
+    payment_verifications = relationship("PaymentVerificationModel", back_populates="bill", cascade="all, delete-orphan")
 
 
 class RepaymentModel(Base):
@@ -407,3 +409,83 @@ class NotificationModel(Base):
     urgency = Column(String(30), default="info", index=True)  # info, upcoming, due_today, overdue, payment_confirmed
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class PaymentRequestModel(Base):
+    """
+    Razorpay digital payment request for an authorized bill.
+    Supports UPI QR codes, Razorpay Standard Checkout Orders, and Payment Links.
+    """
+    __tablename__ = "payment_requests"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    bill_id = Column(String(50), ForeignKey("customer_credit_transactions.id"), nullable=False, index=True)
+    customer_id = Column(String(50), ForeignKey("customers.id"), nullable=False, index=True)
+    business_id = Column(String(50), nullable=False, index=True)
+    shop_id = Column(String(50), ForeignKey("shops.id"), nullable=True, index=True)
+
+    # Financial amount in precise integer paise
+    amount_paise = Column(Integer, nullable=False)
+    currency = Column(String(10), default="INR", nullable=False)
+
+    # Razorpay Gateway Identifiers
+    razorpay_order_id = Column(String(100), nullable=True, index=True)
+    razorpay_payment_link_id = Column(String(100), nullable=True, index=True)
+    razorpay_qr_id = Column(String(100), nullable=True, index=True)
+
+    # UPI & Checkout Payloads
+    upi_qr_payload = Column(Text, nullable=True)  # e.g. upi://pay?pa=...
+    qr_image_url = Column(Text, nullable=True)
+    short_url = Column(Text, nullable=True)  # Razorpay checkout / payment link URL
+
+    # Lifecycle State
+    status = Column(String(30), default="active", index=True)  # active, pending_verification, partially_paid, paid, failed, expired, cancelled
+    failure_reason = Column(Text, nullable=True)
+    idempotency_key = Column(String(100), unique=True, nullable=True, index=True)
+    expires_at = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    bill = relationship("CreditTransactionModel", back_populates="payment_requests")
+    customer = relationship("CustomerModel")
+    shop = relationship("ShopModel")
+    verifications = relationship("PaymentVerificationModel", back_populates="payment_request", cascade="all, delete-orphan")
+
+
+class PaymentVerificationModel(Base):
+    """
+    Authoritative record of verified Razorpay payment collections.
+    Guarantees idempotency via razorpay_payment_id uniqueness.
+    """
+    __tablename__ = "payment_verifications"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    payment_request_id = Column(String(50), ForeignKey("payment_requests.id"), nullable=True, index=True)
+    bill_id = Column(String(50), ForeignKey("customer_credit_transactions.id"), nullable=False, index=True)
+    customer_id = Column(String(50), nullable=False, index=True)
+    business_id = Column(String(50), nullable=False, index=True)
+
+    razorpay_payment_id = Column(String(100), unique=True, nullable=False, index=True)
+    razorpay_order_id = Column(String(100), nullable=True, index=True)
+
+    amount_paise = Column(Integer, nullable=False)
+    currency = Column(String(10), default="INR", nullable=False)
+
+    payment_method = Column(String(50), default="upi")
+    vpa = Column(String(100), nullable=True)
+    status = Column(String(30), default="captured", index=True)  # captured, failed
+    verification_source = Column(String(30), default="webhook")  # webhook or server_verify
+
+    signature = Column(String(255), nullable=True)
+    excess_credit_paise = Column(Integer, default=0)
+    raw_response_json = Column(Text, nullable=True)
+
+    verified_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    payment_request = relationship("PaymentRequestModel", back_populates="verifications")
+    bill = relationship("CreditTransactionModel", back_populates="payment_verifications")

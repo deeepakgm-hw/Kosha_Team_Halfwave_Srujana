@@ -15,6 +15,7 @@ from backend.app.api.routes.shops import router as shops_router
 from backend.app.api.routes.shopkeeper import router as shopkeeper_router
 from backend.app.api.routes.payment_gateway import router as payment_gateway_router
 from backend.app.api.routes.notifications import router as notifications_router
+from backend.app.api.routes.events import router as events_router
 
 api_router = APIRouter()
 
@@ -35,3 +36,4 @@ api_router.include_router(shops_router, prefix="/shops", tags=["Merchant Shops"]
 api_router.include_router(shopkeeper_router, prefix="/shopkeeper", tags=["Shopkeeper Credit & QR"])
 api_router.include_router(payment_gateway_router, prefix="/payment-gateway", tags=["Payment Gateway Boundary"])
 api_router.include_router(notifications_router, prefix="/notifications", tags=["Persistent Notifications"])
+api_router.include_router(events_router, prefix="/events", tags=["Real-Time Synchronization"])

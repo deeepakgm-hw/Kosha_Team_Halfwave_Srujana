@@ -26,9 +26,11 @@ import {
   ShopkeeperTransaction,
 } from "../../types/customer";
 import { formatINR } from "../../lib/utils";
+import { BusinessPaymentsSection } from "../payments/BusinessPaymentsSection";
 
 export const ShopCreditPage: React.FC = () => {
   const [selectedShopCode, setSelectedShopCode] = useState<string>("KOSHA-APEX");
+  const [activeTab, setActiveTab] = useState<"credit_ledger" | "razorpay_upi">("credit_ledger");
   const [shops, setShops] = useState<Shop[]>([]);
   const [summary, setSummary] = useState<ShopkeeperSummary | null>(null);
   const [transactions, setTransactions] = useState<ShopkeeperTransaction[]>([]);
@@ -228,7 +230,40 @@ export const ShopCreditPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Top Summary KPI Cards */}
+      {/* View Switcher Tabs */}
+      <div className="flex items-center gap-2 p-1.5 bg-white/80 backdrop-blur-md rounded-2xl border border-white/90 shadow-glass-sm max-w-fit">
+        <button
+          onClick={() => setActiveTab("credit_ledger")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === "credit_ledger"
+              ? "bg-kosha-blue text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
+          }`}
+        >
+          <Store className="w-4 h-4" />
+          <span>Shop Credit Ledger &amp; Counter</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("razorpay_upi")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === "razorpay_upi"
+              ? "bg-kosha-blue text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
+          }`}
+        >
+          <CreditCard className="w-4 h-4" />
+          <span>Razorpay UPI Payments</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-emerald-100 text-emerald-800 font-black uppercase">
+            Live Gateway
+          </span>
+        </button>
+      </div>
+
+      {activeTab === "razorpay_upi" ? (
+        <BusinessPaymentsSection />
+      ) : (
+        <>
+          {/* 2. Top Summary KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         {/* Total Receivables */}
         <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-white/90 shadow-glass-sm flex flex-col justify-between">
@@ -809,6 +844,8 @@ export const ShopCreditPage: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

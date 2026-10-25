@@ -559,6 +559,17 @@ class CustomerService:
         )
         recent_activity = [ActivityEventOut.model_validate(a) for a in acts]
 
+        total_purchase_amount = sum((t.purchase_amount for t in txns), Decimal("0.00"))
+        total_initial_paid = sum((t.initial_paid_amount for t in txns), Decimal("0.00"))
+        total_verified_online = Decimal("0.00")
+        for t in txns:
+            for r in (t.repayments or []):
+                if r.payment_status == "completed" and r.payment_method in ("razorpay_upi", "upi"):
+                    total_verified_online += Decimal(str(r.amount))
+        total_paid_amount = total_initial_paid + total_verified_online
+        active_bills_count = sum(1 for t in txns if t.outstanding_amount > 0)
+        settled_bills_count = sum(1 for t in txns if t.outstanding_amount == 0)
+
         return CustomerDashboardSummary(
             customer=CustomerProfileOut.model_validate(customer),
             total_outstanding=float(total_outstanding),
@@ -569,6 +580,12 @@ class CustomerService:
             upcoming_repayments=upcoming,
             recent_activity=recent_activity,
             reminders=reminders,
+            total_purchase_amount=float(total_purchase_amount),
+            total_initial_paid=float(total_initial_paid),
+            total_verified_online_paid=float(total_verified_online),
+            total_paid_amount=float(total_paid_amount),
+            active_bills_count=active_bills_count,
+            settled_bills_count=settled_bills_count,
         )
 
     def get_dues(
@@ -623,6 +640,14 @@ class CustomerService:
 
         filtered.sort(key=sort_priority)
 
+        total_purchase_amount = sum((t.purchase_amount for t in txns), Decimal("0.00"))
+        total_initial_paid = sum((t.initial_paid_amount for t in txns), Decimal("0.00"))
+        total_verified_online = Decimal("0.00")
+        for t in txns:
+            for r in (t.repayments or []):
+                if r.payment_status == "completed" and r.payment_method in ("razorpay_upi", "upi"):
+                    total_verified_online += Decimal(str(r.amount))
+
         return CustomerDuesResponse(
             total_outstanding=float(total_outstanding),
             overdue_amount=float(overdue_amount),
@@ -630,6 +655,9 @@ class CustomerService:
             upcoming_amount=float(upcoming_amount),
             paid_amount=float(paid_amount),
             transactions=filtered,
+            total_purchase_amount=float(total_purchase_amount),
+            total_initial_paid=float(total_initial_paid),
+            total_verified_online_paid=float(total_verified_online),
         )
 
     def get_transaction(
@@ -793,6 +821,19 @@ class CustomerService:
         db.commit()
         db.refresh(txn)
 
+        try:
+            from backend.app.core.events import event_broadcaster
+            event_broadcaster.publish("bill_created", {
+                "bill_id": txn.id,
+                "customer_id": txn.customer_id,
+                "shop_id": txn.shop_id,
+                "reference": txn.reference,
+                "purchase_amount": float(data.purchase_amount),
+                "outstanding_amount": float(txn.outstanding_amount),
+            })
+        except Exception:
+            pass
+
         return self._serialize_transaction(txn)
 
     def record_repayment(
@@ -880,6 +921,19 @@ class CustomerService:
         db.add(act)
         db.commit()
         db.refresh(txn)
+
+        try:
+            from backend.app.core.events import event_broadcaster
+            event_broadcaster.publish("repayment_recorded", {
+                "bill_id": txn.id,
+                "customer_id": txn.customer_id,
+                "shop_id": txn.shop_id,
+                "reference": txn.reference,
+                "repayment_amount": float(data.amount),
+                "outstanding_amount": float(txn.outstanding_amount),
+            })
+        except Exception:
+            pass
 
         return self._serialize_transaction(txn)
 
@@ -997,6 +1051,16 @@ class CustomerService:
                 if r.repayment_date == today and r.payment_status == "completed":
                     collected_today += r.amount
 
+        total_billed = sum((t.purchase_amount for t in txns), Decimal("0.00"))
+        total_cash = sum((t.initial_paid_amount for t in txns), Decimal("0.00"))
+        total_online = Decimal("0.00")
+        for t in txns:
+            for r in (t.repayments or []):
+                if r.payment_status == "completed" and r.payment_method in ("razorpay_upi", "upi"):
+                    total_online += Decimal(str(r.amount))
+        settled_txns = sum(1 for t in txns if t.outstanding_amount == 0)
+        active_txns = sum(1 for t in txns if t.outstanding_amount > 0)
+
         return ShopkeeperSummaryOut(
             shop=ShopOut.model_validate(shop),
             total_customer_receivables=float(total_receivables),
@@ -1005,6 +1069,11 @@ class CustomerService:
             overdue_receivables=float(overdue_receivables),
             customers_with_balance_count=len(debtor_customers),
             total_transactions_count=len(txns),
+            total_billed_amount=float(total_billed),
+            total_cash_collected=float(total_cash),
+            total_online_verified=float(total_online),
+            settled_transactions_count=settled_txns,
+            active_transactions_count=active_txns,
         )
 
     def get_shopkeeper_transactions(
@@ -1187,6 +1256,19 @@ class CustomerService:
         db.add(act)
         db.commit()
         db.refresh(txn)
+
+        try:
+            from backend.app.core.events import event_broadcaster
+            event_broadcaster.publish("repayment_recorded", {
+                "bill_id": txn.id,
+                "customer_id": txn.customer_id,
+                "shop_id": txn.shop_id,
+                "reference": txn.reference,
+                "repayment_amount": float(data.amount),
+                "outstanding_amount": float(txn.outstanding_amount),
+            })
+        except Exception:
+            pass
 
         reps = [
             RepaymentOut(

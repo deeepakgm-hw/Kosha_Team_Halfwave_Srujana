@@ -17,9 +17,12 @@ import {
   Bell,
 } from "lucide-react";
 import { apiClient, formatApiError } from "../../lib/api";
-import { CustomerDashboardSummary, CreditTransaction } from "../../types/customer";
+import { CustomerDashboardSummary, CreditTransaction, BillPaymentHistory } from "../../types/customer";
 import { formatINR } from "../../lib/utils";
 import { RepayModal } from "./RepayModal";
+import { RazorpayCheckoutModal } from "../payments/RazorpayCheckoutModal";
+import { useRealTimeSync } from "../../hooks/useRealTimeSync";
+import { Smartphone } from "lucide-react";
 
 export const CustomerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -27,6 +30,7 @@ export const CustomerDashboardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTxnForRepay, setSelectedTxnForRepay] = useState<CreditTransaction | null>(null);
+  const [selectedBillForCheckout, setSelectedBillForCheckout] = useState<BillPaymentHistory | null>(null);
 
   const fetchDashboard = async () => {
     setIsLoading(true);
@@ -38,6 +42,44 @@ export const CustomerDashboardPage: React.FC = () => {
       setError(formatApiError(err));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Real-Time Server-Sent Events listener for live balance updates
+  const { isRealTime } = useRealTimeSync({
+    onRefresh: fetchDashboard,
+  });
+
+  const handleOpenUpiCheckout = async (txn: CreditTransaction) => {
+    const custId = data?.customer?.id || "cust_rahul_01";
+    try {
+      const history = await apiClient.getBillPaymentHistory(txn.id, custId);
+      setSelectedBillForCheckout(history);
+    } catch {
+      setSelectedBillForCheckout({
+        bill_id: txn.id,
+        id: txn.id,
+        bill_reference: txn.reference || `BILL-${txn.id.slice(-6)}`,
+        bill_number: txn.reference || `BILL-${txn.id.slice(-6)}`,
+        customer_id: custId,
+        customer_name: data?.customer?.display_name || "Valued Customer",
+        shop_code: txn.shop_code,
+        shop_name: txn.shop_name,
+        description: txn.description,
+        purchase_date: txn.transaction_date,
+        agreed_repayment_date: txn.agreed_repayment_date,
+        repayment_due_date: txn.agreed_repayment_date,
+        total_amount: txn.purchase_amount,
+        initial_manual_paid: txn.initial_paid_amount || 0,
+        initial_paid_amount: txn.initial_paid_amount || 0,
+        verified_razorpay_paid: 0,
+        total_verified_payments: 0,
+        outstanding_amount: txn.outstanding_amount,
+        status: (txn.status === "upcoming" || txn.status === "due_today" || txn.status === "overdue" || txn.status === "paid") ? txn.status : "upcoming",
+        payment_status: "unpaid",
+        payment_requests: [],
+        verified_payments: [],
+      });
     }
   };
 
@@ -100,14 +142,22 @@ export const CustomerDashboardPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={fetchDashboard}
-          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/80 hover:bg-white text-slate-600 border border-slate-200 shadow-xs transition-colors"
-          title="Refresh dashboard"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Refresh</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {isRealTime && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Sync</span>
+            </span>
+          )}
+          <button
+            onClick={fetchDashboard}
+            className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/80 hover:bg-white text-slate-600 border border-slate-200 shadow-xs transition-colors"
+            title="Refresh dashboard"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* F. Helpful Status Message Banner */}
@@ -192,6 +242,44 @@ export const CustomerDashboardPage: React.FC = () => {
               {data.shops_count}
             </span>
             <p className="text-[10px] text-slate-400 mt-0.5">With pending dues</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Exact Financial Reconciliation Banner */}
+      <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-glass-sm">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Reconciled Financial Ledger Details
+          </span>
+          <span className="text-xs font-bold text-kosha-blue">
+            Exact Invariant Formula
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3 text-xs">
+          <div>
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">Total Credit Incurred</span>
+            <span className="text-base font-black text-slate-900 font-mono mt-0.5 block">
+              {formatINR(data.total_purchase_amount || (data.total_outstanding + (data.total_paid_amount || 0)))}
+            </span>
+          </div>
+          <div>
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">Counter Cash Paid</span>
+            <span className="text-base font-bold text-slate-700 font-mono mt-0.5 block">
+              - {formatINR(data.total_initial_paid || 0)}
+            </span>
+          </div>
+          <div>
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">Razorpay Online Paid</span>
+            <span className="text-base font-bold text-emerald-700 font-mono mt-0.5 block">
+              - {formatINR(data.total_verified_online_paid || 0)}
+            </span>
+          </div>
+          <div>
+            <span className="text-rose-600 block text-[10px] uppercase font-extrabold">(=) Exact Remaining Due</span>
+            <span className="text-base font-black text-rose-600 font-mono mt-0.5 block">
+              = {formatINR(data.total_outstanding)}
+            </span>
           </div>
         </div>
       </div>
@@ -395,12 +483,23 @@ export const CustomerDashboardPage: React.FC = () => {
                         {formatINR(txn.outstanding_amount)}
                       </span>
                     </div>
-                    <button
-                      onClick={() => setSelectedTxnForRepay(txn)}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs hover:shadow-sm transition-all"
-                    >
-                      Pay Now
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleOpenUpiCheckout(txn)}
+                        className="px-3 py-1.5 rounded-xl bg-kosha-blue hover:bg-kosha-deep text-white text-xs font-bold shadow-xs hover:shadow-sm transition-all flex items-center gap-1"
+                        title="Pay instantly via UPI QR or Razorpay"
+                      >
+                        <Smartphone className="w-3.5 h-3.5" />
+                        <span>Pay UPI</span>
+                      </button>
+                      <button
+                        onClick={() => setSelectedTxnForRepay(txn)}
+                        className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-all"
+                        title="Document counter or manual repayment"
+                      >
+                        Manual
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -463,6 +562,20 @@ export const CustomerDashboardPage: React.FC = () => {
           transaction={selectedTxnForRepay}
           onClose={() => setSelectedTxnForRepay(null)}
           onSuccess={handleRepaySuccess}
+        />
+      )}
+
+      {/* Razorpay UPI Checkout Modal */}
+      {selectedBillForCheckout && (
+        <RazorpayCheckoutModal
+          isOpen={Boolean(selectedBillForCheckout)}
+          bill={selectedBillForCheckout}
+          onClose={() => setSelectedBillForCheckout(null)}
+          onSuccess={() => {
+            fetchDashboard();
+            setSelectedBillForCheckout(null);
+          }}
+          customerId="cust_rahul_01"
         />
       )}
     </div>

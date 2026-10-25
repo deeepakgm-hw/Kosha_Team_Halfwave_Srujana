@@ -1,7 +1,7 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 class CustomerProfileOut(BaseModel):
@@ -126,6 +126,12 @@ class CustomerDashboardSummary(BaseModel):
     upcoming_repayments: List[CreditTransactionOut]
     recent_activity: List[ActivityEventOut]
     reminders: List[ReminderItemOut]
+    total_purchase_amount: Optional[float] = 0.0
+    total_initial_paid: Optional[float] = 0.0
+    total_verified_online_paid: Optional[float] = 0.0
+    total_paid_amount: Optional[float] = 0.0
+    active_bills_count: Optional[int] = 0
+    settled_bills_count: Optional[int] = 0
 
 
 class CustomerDuesResponse(BaseModel):
@@ -135,6 +141,9 @@ class CustomerDuesResponse(BaseModel):
     upcoming_amount: float
     paid_amount: float
     transactions: List[CreditTransactionOut]
+    total_purchase_amount: Optional[float] = 0.0
+    total_initial_paid: Optional[float] = 0.0
+    total_verified_online_paid: Optional[float] = 0.0
 
 
 # =========================================================================
@@ -149,6 +158,11 @@ class ShopkeeperSummaryOut(BaseModel):
     overdue_receivables: float
     customers_with_balance_count: int
     total_transactions_count: int
+    total_billed_amount: Optional[float] = 0.0
+    total_cash_collected: Optional[float] = 0.0
+    total_online_verified: Optional[float] = 0.0
+    settled_transactions_count: Optional[int] = 0
+    active_transactions_count: Optional[int] = 0
 
 
 class ShopkeeperTransactionOut(BaseModel):
@@ -214,3 +228,113 @@ class PaymentVerifyRequest(BaseModel):
     order_id: str
     payment_id: str
     signature: Optional[str] = None
+
+
+# =========================================================================
+# Razorpay UPI Integration Schemas
+# =========================================================================
+
+class RazorpayPaymentRequestCreate(BaseModel):
+    bill_id: str = Field(..., description="Target bill/credit transaction ID")
+    amount_paise: Optional[int] = Field(None, gt=0, description="Amount in paise (e.g. 50000 = ₹500.00)")
+    partial_amount: Optional[Decimal] = Field(None, gt=0, description="Amount in INR (e.g. 500.00)")
+    idempotency_key: Optional[str] = Field(None, max_length=100)
+
+
+class RazorpayPaymentRequestOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    bill_id: str
+    customer_id: str
+    business_id: str
+    shop_id: Optional[str] = None
+    amount_paise: int
+    amount_inr: float
+    currency: str = "INR"
+    razorpay_order_id: Optional[str] = None
+    razorpay_payment_link_id: Optional[str] = None
+    razorpay_qr_id: Optional[str] = None
+    upi_qr_payload: Optional[str] = None
+    qr_image_url: Optional[str] = None
+    short_url: Optional[str] = None
+    status: str
+    failure_reason: Optional[str] = None
+    idempotency_key: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    created_at: datetime
+    is_test_mode: bool = True
+    key_id: Optional[str] = None
+
+    @field_serializer("expires_at", "created_at")
+    def serialize_datetime(self, dt: Optional[datetime], _info) -> Optional[str]:
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
+
+
+class RazorpayPaymentVerificationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    payment_request_id: Optional[str] = None
+    bill_id: str
+    razorpay_payment_id: str
+    razorpay_order_id: Optional[str] = None
+    amount_paise: int
+    amount_inr: float
+    currency: str = "INR"
+    payment_method: str = "upi"
+    vpa: Optional[str] = None
+    status: str = "captured"
+    verification_source: str = "webhook"
+    verified_at: datetime
+
+    @field_serializer("verified_at")
+    def serialize_verified_at(self, dt: Optional[datetime], _info) -> Optional[str]:
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
+
+
+class BillPaymentHistoryOut(BaseModel):
+    bill_id: str
+    bill_reference: str
+    customer_id: str
+    customer_name: str
+    customer_phone: Optional[str] = None
+    shop_id: str
+    shop_name: str
+    description: str
+    total_amount: float
+    initial_manual_paid: float
+    verified_razorpay_paid: float
+    outstanding_amount: float
+    agreed_repayment_date: date
+    status: str
+    active_payment_request: Optional[RazorpayPaymentRequestOut] = None
+    verified_payments: List[RazorpayPaymentVerificationOut] = []
+    all_repayments: List[RepaymentOut] = []
+
+
+class ShopkeeperBillCreate(BaseModel):
+    customer_id: str = Field(..., description="Target customer ID from customer directory")
+    description: str = Field(..., min_length=2, max_length=255, description="Goods or service description")
+    total_amount: Decimal = Field(..., gt=0, description="Total bill amount in INR")
+    initial_manual_paid: Decimal = Field(Decimal("0.00"), ge=0, description="Optional immediate downpayment at counter")
+    agreed_repayment_date: date = Field(..., description="Agreed date to clear balance")
+    generate_payment_request: bool = Field(True, description="Automatically generate Razorpay payment request")
+    idempotency_key: Optional[str] = Field(None, max_length=100)
+
+
+class RazorpayConfigOut(BaseModel):
+    key_id: str
+    mode: str = "test"
+    is_test_mode: bool = True
+    upi_flow: str = "payment_link"
+    merchant_name: str = "KOSHA MSME Treasury"
+    upi_vpa: str = "kosha.msme@razorpay"

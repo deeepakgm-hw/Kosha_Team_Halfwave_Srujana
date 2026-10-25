@@ -18,15 +18,20 @@ import {
 } from "../types/cashflow";
 import {
   ActivityEvent,
+  BillPaymentHistory,
   CreditTransaction,
   CreditTransactionCreatePayload,
   CustomerDashboardSummary,
   CustomerDuesResponse,
+  CustomerProfile,
   PaymentGatewayStatus,
+  RazorpayConfig,
+  RazorpayPaymentRequest,
   ReminderItem,
   RepaymentCreatePayload,
   Shop,
   ShopQr,
+  ShopkeeperBillCreatePayload,
   ShopkeeperRepaymentCreatePayload,
   ShopkeeperSummary,
   ShopkeeperTransaction,
@@ -373,5 +378,128 @@ export const apiClient = {
   // Payment Gateway Boundary
   async getPaymentGatewayStatus(): Promise<PaymentGatewayStatus> {
     return fetchApi<PaymentGatewayStatus>("/payment-gateway/status");
+  },
+
+  // Razorpay UPI Integration Endpoints
+  async getRazorpayConfig(): Promise<RazorpayConfig> {
+    return fetchApi<RazorpayConfig>("/payment-gateway/config");
+  },
+
+  async createRazorpayPaymentRequest(params: {
+    billId: string;
+    amountPaise?: number;
+    partialAmount?: number;
+    customerId?: string;
+    businessId?: string;
+    idempotencyKey?: string;
+  }): Promise<RazorpayPaymentRequest> {
+    const q = params.customerId ? `?customer_id=${params.customerId}` : "";
+    return fetchApi<RazorpayPaymentRequest>(`/payment-gateway/requests${q}`, {
+      method: "POST",
+      body: JSON.stringify({
+        bill_id: params.billId,
+        amount_paise: params.amountPaise,
+        partial_amount: params.partialAmount,
+        idempotency_key: params.idempotencyKey,
+      }),
+    });
+  },
+
+  async getRazorpayPaymentRequest(requestId: string): Promise<RazorpayPaymentRequest> {
+    return fetchApi<RazorpayPaymentRequest>(`/payment-gateway/requests/${requestId}`);
+  },
+
+  async regenerateRazorpayPaymentRequest(requestId: string, customerId?: string): Promise<RazorpayPaymentRequest> {
+    const q = customerId ? `?customer_id=${customerId}` : "";
+    return fetchApi<RazorpayPaymentRequest>(`/payment-gateway/requests/${requestId}/regenerate${q}`, {
+      method: "POST",
+    });
+  },
+
+  async syncPaymentRequestStatus(requestId: string): Promise<{
+    request_id: string;
+    bill_id: string;
+    status: string;
+    outcome: "success" | "failed" | "awaiting" | "attempt_failed";
+    verified: boolean;
+    payment_id?: string;
+    amount_inr?: number;
+    new_outstanding?: number;
+    message?: string;
+    reason?: string;
+  }> {
+    return fetchApi(`/payment-gateway/requests/${requestId}/sync`, {
+      method: "POST",
+    });
+  },
+
+  async simulatePaymentRecognition(
+    requestId: string,
+    outcome: "success" | "failed",
+    reason?: string
+  ): Promise<{
+    request_id: string;
+    bill_id: string;
+    status: string;
+    outcome: string;
+    verified: boolean;
+    payment_id?: string;
+    amount_inr?: number;
+    new_outstanding?: number;
+    message?: string;
+    reason?: string;
+  }> {
+    return fetchApi(`/payment-gateway/requests/${requestId}/simulate-recognition`, {
+      method: "POST",
+      body: JSON.stringify({ outcome, reason }),
+    });
+  },
+
+  async verifyRazorpayPayment(data: {
+    transaction_id: string;
+    order_id: string;
+    payment_id: string;
+    signature?: string;
+    customerId?: string;
+  }): Promise<{ verified: boolean; payment_id: string; amount_inr: number; status: string }> {
+    const q = data.customerId ? `?customer_id=${data.customerId}` : "";
+    return fetchApi(`/payment-gateway/verify${q}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getBillPaymentHistory(billId: string, customerId?: string, businessId?: string): Promise<BillPaymentHistory> {
+    let url = `/payment-gateway/bills/${billId}/history`;
+    const params = new URLSearchParams();
+    if (customerId) params.append("customer_id", customerId);
+    if (businessId) params.append("business_id", businessId);
+    if (params.toString()) url += `?${params.toString()}`;
+    return fetchApi<BillPaymentHistory>(url);
+  },
+
+  // Shopkeeper Bill Creation & Management
+  async listShopkeeperCustomers(): Promise<CustomerProfile[]> {
+    return fetchApi<CustomerProfile[]>("/shopkeeper/customers");
+  },
+
+  async createShopkeeperBill(payload: ShopkeeperBillCreatePayload, shopId = "shop_apex_01"): Promise<BillPaymentHistory> {
+    return fetchApi<BillPaymentHistory>(`/shopkeeper/bills?shop_id=${shopId}`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async listShopkeeperBills(shopId = "shop_apex_01", status?: string, search?: string): Promise<BillPaymentHistory[]> {
+    let url = `/shopkeeper/bills?shop_id=${shopId}`;
+    if (status && status !== "all") url += `&status=${status}`;
+    if (search && search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
+    return fetchApi<BillPaymentHistory[]>(url);
+  },
+
+  async listCustomerBills(customerId = "cust_rahul_01", status?: string): Promise<BillPaymentHistory[]> {
+    let url = `/customer/bills?customer_id=${customerId}`;
+    if (status && status !== "all") url += `&status=${status}`;
+    return fetchApi<BillPaymentHistory[]>(url);
   },
 };
