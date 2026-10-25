@@ -19,13 +19,13 @@ class AppException(HTTPException):
 
 
 class NotFoundException(AppException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
-        super().__init__(status_code=404, message=message, code="NOT_FOUND", details=details)
+    def __init__(self, message: str, code: str = "NOT_FOUND", details: Optional[Dict[str, Any]] = None):
+        super().__init__(status_code=404, message=message, code=code, details=details)
 
 
 class ValidationError(AppException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
-        super().__init__(status_code=422, message=message, code="VALIDATION_ERROR", details=details)
+    def __init__(self, message: str, code: str = "VALIDATION_ERROR", details: Optional[Dict[str, Any]] = None):
+        super().__init__(status_code=422, message=message, code=code, details=details)
 
 
 def setup_exception_handlers(app: FastAPI) -> None:
