@@ -316,6 +316,7 @@ class CreditTransactionModel(Base):
     repayments = relationship("RepaymentModel", back_populates="transaction", cascade="all, delete-orphan")
     payment_requests = relationship("PaymentRequestModel", back_populates="bill", cascade="all, delete-orphan")
     payment_verifications = relationship("PaymentVerificationModel", back_populates="bill", cascade="all, delete-orphan")
+    autopay_mandates = relationship("AutopayMandateModel", back_populates="bill", cascade="all, delete-orphan")
 
 
 class RepaymentModel(Base):
@@ -556,3 +557,135 @@ class PasswordResetTokenModel(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("UserModel", back_populates="password_reset_tokens")
+
+
+# =============================================================================
+# Production AutoPay & Mandate Models
+# =============================================================================
+
+class AutopayMandateModel(Base):
+    """
+    Authoritative record of a customer-authorized recurring payment mandate (e.g. UPI AutoPay).
+    Lifecycle states:
+    - pending_authorization: Registered in system, awaiting customer authorization at provider.
+    - active: Provider confirmation verified; eligible for future overdue debit.
+    - paused: Temporarily paused by customer or merchant.
+    - revoked: Explicitly revoked by customer (permanent).
+    - cancelled: Cancelled due to full manual bill settlement or shop void.
+    - expired: Passed validity period.
+    - failed: Authorization rejected or failed at provider.
+    """
+    __tablename__ = "autopay_mandates"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    customer_id = Column(String(50), ForeignKey("customers.id"), nullable=False, index=True)
+    business_id = Column(String(50), ForeignKey("businesses.id"), nullable=False, index=True)
+    shop_id = Column(String(50), ForeignKey("shops.id"), nullable=True, index=True)
+    bill_id = Column(String(50), ForeignKey("customer_credit_transactions.id"), nullable=False, index=True)
+
+    razorpay_customer_id = Column(String(100), nullable=True, index=True)
+    razorpay_order_id = Column(String(100), nullable=True, index=True)
+    razorpay_token_id = Column(String(100), nullable=True, index=True)
+    razorpay_mandate_id = Column(String(100), nullable=True, index=True)
+
+    mandate_type = Column(String(50), default="upi_autopay", nullable=False)  # upi_autopay, emandate, card
+    amount_type = Column(String(20), default="variable", nullable=False)      # variable, fixed
+    max_amount_paise = Column(Integer, nullable=False)                        # Maximum authorized limit in paise
+    currency = Column(String(10), default="INR", nullable=False)
+    frequency = Column(String(50), default="as_presented", nullable=False)
+
+    status = Column(String(30), default="pending_authorization", nullable=False, index=True)
+
+    effective_date = Column(Date, nullable=False)
+    expiry_date = Column(Date, nullable=True)
+
+    consent_timestamp = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    terms_version = Column(String(50), default="v1.0-2026", nullable=False)
+    collection_condition = Column(
+        String(255),
+        default="Authorized collection attempted only after agreed repayment deadline if balance remains unpaid",
+        nullable=False,
+    )
+
+    razorpay_auth_reference = Column(String(100), nullable=True)
+    failure_code = Column(String(100), nullable=True)
+    failure_reason = Column(Text, nullable=True)
+    revocation_timestamp = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    bill = relationship("CreditTransactionModel", back_populates="autopay_mandates")
+    customer = relationship("CustomerModel")
+    business = relationship("BusinessModel")
+    attempts = relationship("AutopayAttemptModel", back_populates="mandate", cascade="all, delete-orphan")
+    audit_logs = relationship("ConsentAuditModel", back_populates="mandate", cascade="all, delete-orphan")
+
+
+class AutopayAttemptModel(Base):
+    """
+    Immutable ledger entry for each collection attempt executed against an active mandate.
+    """
+    __tablename__ = "autopay_attempts"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    mandate_id = Column(String(50), ForeignKey("autopay_mandates.id"), nullable=False, index=True)
+    bill_id = Column(String(50), ForeignKey("customer_credit_transactions.id"), nullable=False, index=True)
+    customer_id = Column(String(50), ForeignKey("customers.id"), nullable=False, index=True)
+    business_id = Column(String(50), ForeignKey("businesses.id"), nullable=False, index=True)
+
+    amount_paise = Column(Integer, nullable=False)
+    idempotency_key = Column(String(100), unique=True, nullable=False, index=True)
+    attempt_number = Column(Integer, default=1, nullable=False)
+
+    status = Column(String(30), default="initiated", nullable=False, index=True)  # initiated, pending_confirmation, success, failed, rejected
+    razorpay_payment_id = Column(String(100), nullable=True, index=True)
+    razorpay_order_id = Column(String(100), nullable=True, index=True)
+
+    initiation_time = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    result_time = Column(DateTime, nullable=True)
+
+    failure_code = Column(String(100), nullable=True)
+    failure_reason = Column(Text, nullable=True)
+    reconciliation_status = Column(String(30), default="unreconciled", nullable=False)  # unreconciled, reconciled, mismatch
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    mandate = relationship("AutopayMandateModel", back_populates="attempts")
+    bill = relationship("CreditTransactionModel")
+
+
+class ConsentAuditModel(Base):
+    """
+    Auditable consent trail recording explicit customer approvals, limits, terms version, and revocations.
+    """
+    __tablename__ = "consent_audits"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    mandate_id = Column(String(50), ForeignKey("autopay_mandates.id"), nullable=True, index=True)
+    customer_id = Column(String(50), ForeignKey("customers.id"), nullable=False, index=True)
+    bill_id = Column(String(50), ForeignKey("customer_credit_transactions.id"), nullable=False, index=True)
+    business_id = Column(String(50), nullable=False, index=True)
+
+    action = Column(String(50), nullable=False)  # consent_granted, consent_rejected, mandate_authorized, mandate_paused, mandate_resumed, mandate_revoked, mandate_cancelled
+    terms_version = Column(String(50), nullable=False)
+    max_amount_paise = Column(Integer, nullable=False)
+    currency = Column(String(10), default="INR", nullable=False)
+
+    ip_address = Column(String(100), nullable=True)
+    user_agent = Column(String(255), nullable=True)
+    auth_flow_reference = Column(String(100), nullable=True)
+
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    notes = Column(Text, nullable=True)
+
+    mandate = relationship("AutopayMandateModel", back_populates="audit_logs")

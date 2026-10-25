@@ -19,6 +19,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { apiClient, formatApiError } from "../../lib/api";
 import { Shop, CreditTransaction } from "../../types/customer";
 import { formatINR } from "../../lib/utils";
+import { AutoPayCard } from "../../components/bills/AutoPayCard";
 
 export const CustomerPayPage: React.FC = () => {
   const navigate = useNavigate();
@@ -857,6 +858,21 @@ export const CustomerPayPage: React.FC = () => {
               </div>
             )}
           </div>
+
+          {confirmedTxn.outstanding_amount > 0 && (
+            <div className="max-w-md mx-auto text-left">
+              <AutoPayCard
+                billId={confirmedTxn.id}
+                billReference={confirmedTxn.reference}
+                shopName={confirmedTxn.shop_name}
+                totalAmount={confirmedTxn.purchase_amount}
+                paidAmount={confirmedTxn.initial_paid_amount}
+                outstandingAmount={confirmedTxn.outstanding_amount}
+                agreedRepaymentDate={confirmedTxn.agreed_repayment_date}
+                customerId={confirmedTxn.customer_id}
+              />
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto pt-2">
             <button

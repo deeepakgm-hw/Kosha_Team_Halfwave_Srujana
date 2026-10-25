@@ -928,6 +928,20 @@ class RazorpayService:
         db.add(webhook_record)
         db.commit()
 
+        # Handle AutoPay / Recurring Mandate Webhook Events
+        if (
+            event_name.startswith("mandate.")
+            or event_name.startswith("subscription.")
+            or event_name == "token.confirmed"
+        ):
+            from backend.app.services.autopay_service import autopay_service
+            mnd_res = autopay_service.handle_mandate_webhook(event_name, payload, db)
+            return {
+                "status": "processed",
+                "event": event_name,
+                "autopay": mnd_res,
+            }
+
         # 4. Handle Failure Events: Never change bill balance
         if event_name == "payment.failed":
             payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})

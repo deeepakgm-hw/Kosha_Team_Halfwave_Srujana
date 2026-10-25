@@ -1,5 +1,12 @@
 import { ApiHealthResponse } from "../types/api";
 import {
+  AutopayMandate,
+  AutopayMandateDetail,
+  AutopaySetupPayload,
+  AutopaySetupResponse,
+  AutopayVerifyPayload,
+} from "../types/autopay";
+import {
   AuthResponse,
   GoogleAuthPayload,
   LoginPayload,
@@ -650,6 +657,82 @@ export const apiClient = {
     return fetchApi<MessageResponse>("/auth/reset-password", {
       method: "POST",
       body: JSON.stringify(payload),
+    });
+  },
+
+  // ---------------------------------------------------------------------------
+  // AutoPay & Recurring Mandates API
+  // ---------------------------------------------------------------------------
+  async setupAutopayMandate(payload: AutopaySetupPayload, customerId?: string): Promise<AutopaySetupResponse> {
+    const q = customerId ? `?customer_id=${encodeURIComponent(customerId)}` : "";
+    return fetchApi<AutopaySetupResponse>(`/autopay/mandates/setup${q}`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async verifyAutopayMandate(payload: AutopayVerifyPayload, customerId?: string): Promise<AutopayMandate> {
+    const q = customerId ? `?customer_id=${encodeURIComponent(customerId)}` : "";
+    return fetchApi<AutopayMandate>(`/autopay/mandates/verify${q}`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getAutopayMandateByBill(
+    billId: string,
+    customerId?: string,
+    businessId?: string
+  ): Promise<AutopayMandateDetail | null> {
+    const params = new URLSearchParams();
+    if (customerId) params.append("customer_id", customerId);
+    if (businessId) params.append("business_id", businessId);
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return fetchApi<AutopayMandateDetail | null>(`/autopay/mandates/bill/${billId}${qs}`);
+  },
+
+  async listCustomerAutopayMandates(customerId?: string): Promise<AutopayMandate[]> {
+    const q = customerId ? `?customer_id=${encodeURIComponent(customerId)}` : "";
+    return fetchApi<AutopayMandate[]>(`/autopay/mandates/customer${q}`);
+  },
+
+  async listBusinessAutopayMandates(businessId?: string): Promise<AutopayMandate[]> {
+    const q = businessId ? `?business_id=${encodeURIComponent(businessId)}` : "";
+    return fetchApi<AutopayMandate[]>(`/autopay/mandates/business${q}`);
+  },
+
+  async pauseAutopayMandate(
+    mandateId: string,
+    customerId?: string,
+    businessId?: string
+  ): Promise<AutopayMandate> {
+    const params = new URLSearchParams();
+    if (customerId) params.append("customer_id", customerId);
+    if (businessId) params.append("business_id", businessId);
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return fetchApi<AutopayMandate>(`/autopay/mandates/${mandateId}/pause${qs}`, {
+      method: "POST",
+    });
+  },
+
+  async resumeAutopayMandate(
+    mandateId: string,
+    customerId?: string,
+    businessId?: string
+  ): Promise<AutopayMandate> {
+    const params = new URLSearchParams();
+    if (customerId) params.append("customer_id", customerId);
+    if (businessId) params.append("business_id", businessId);
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return fetchApi<AutopayMandate>(`/autopay/mandates/${mandateId}/resume${qs}`, {
+      method: "POST",
+    });
+  },
+
+  async revokeAutopayMandate(mandateId: string, customerId?: string): Promise<AutopayMandate> {
+    const q = customerId ? `?customer_id=${encodeURIComponent(customerId)}` : "";
+    return fetchApi<AutopayMandate>(`/autopay/mandates/${mandateId}/revoke${q}`, {
+      method: "POST",
     });
   },
 };

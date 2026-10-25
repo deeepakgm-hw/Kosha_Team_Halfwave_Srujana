@@ -21,6 +21,7 @@ import {
 import { BillPaymentHistory, RazorpayPaymentRequest } from "../../types/customer";
 import { formatINR, parseUtcDate } from "../../lib/utils";
 import { apiClient, formatApiError } from "../../lib/api";
+import { AutoPayCard } from "./AutoPayCard";
 
 interface DigitalBillModalProps {
   bill: BillPaymentHistory;
@@ -603,6 +604,22 @@ export const DigitalBillModal: React.FC<DigitalBillModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* AutoPay Recurring Mandate Section */}
+          <AutoPayCard
+            billId={currentBill.bill_id || currentBill.id || ""}
+            billReference={currentBill.bill_reference || currentBill.bill_number}
+            shopName={currentBill.shop_name}
+            totalAmount={currentBill.total_amount}
+            paidAmount={currentBill.total_amount - currentBill.outstanding_amount}
+            outstandingAmount={currentBill.outstanding_amount}
+            agreedRepaymentDate={currentBill.agreed_repayment_date}
+            customerId={_customerId || currentBill.customer_id}
+            isBusinessOwner={isBusinessOwner}
+            onMandateUpdated={() => {
+              if (onRefresh) onRefresh();
+            }}
+          />
 
           {/* Payment History Audit Table */}
           <div className="space-y-2">

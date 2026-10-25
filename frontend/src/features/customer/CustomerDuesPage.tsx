@@ -398,6 +398,13 @@ export const CustomerDuesPage: React.FC = () => {
                             ? "Pending Verification"
                             : "Unpaid"}
                         </span>
+
+                        {bill.outstanding_amount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                            AutoPay Eligible
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2 text-xs text-[#545D68]">
