@@ -1050,7 +1050,7 @@ export const ShopCreditPage: React.FC = () => {
                 {summary?.shop.shop_name}
               </h3>
               <p className="text-xs text-[#545D68] font-medium mt-0.5">
-                Scan with any UPI app (GPay / PhonePe / Paytm) or KOSHA
+                Scan with KOSHA Scanner, or configure real bank UPI ID below for GPay / PhonePe
               </p>
             </div>
 
@@ -1058,13 +1058,72 @@ export const ShopCreditPage: React.FC = () => {
               {qrDataUrl && <img src={qrDataUrl} alt="Store QR" className="w-56 h-56 mx-auto" />}
             </div>
 
+            {/* VPA Status & Real UPI ID Setup */}
+            {(!summary?.shop?.upi_id || summary.shop.upi_id.endsWith("@upi") || summary.shop.upi_id.includes("kosha.msme")) ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-xs text-amber-900 text-left space-y-2">
+                <div className="flex items-start gap-2 font-bold">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span>Demo VPA: {summary?.shop?.upi_id || "apexworks@upi"}</span>
+                    <p className="text-[11px] font-normal text-amber-800 mt-0.5 leading-relaxed">
+                      Real UPI apps (GPay, PhonePe, Paytm) verify accounts with NPCI banks and will show <strong>"Cannot pay with this QR code"</strong> on demo handles.
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-1 border-t border-amber-200/80">
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-900 mb-1">
+                    Enter your real GPay / PhonePe UPI ID to receive live payments:
+                  </span>
+                  <form onSubmit={handleSaveUpi} className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={customUpiInput}
+                      onChange={(e) => setCustomUpiInput(e.target.value)}
+                      placeholder="e.g. yourname@okaxis or 9876543210@ybl"
+                      className="flex-1 px-3 py-1.5 rounded-lg border border-amber-300 font-mono text-xs focus:ring-2 focus:ring-[#0070E0] bg-white text-slate-900"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      disabled={isSavingUpi}
+                      className="px-3.5 py-1.5 rounded-lg bg-[#0070E0] hover:bg-[#003087] text-white text-xs font-bold transition-all disabled:opacity-50 shrink-0"
+                    >
+                      {isSavingUpi ? "Saving..." : "Set Real UPI"}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-left text-xs text-emerald-900 space-y-1">
+                <div className="flex items-center justify-between font-bold">
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Live Bank VPA Active</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingUpi(true)}
+                    className="text-[11px] font-bold text-[#0070E0] hover:underline"
+                  >
+                    Change
+                  </button>
+                </div>
+                <p className="text-[11px] font-mono font-bold text-slate-800">
+                  {summary.shop.upi_id}
+                </p>
+                <p className="text-[10px] text-emerald-700">
+                  Ready to accept live payments from Google Pay, PhonePe, and Paytm!
+                </p>
+              </div>
+            )}
+
             <div className="bg-[#F5F7FA] rounded-2xl p-3 text-xs space-y-1 border border-[#E1E7EC] text-left">
               <div className="flex justify-between font-mono font-bold text-slate-700">
                 <span>Shop Code:</span>
                 <span className="text-[#0070E0]">{selectedShopCode}</span>
               </div>
               <div className="flex justify-between font-mono font-bold text-slate-700">
-                <span>Payee VPA:</span>
+                <span>Current VPA:</span>
                 <span className="text-[#001C64]">{summary?.shop?.upi_id || "kosha.msme@razorpay"}</span>
               </div>
             </div>
@@ -1074,10 +1133,10 @@ export const ShopCreditPage: React.FC = () => {
                 href={`/customer/pay?shop=${selectedShopCode}`}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-2.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-2.5 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white text-xs font-bold shadow-paypal transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Smartphone className="w-4 h-4 text-emerald-600" />
-                <span>Simulate Customer Scan &amp; Pay</span>
+                <Smartphone className="w-4 h-4" />
+                <span>Simulate Customer Scan &amp; Split Payment</span>
               </a>
 
               <div className="flex gap-2">

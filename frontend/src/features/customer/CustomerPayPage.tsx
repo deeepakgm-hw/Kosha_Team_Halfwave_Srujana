@@ -15,7 +15,6 @@ import {
   Receipt,
   RotateCcw,
   Smartphone,
-  ExternalLink,
   Sparkles,
   Check,
 } from "lucide-react";
@@ -420,6 +419,33 @@ export const CustomerPayPage: React.FC = () => {
         .catch(() => {});
     }
   }, [parsedPaid, selectedShop, showDownpaymentQr, upiIntentUri]);
+
+  const isShopDemoVpa = !selectedShop?.upi_id ||
+    selectedShop.upi_id.endsWith("@upi") ||
+    selectedShop.upi_id.includes("kosha.msme") ||
+    selectedShop.upi_id.includes("dummy");
+
+  const handlePayInUpiApp = () => {
+    setDownpaymentVerified(true);
+    setDownpaymentMethod("upi_app");
+    if (!downpaymentUtr || downpaymentUtr.startsWith("UPI/REC-INIT")) {
+      setDownpaymentUtr(`UPI/APP/${Date.now().toString().slice(-6)}`);
+    }
+
+    const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!isMobile) {
+      // On desktop computers, there is no native UPI handler installed
+      setShowDownpaymentQr(true);
+      return;
+    }
+
+    // On mobile devices, triggering window.location opens GPay / PhonePe directly without popup blocker
+    try {
+      window.location.href = upiIntentUri;
+    } catch {
+      setShowDownpaymentQr(true);
+    }
+  };
 
   const handleProceedToReview = (e: React.FormEvent) => {
     e.preventDefault();
@@ -851,25 +877,29 @@ export const CustomerPayPage: React.FC = () => {
                   Pay {formatINR(parsedPaid)} now to <span className="font-bold text-slate-800">{selectedShop.shop_name}</span> (<span className="font-mono text-[#0070E0]">{selectedShop.upi_id || "kosha.msme@razorpay"}</span>). The remaining balance of <span className="font-bold text-[#001C64]">{formatINR(remainingDue)}</span> will be automatically issued as an active credit bill.
                 </p>
 
+                {isShopDemoVpa && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Simulated Demo VPA ({selectedShop.upi_id || "demo"})</span>
+                    </div>
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      External UPI apps (GPay, PhonePe, Paytm) will report <strong>"Cannot pay with this QR code"</strong> on simulated test handles. Click <strong>"Instant Verify (Test)"</strong> or <strong>"Counter Cash"</strong> below to simulate full checkout and record your transaction.
+                    </p>
+                  </div>
+                )}
+
                 {/* UPI Intent & Testing Action Buttons */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                   {/* Action 1: Open Phone UPI App */}
-                  <a
-                    href={upiIntentUri}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => {
-                      setDownpaymentVerified(true);
-                      setDownpaymentMethod("upi_app");
-                      if (!downpaymentUtr || downpaymentUtr.startsWith("UPI/REC-INIT")) {
-                        setDownpaymentUtr(`UPI/APP/${Date.now().toString().slice(-6)}`);
-                      }
-                    }}
+                  <button
+                    type="button"
+                    onClick={handlePayInUpiApp}
                     className="p-2.5 rounded-xl bg-[#0070E0] hover:bg-[#003087] text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 text-center cursor-pointer"
                   >
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    <Smartphone className="w-3.5 h-3.5" />
                     <span>Pay in UPI App</span>
-                  </a>
+                  </button>
 
                   {/* Action 2: Show Scannable QR Code */}
                   <button
@@ -922,6 +952,14 @@ export const CustomerPayPage: React.FC = () => {
                     <div className="text-[11px] font-mono text-[#001C64] font-bold">
                       Pay Exact: {formatINR(parsedPaid)} • VPA: {selectedShop.upi_id || "kosha.msme@razorpay"}
                     </div>
+                    {isShopDemoVpa && (
+                      <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-800 text-left">
+                        <strong>Why does GPay say "Cannot pay with this QR code"?</strong>
+                        <p className="mt-0.5">
+                          This shop uses a simulated demo handle (<code>{selectedShop.upi_id || "demo"}</code>). Live UPI apps only accept registered bank accounts. Click <strong>"Instant Verify (Test)"</strong> above to complete downpayment without real money!
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
