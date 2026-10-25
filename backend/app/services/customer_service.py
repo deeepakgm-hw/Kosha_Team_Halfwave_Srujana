@@ -822,11 +822,24 @@ class CustomerService:
             if existing_txn:
                 return self._serialize_transaction(existing_txn)
 
+        clean_shop_code = data.shop_code.strip()
         shop = (
             db.query(ShopModel)
-            .filter(ShopModel.shop_code.ilike(data.shop_code.strip()))
+            .filter(ShopModel.shop_code.ilike(clean_shop_code))
             .first()
         )
+        if not shop:
+            shop = (
+                db.query(ShopModel)
+                .filter(
+                    or_(
+                        ShopModel.id == clean_shop_code,
+                        ShopModel.upi_id.ilike(clean_shop_code),
+                        ShopModel.shop_name.ilike(clean_shop_code),
+                    )
+                )
+                .first()
+            )
         if not shop:
             raise AppException(
                 status_code=404,
@@ -1056,13 +1069,63 @@ class CustomerService:
         return [ShopOut.model_validate(s) for s in shops]
 
     def get_shop_by_code(self, shop_code: str, db: Session) -> ShopOut:
-        """Resolves a shop by its unique QR or manual code."""
+        """Resolves a shop by code, VPA, name, or auto-registers a scanned merchant."""
         self.ensure_system_metadata(db)
-        clean_code = shop_code.strip()
-        shop = db.query(ShopModel).filter(ShopModel.shop_code.ilike(clean_code)).first()
-        if not shop:
-            raise NotFoundException(f"Shop with code '{shop_code}' not found.")
-        return ShopOut.model_validate(shop)
+        clean = shop_code.strip()
+
+        # 1. Exact or case-insensitive shop_code match
+        shop = db.query(ShopModel).filter(ShopModel.shop_code.ilike(clean)).first()
+        if shop:
+            return ShopOut.model_validate(shop)
+
+        # 2. Extract KOSHA- or KSH- pattern if present inside the string
+        import re
+        code_match = re.search(r'(KOSHA-[A-Za-z0-9_-]+|KSH-[A-Za-z0-9_-]+)', clean, re.IGNORECASE)
+        if code_match:
+            sub_code = code_match.group(1).upper()
+            shop = db.query(ShopModel).filter(ShopModel.shop_code.ilike(sub_code)).first()
+            if shop:
+                return ShopOut.model_validate(shop)
+
+        # 3. Match by shop ID
+        shop = db.query(ShopModel).filter(ShopModel.id == clean).first()
+        if shop:
+            return ShopOut.model_validate(shop)
+
+        # 4. Match by UPI ID / VPA
+        shop = db.query(ShopModel).filter(ShopModel.upi_id.ilike(clean)).first()
+        if shop:
+            return ShopOut.model_validate(shop)
+
+        # 5. Match by Shop Name (exact or substring)
+        shop = db.query(ShopModel).filter(ShopModel.shop_name.ilike(clean)).first()
+        if shop:
+            return ShopOut.model_validate(shop)
+
+        shop = db.query(ShopModel).filter(ShopModel.shop_name.ilike(f"%{clean}%")).first()
+        if shop:
+            return ShopOut.model_validate(shop)
+
+        # 6. Auto-register scanned merchant so the customer can pay immediately!
+        clean_name = clean.replace("_", " ").replace("-", " ").strip()
+        code_slug = "KSH-" + uuid.uuid4().hex[:6].upper()
+        merchant_upi = clean if "@" in clean else f"{code_slug.lower()}@upi"
+        new_shop = ShopModel(
+            id=str(uuid.uuid4()),
+            shop_name=clean_name.title() if len(clean_name) <= 60 else clean_name[:60],
+            shop_code=code_slug,
+            category="Retail & Counter Merchant",
+            owner_name="Verified Counter Merchant",
+            phone=None,
+            upi_id=merchant_upi,
+            qr_payload=f"upi://pay?pa={merchant_upi}&pn={quote_plus(clean_name)}&cu=INR&tn={code_slug}",
+            is_verified=True,
+            status="active",
+        )
+        db.add(new_shop)
+        db.commit()
+        db.refresh(new_shop)
+        return ShopOut.model_validate(new_shop)
 
     def get_activity(
         self, customer_id: str, limit: int, db: Session

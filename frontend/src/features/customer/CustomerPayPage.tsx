@@ -139,41 +139,125 @@ export const CustomerPayPage: React.FC = () => {
     }
   };
 
-  const parseQrPayload = (payload: string): { code: string; amount?: string } => {
+  interface ParsedQrResult {
+    code: string;
+    amount?: string;
+    payeeName?: string;
+    payeeVpa?: string;
+  }
+
+  const parseQrPayload = (payload: string): ParsedQrResult => {
     const clean = payload.trim();
 
-    // 1. Handle standard NPCI UPI QR code: upi://pay?pa=...&pn=...&am=...&tn=KOSHA-LAKSHMI
+    // 1. Handle standard NPCI UPI QR code: upi://pay?pa=...&pn=...&am=...&tn=...
     if (clean.toLowerCase().startsWith("upi://pay?") || clean.toLowerCase().startsWith("upi://pay/")) {
       try {
         const urlStr = clean.replace(/^upi:\/\/pay\/?\?/i, "https://upi.dummy/?");
         const parsed = new URL(urlStr);
-        const tn = parsed.searchParams.get("tn") || "";
-        const am = parsed.searchParams.get("am") || "";
-        const pa = parsed.searchParams.get("pa") || "";
+        const tn = parsed.searchParams.get("tn") ? decodeURIComponent(parsed.searchParams.get("tn") || "").trim() : "";
+        const am = parsed.searchParams.get("am") ? decodeURIComponent(parsed.searchParams.get("am") || "").trim() : "";
+        const pa = parsed.searchParams.get("pa") ? decodeURIComponent(parsed.searchParams.get("pa") || "").trim() : "";
+        const pn = parsed.searchParams.get("pn") ? decodeURIComponent(parsed.searchParams.get("pn") || "").trim() : "";
 
-        // If transaction note contains shop code (e.g. "KOSHA-LAKSHMI" or "KOSHA-APEX")
-        if (tn.toUpperCase().includes("KOSHA-")) {
-          const match = tn.toUpperCase().match(/KOSHA-[A-Z0-9_-]+/);
-          if (match) return { code: match[0], amount: am || undefined };
-        } else if (tn.trim().length >= 3) {
-          return { code: tn.trim(), amount: am || undefined };
+        // Check A: Does tn or full payload contain an explicit Kosha merchant code pattern (e.g. KOSHA-xxx or KSH-xxx)?
+        const explicitMatch = (tn + " " + clean).match(/(KOSHA-[A-Za-z0-9_-]+|KSH-[A-Za-z0-9_-]+)/i);
+        if (explicitMatch) {
+          return {
+            code: explicitMatch[1].toUpperCase(),
+            amount: am || undefined,
+            payeeName: pn || undefined,
+            payeeVpa: pa || undefined,
+          };
         }
 
-        // Match by UPI VPA if available
+        // Check B: Match against loaded shops by UPI VPA (pa)
         if (pa) {
-          const matchedShop = availableShops.find(
+          const matchedByVpa = availableShops.find(
             (s) => s.upi_id?.toLowerCase() === pa.toLowerCase()
           );
-          if (matchedShop) {
-            return { code: matchedShop.shop_code, amount: am || undefined };
+          if (matchedByVpa) {
+            return {
+              code: matchedByVpa.shop_code,
+              amount: am || undefined,
+              payeeName: pn || matchedByVpa.shop_name,
+              payeeVpa: pa,
+            };
           }
         }
-      } catch {
-        const match = clean.match(/tn=([^&]+)/i);
-        if (match) {
-          const val = decodeURIComponent(match[1]);
-          return { code: val.trim() };
+
+        // Check C: Match against loaded shops by Payee Name (pn)
+        if (pn) {
+          const lowerPn = pn.toLowerCase();
+          const matchedByName = availableShops.find(
+            (s) =>
+              s.shop_name.toLowerCase() === lowerPn ||
+              lowerPn.includes(s.shop_name.toLowerCase()) ||
+              s.shop_name.toLowerCase().includes(lowerPn)
+          );
+          if (matchedByName) {
+            return {
+              code: matchedByName.shop_code,
+              amount: am || undefined,
+              payeeName: matchedByName.shop_name,
+              payeeVpa: pa || matchedByName.upi_id,
+            };
+          }
         }
+
+        // Check D: If tn matches a known shop code or shop name exactly
+        if (tn) {
+          const matchedByTn = availableShops.find(
+            (s) =>
+              s.shop_code.toUpperCase() === tn.toUpperCase() ||
+              s.shop_name.toLowerCase() === tn.toLowerCase()
+          );
+          if (matchedByTn) {
+            return {
+              code: matchedByTn.shop_code,
+              amount: am || undefined,
+              payeeName: pn || matchedByTn.shop_name,
+              payeeVpa: pa || matchedByTn.upi_id,
+            };
+          }
+        }
+
+        // Check E: If it's a standard retail UPI QR, prioritize pa (VPA) or pn (merchant name)
+        // If neither exists, and tn looks like a descriptive phrase (e.g. contains spaces like "Locallite payment"),
+        // use availableShops[0] if available or the clean pa/pn
+        if (pa) {
+          return {
+            code: pa,
+            amount: am || undefined,
+            payeeName: pn || undefined,
+            payeeVpa: pa,
+          };
+        }
+
+        if (pn) {
+          return {
+            code: pn,
+            amount: am || undefined,
+            payeeName: pn,
+            payeeVpa: pa || undefined,
+          };
+        }
+
+        // If only tn is present and has no spaces, maybe it's a code
+        if (tn && !tn.includes(" ")) {
+          return { code: tn, amount: am || undefined };
+        }
+
+        // Fallback: If availableShops has shops, return first available shop code
+        if (availableShops.length > 0) {
+          return {
+            code: availableShops[0].shop_code,
+            amount: am || undefined,
+            payeeName: pn || availableShops[0].shop_name,
+            payeeVpa: pa || availableShops[0].upi_id,
+          };
+        }
+      } catch (err) {
+        console.warn("Error parsing UPI QR URL:", err);
       }
     }
 
@@ -195,7 +279,22 @@ export const CustomerPayPage: React.FC = () => {
       }
     }
 
-    // 4. Direct shop code fallback
+    // 4. Regex pattern match for KOSHA- or KSH- anywhere in string
+    const patternMatch = clean.match(/(KOSHA-[A-Za-z0-9_-]+|KSH-[A-Za-z0-9_-]+)/i);
+    if (patternMatch) {
+      return { code: patternMatch[1].toUpperCase() };
+    }
+
+    // 5. Match direct string with available shops
+    const directMatch = availableShops.find(
+      (s) =>
+        s.shop_code.toLowerCase() === clean.toLowerCase() ||
+        s.shop_name.toLowerCase() === clean.toLowerCase()
+    );
+    if (directMatch) {
+      return { code: directMatch.shop_code };
+    }
+
     return { code: clean };
   };
 
@@ -225,9 +324,9 @@ export const CustomerPayPage: React.FC = () => {
         },
         async (decodedText: string) => {
           // Detected QR
-          const { code, amount } = parseQrPayload(decodedText);
+          const { code, amount, payeeName, payeeVpa } = parseQrPayload(decodedText);
           await stopCameraScanner();
-          handleResolveShop(code, amount);
+          handleResolveShop(code, amount, payeeName, payeeVpa);
         },
         () => {
           // Frame scan error - ignore frame by frame noise
@@ -249,9 +348,15 @@ export const CustomerPayPage: React.FC = () => {
     }
   };
 
-  const handleResolveShop = async (rawCode: string, prefilledAmount?: string) => {
-    const { code, amount } = parseQrPayload(rawCode);
-    if (!code) {
+  const handleResolveShop = async (
+    rawCode: string,
+    prefilledAmount?: string,
+    scannedPayeeName?: string,
+    scannedPayeeVpa?: string
+  ) => {
+    const { code, amount, payeeName, payeeVpa } = parseQrPayload(rawCode);
+    const targetCode = code || rawCode.trim();
+    if (!targetCode) {
       setShopError("Please enter or scan a valid shop code or UPI QR.");
       return;
     }
@@ -264,11 +369,20 @@ export const CustomerPayPage: React.FC = () => {
     setIsResolvingShop(true);
     setShopError(null);
     try {
-      const shop = await apiClient.getShopByCode(code);
+      let shop = await apiClient.getShopByCode(targetCode);
       if (shop.status === "inactive") {
         setShopError(`Shop "${shop.shop_name}" is currently inactive and cannot accept credit purchases.`);
         setSelectedShop(null);
         return;
+      }
+      // Enrich shop profile with scanned VPA or Payee Name if available
+      const finalVpa = scannedPayeeVpa || payeeVpa;
+      const finalName = scannedPayeeName || payeeName;
+      if (finalVpa && (!shop.upi_id || shop.upi_id.endsWith("@upi"))) {
+        shop = { ...shop, upi_id: finalVpa };
+      }
+      if (finalName && (shop.shop_name === "Verified Counter Merchant" || shop.shop_name.toLowerCase().includes("counter"))) {
+        shop = { ...shop, shop_name: finalName };
       }
       setSelectedShop(shop);
       setShopCodeInput(shop.shop_code);
@@ -591,9 +705,39 @@ export const CustomerPayPage: React.FC = () => {
           )}
 
           {shopError && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>{shopError}</span>
+            <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs space-y-3">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5 flex-1">
+                  <p className="font-bold">{shopError}</p>
+                  <p className="text-[11px] text-rose-700">
+                    Tap any participating merchant below to proceed with your transaction immediately:
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                {availableShops.map((shop) => (
+                  <button
+                    key={shop.id}
+                    type="button"
+                    onClick={async () => {
+                      await stopCameraScanner();
+                      handleResolveShop(shop.shop_code);
+                    }}
+                    className="p-2.5 bg-white hover:bg-blue-50 border border-rose-200 hover:border-[#0070E0] rounded-xl text-left transition-all shadow-xs group flex items-center justify-between"
+                  >
+                    <div>
+                      <span className="font-bold text-xs text-slate-900 group-hover:text-[#0070E0] block">
+                        {shop.shop_name}
+                      </span>
+                      <span className="text-[10px] font-mono text-[#0070E0] font-bold block">
+                        {shop.shop_code}
+                      </span>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0070E0] transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
