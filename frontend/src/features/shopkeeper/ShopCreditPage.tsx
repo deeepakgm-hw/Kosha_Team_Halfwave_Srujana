@@ -18,6 +18,10 @@ import {
   PlusCircle,
   ExternalLink,
   FileText,
+  ShieldCheck,
+  Clock,
+  PlayCircle,
+  RotateCcw,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { apiClient, formatApiError } from "../../lib/api";
@@ -27,16 +31,24 @@ import {
   ShopkeeperTransaction,
   BillPaymentHistory,
 } from "../../types/customer";
+import { BusinessAutopayDashboardSummary } from "../../types/autopay";
 import { formatINR } from "../../lib/utils";
 import { BusinessPaymentsSection } from "../payments/BusinessPaymentsSection";
 import { DigitalBillModal } from "../../components/bills/DigitalBillModal";
+import { BillTimelineModal } from "../../components/bills/BillTimelineModal";
 
 export const ShopCreditPage: React.FC = () => {
   const [selectedShopCode, setSelectedShopCode] = useState<string>("KOSHA-APEX");
-  const [activeTab, setActiveTab] = useState<"credit_ledger" | "razorpay_upi">("credit_ledger");
+  const [activeTab, setActiveTab] = useState<"credit_ledger" | "razorpay_upi" | "autopay_smart_dues">("credit_ledger");
   const [shops, setShops] = useState<Shop[]>([]);
   const [summary, setSummary] = useState<ShopkeeperSummary | null>(null);
   const [transactions, setTransactions] = useState<ShopkeeperTransaction[]>([]);
+  const [autopaySummary, setAutopaySummary] = useState<BusinessAutopayDashboardSummary | null>(null);
+  const [selectedBillIdForTimeline, setSelectedBillIdForTimeline] = useState<string | null>(null);
+  const [isTriggeringCollection, setIsTriggeringCollection] = useState<boolean>(false);
+  const [isTriggeringReconciliation, setIsTriggeringReconciliation] = useState<boolean>(false);
+  const [autopayFeedback, setAutopayFeedback] = useState<string | null>(null);
+  const [autopayFilter, setAutopayFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -112,6 +124,51 @@ export const ShopCreditPage: React.FC = () => {
   useEffect(() => {
     loadShopData();
   }, [selectedShopCode, statusFilter]);
+
+  const loadAutopayData = async () => {
+    try {
+      const res = await apiClient.getBusinessAutopayDashboard("shop_apex_01");
+      setAutopaySummary(res);
+    } catch (e) {
+      console.error("Error loading autopay dashboard:", e);
+    }
+  };
+
+  useEffect(() => {
+    loadAutopayData();
+  }, [activeTab]);
+
+  const handleTriggerCollection = async () => {
+    setIsTriggeringCollection(true);
+    setAutopayFeedback(null);
+    try {
+      const res = await apiClient.triggerCollectionCycle({ bypass_notification_window: true });
+      setAutopayFeedback(
+        `Collection cycle executed: ${res.succeeded_count} collected (₹${res.total_collected_inr.toLocaleString()}), ${res.deferred_count} deferred.`
+      );
+      loadAutopayData();
+    } catch (err: unknown) {
+      setAutopayFeedback(`Collection run error: ${formatApiError(err)}`);
+    } finally {
+      setIsTriggeringCollection(false);
+    }
+  };
+
+  const handleTriggerReconciliation = async () => {
+    setIsTriggeringReconciliation(true);
+    setAutopayFeedback(null);
+    try {
+      const res = await apiClient.runReconciliation({ business_id: "shop_apex_01", force_audit_all: true });
+      setAutopayFeedback(
+        `Reconciliation cycle completed: ${res.resolved_count} discrepancies resolved, ${res.manual_review_count} flagged for review.`
+      );
+      loadAutopayData();
+    } catch (err: unknown) {
+      setAutopayFeedback(`Reconciliation error: ${formatApiError(err)}`);
+    } finally {
+      setIsTriggeringReconciliation(false);
+    }
+  };
 
   // Handle Search on Submit or Debounce
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -270,10 +327,278 @@ export const ShopCreditPage: React.FC = () => {
             Live Gateway
           </span>
         </button>
+        <button
+          onClick={() => setActiveTab("autopay_smart_dues")}
+          className={`px-5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === "autopay_smart_dues"
+              ? "bg-[#0070E0] text-white shadow-xs"
+              : "text-[#545D68] hover:text-[#0C0C0D] hover:bg-[#F5F7FA]"
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-emerald-300" />
+          <span>AutoPay &amp; Smart Dues</span>
+          {autopaySummary && (
+            <span className="px-2 py-0.5 rounded-full text-[9px] bg-emerald-100 text-emerald-800 font-black">
+              {autopaySummary.active_mandates_count} Active
+            </span>
+          )}
+        </button>
       </div>
 
       {activeTab === "razorpay_upi" ? (
         <BusinessPaymentsSection />
+      ) : activeTab === "autopay_smart_dues" ? (
+        <div className="space-y-4">
+          {/* Header Action Banner */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-paypal space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">
+                    AutoPay &amp; Smart Dues Operations
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Recurring payment mandates, deadline collection worker &amp; automated ledger reconciliation
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={handleTriggerCollection}
+                  disabled={isTriggeringCollection}
+                  className="px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+                  title="Run collection cycle over overdue bills with active mandates"
+                >
+                  <PlayCircle className="w-3.5 h-3.5" />
+                  <span>{isTriggeringCollection ? "Processing..." : "Run Collection Cycle Now"}</span>
+                </button>
+
+                <button
+                  onClick={handleTriggerReconciliation}
+                  disabled={isTriggeringReconciliation}
+                  className="px-4 py-2 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+                  title="Reconcile ambiguous attempts and ledger balances against Razorpay"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>{isTriggeringReconciliation ? "Auditing..." : "Run Automated Reconciliation"}</span>
+                </button>
+
+                <button
+                  onClick={loadAutopayData}
+                  className="p-2 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 transition-all shadow-2xs"
+                  title="Refresh Dashboard"
+                >
+                  <RefreshCw className="w-4 h-4 text-[#0070E0]" />
+                </button>
+              </div>
+            </div>
+
+            {/* Feedback notification banner */}
+            {autopayFeedback && (
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-semibold flex items-center justify-between">
+                <span>{autopayFeedback}</span>
+                <button onClick={() => setAutopayFeedback(null)} className="text-blue-500 hover:text-blue-800 font-bold ml-2">
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Top KPI Strip */}
+            {autopaySummary && (
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-2.5 pt-1 text-xs">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">Active Mandates</span>
+                  <span className="text-xl font-black text-emerald-700 font-mono mt-0.5 block">
+                    {autopaySummary.active_mandates_count}
+                  </span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">Eligible Bills</span>
+                  <span className="text-xl font-black text-slate-900 font-mono mt-0.5 block">
+                    {autopaySummary.eligible_bills_count}
+                  </span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase block">Protected Overdue</span>
+                  <span className="text-xl font-black text-emerald-700 font-mono mt-0.5 block">
+                    {formatINR(autopaySummary.total_protected_outstanding_inr)}
+                  </span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-[10px] font-bold text-rose-800 uppercase block">Unprotected Overdue</span>
+                  <span className="text-xl font-black text-rose-600 font-mono mt-0.5 block">
+                    {formatINR(autopaySummary.total_unprotected_outstanding_inr)}
+                  </span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">Auto-Collected</span>
+                  <span className="text-xl font-black text-slate-900 font-mono mt-0.5 block">
+                    {autopaySummary.successful_collections_count}
+                  </span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-[10px] font-bold text-purple-800 uppercase block">Discrepancies</span>
+                  <span className="text-xl font-black text-purple-700 font-mono mt-0.5 block">
+                    {autopaySummary.reconciliation_discrepancies_count}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1.5 p-1 bg-white rounded-full border border-slate-200 shadow-2xs overflow-x-auto text-xs font-semibold">
+            {[
+              { id: "all", label: "All Bills" },
+              { id: "active", label: "Active Mandates" },
+              { id: "awaiting", label: "Awaiting Auth" },
+              { id: "overdue_protected", label: "Overdue Protected" },
+              { id: "succeeded", label: "Settled" },
+              { id: "failed", label: "Retry / Failed" },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setAutopayFilter(f.id)}
+                className={`px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap ${
+                  autopayFilter === f.id
+                    ? "bg-[#0070E0] text-white shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Itemized Bills List */}
+          {(!autopaySummary || autopaySummary.bills.length === 0) ? (
+            <div className="bg-white rounded-2xl p-12 text-center text-slate-500 border border-dashed border-slate-200 space-y-2">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+              <p className="text-xs font-bold">No bills found for this shop.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {autopaySummary.bills
+                .filter((b) => {
+                  if (autopayFilter === "active") return b.autopay_status === "active";
+                  if (autopayFilter === "awaiting") return b.autopay_status === "pending_authorization";
+                  if (autopayFilter === "overdue_protected") return b.is_overdue && b.autopay_status === "active";
+                  if (autopayFilter === "succeeded") return b.latest_attempt_status === "succeeded";
+                  if (autopayFilter === "failed") return b.latest_attempt_status === "failed";
+                  return true;
+                })
+                .map((b) => {
+                  const isActive = b.autopay_status === "active";
+                  const isAwaiting = b.autopay_status === "pending_authorization";
+                  const isSucceeded = b.latest_attempt_status === "succeeded";
+                  const isFailed = b.latest_attempt_status === "failed";
+
+                  return (
+                    <div
+                      key={b.bill_id}
+                      className="bg-white rounded-2xl border border-slate-200 hover:border-slate-300 p-4 shadow-paypal space-y-3 transition-all"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-slate-900 text-xs">{b.reference}</span>
+                          <span className="font-bold text-slate-700 text-xs">· {b.customer_name}</span>
+                          {b.customer_phone && (
+                            <span className="text-[10px] text-slate-500 font-mono">({b.customer_phone})</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {isActive ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                              <span>Active Mandate (Cap {formatINR(b.max_amount || b.outstanding_amount)})</span>
+                            </span>
+                          ) : isAwaiting ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-amber-600" />
+                              <span>Awaiting Customer Auth</span>
+                            </span>
+                          ) : isSucceeded ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              AutoPay Collected
+                            </span>
+                          ) : isFailed ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-200">
+                              Retry Backoff Active
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
+                              No Mandate
+                            </span>
+                          )}
+
+                          {b.is_overdue && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-100 text-rose-700 border border-rose-200">
+                              Overdue
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 4-metric strip */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <div className="p-2 bg-slate-50 rounded-xl border border-slate-200">
+                          <span className="text-[10px] text-slate-500 block uppercase font-bold">Total Invoiced</span>
+                          <span className="font-mono font-bold text-slate-800 mt-0.5 block">{formatINR(b.purchase_amount)}</span>
+                        </div>
+                        <div className="p-2 bg-slate-50 rounded-xl border border-slate-200">
+                          <span className="text-[10px] text-emerald-700 block uppercase font-bold">Verified Paid</span>
+                          <span className="font-mono font-bold text-emerald-700 mt-0.5 block">{formatINR(b.paid_amount)}</span>
+                        </div>
+                        <div className={`p-2 rounded-xl border ${b.outstanding_amount === 0 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"}`}>
+                          <span className="text-[10px] block uppercase font-bold">Remaining Due</span>
+                          <span className="font-mono font-black mt-0.5 block">{formatINR(b.outstanding_amount)}</span>
+                        </div>
+                        <div className="p-2 bg-slate-50 rounded-xl border border-slate-200">
+                          <span className="text-[10px] text-slate-500 block uppercase font-bold">Next Action</span>
+                          <span className="text-[11px] font-bold text-slate-800 truncate block mt-0.5">{b.next_scheduled_action}</span>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center justify-between pt-1 gap-2 border-t border-slate-100 flex-wrap text-xs">
+                        <span className="text-[11px] text-slate-500">
+                          Agreed Repayment Deadline: <strong className="text-slate-800">{b.agreed_repayment_date || "Not set"}</strong>
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setSelectedBillIdForTimeline(b.bill_id)}
+                            className="px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+                          >
+                            <Clock className="w-3.5 h-3.5 text-[#0070E0]" />
+                            <span>Inspect Timeline</span>
+                          </button>
+
+                          <button
+                            onClick={async () => {
+                              try {
+                                const billDetail = await apiClient.getShopkeeperBill(b.bill_id, "shop_apex_01");
+                                setSelectedBillForDigitalModal(billDetail);
+                              } catch (e) {
+                                console.error(e);
+                              }
+                            }}
+                            className="px-3.5 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Digital Bill &amp; Mandate</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
       ) : (
         <>
           {/* 2. Top Summary KPI Cards */}
@@ -881,6 +1206,15 @@ export const ShopCreditPage: React.FC = () => {
           onClose={() => setSelectedBillForDigitalModal(null)}
           isBusinessOwner={true}
           onRefresh={loadShopData}
+        />
+      )}
+
+      {/* Bill Lifecycle Timeline Modal */}
+      {selectedBillIdForTimeline && (
+        <BillTimelineModal
+          billId={selectedBillIdForTimeline}
+          onClose={() => setSelectedBillIdForTimeline(null)}
+          businessId="shop_apex_01"
         />
       )}
     </div>

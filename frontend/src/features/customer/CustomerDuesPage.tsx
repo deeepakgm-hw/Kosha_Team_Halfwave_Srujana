@@ -12,6 +12,7 @@ import {
   Smartphone,
   ShieldCheck,
   FileText,
+  Clock,
 } from "lucide-react";
 import { apiClient, formatApiError } from "../../lib/api";
 import { BillPaymentHistory, CreditTransaction, CustomerDuesResponse, CustomerProfile } from "../../types/customer";
@@ -19,6 +20,8 @@ import { formatINR } from "../../lib/utils";
 import { RepayModal } from "./RepayModal";
 import { RazorpayCheckoutModal } from "../payments/RazorpayCheckoutModal";
 import { DigitalBillModal } from "../../components/bills/DigitalBillModal";
+import { AutoPayCard } from "../../components/bills/AutoPayCard";
+import { BillTimelineModal } from "../../components/bills/BillTimelineModal";
 import { useRealTimeSync } from "../../hooks/useRealTimeSync";
 import { useAuth } from "../../context/AuthContext";
 
@@ -42,7 +45,7 @@ export const CustomerDuesPage: React.FC = () => {
     }
   }, [user?.customer_id]);
 
-  const [activeTab, setActiveTab] = useState<"all" | "upi_bills">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "upi_bills" | "autopay">("all");
   const [activeFilter, setActiveFilter] = useState<string>(initialFilter);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [data, setData] = useState<CustomerDuesResponse | null>(null);
@@ -53,6 +56,7 @@ export const CustomerDuesPage: React.FC = () => {
   const [selectedTxnForRepay, setSelectedTxnForRepay] = useState<CreditTransaction | null>(null);
   const [selectedBillForCheckout, setSelectedBillForCheckout] = useState<BillPaymentHistory | null>(null);
   const [selectedBillForDigitalModal, setSelectedBillForDigitalModal] = useState<BillPaymentHistory | null>(null);
+  const [selectedBillForTimeline, setSelectedBillForTimeline] = useState<BillPaymentHistory | null>(null);
   const [isResolvingCheckout, setIsResolvingCheckout] = useState<boolean>(false);
 
   const fetchDues = useCallback(async (filter: string, isSilent = false) => {
@@ -293,6 +297,17 @@ export const CustomerDuesPage: React.FC = () => {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab("autopay")}
+          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+            activeTab === "autopay"
+              ? "bg-[#0070E0] text-white shadow-xs"
+              : "text-[#545D68] hover:text-[#001C64] hover:bg-slate-50"
+          }`}
+        >
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span>AutoPay &amp; Smart Dues</span>
+        </button>
       </div>
 
       {/* Filters & Search */}
@@ -516,6 +531,104 @@ export const CustomerDuesPage: React.FC = () => {
             })}
           </div>
         )
+      ) : activeTab === "autopay" ? (
+        <div className="space-y-4">
+          {/* Transparent Mathematical Formula Breakdown */}
+          <div className="bg-white p-5 rounded-2xl border border-emerald-200/80 shadow-paypal space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">
+                    KOSHA AutoPay &amp; Smart Dues Protection
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Automated, authorized settlement strictly after agreed deadline • Zero early debits
+                  </p>
+                </div>
+              </div>
+              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 self-start sm:self-auto">
+                Authoritative Ledger Invariant
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs">
+              <span className="font-bold text-slate-700 block mb-1">
+                How Your AutoPay Remaining Balance is Calculated:
+              </span>
+              <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] font-bold text-slate-800">
+                <span className="px-2 py-0.5 rounded bg-white border border-slate-200">Total Purchase Bill</span>
+                <span>-</span>
+                <span className="px-2 py-0.5 rounded bg-white border border-slate-200">Counter Cash Paid</span>
+                <span>-</span>
+                <span className="px-2 py-0.5 rounded bg-white border border-slate-200">Verified Online Paid</span>
+                <span>=</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Exact Collectible Due
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                If you make a manual cash or UPI payment anytime, your authorized AutoPay collection is automatically recalculated and reduced immediately. If the bill reaches ₹0, AutoPay will never charge your bank account.
+              </p>
+            </div>
+          </div>
+
+          {/* Bills with AutoPay Cards */}
+          {customerBills.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 border border-dashed border-[#E1E7EC] text-center space-y-2 shadow-paypal">
+              <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+              <h3 className="text-sm font-bold text-[#001C64]">No store bills registered</h3>
+              <p className="text-xs text-[#545D68]">Bills from participating merchants will appear here with AutoPay protection controls.</p>
+            </div>
+          ) : (
+            customerBills.map((b) => (
+              <div key={b.bill_id || b.id} className="bg-white rounded-2xl border border-slate-200 shadow-paypal p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-black text-slate-900">
+                        {b.bill_reference || b.bill_number}
+                      </span>
+                      <span className="text-xs font-bold text-slate-700">· {b.shop_name}</span>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-0.5">{b.description || "Credit purchase"}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedBillForTimeline(b)}
+                      className="px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-[#0070E0]" />
+                      <span>View Lifecycle Timeline</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedBillForDigitalModal(b)}
+                      className="px-3.5 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Digital Bill</span>
+                    </button>
+                  </div>
+                </div>
+
+                <AutoPayCard
+                  billId={b.bill_id || b.id || ""}
+                  billReference={b.bill_reference || b.bill_number}
+                  shopName={b.shop_name}
+                  totalAmount={b.total_amount}
+                  paidAmount={b.total_amount - b.outstanding_amount}
+                  outstandingAmount={b.outstanding_amount}
+                  agreedRepaymentDate={b.agreed_repayment_date}
+                  customerId={currentCustomerId || user?.customer_id || undefined}
+                  isBusinessOwner={false}
+                  onMandateUpdated={() => fetchDues(activeFilter, true)}
+                />
+              </div>
+            ))
+          )}
+        </div>
       ) : filteredTransactions.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 border border-dashed border-[#E1E7EC] text-center space-y-2 shadow-paypal">
           <CheckCircle2 className="w-10 h-10 text-[#0070E0] mx-auto" />
@@ -718,6 +831,15 @@ export const CustomerDuesPage: React.FC = () => {
           isBusinessOwner={false}
           customerId={currentCustomerId}
           onRefresh={() => fetchDues(activeFilter, true)}
+        />
+      )}
+
+      {selectedBillForTimeline && (
+        <BillTimelineModal
+          billId={selectedBillForTimeline.bill_id || selectedBillForTimeline.id || ""}
+          onClose={() => setSelectedBillForTimeline(null)}
+          customerId={currentCustomerId || user?.customer_id || undefined}
+          businessId={selectedBillForTimeline.shop_id || undefined}
         />
       )}
     </div>

@@ -142,10 +142,23 @@ export interface CollectionCycleResponse {
   initiated_count: number;
   succeeded_count: number;
   failed_count: number;
+  deferred_count?: number;
   reconciliation_required_count: number;
   total_collected_inr: number;
   total_collected_paise: number;
   details: any[];
+}
+
+export interface ReconciliationCycleResponse {
+  success: boolean;
+  reconciliation_run_id: string;
+  cycle_timestamp: string;
+  total_attempts_audited: number;
+  total_bills_audited: number;
+  discrepancies_found: number;
+  resolved_count: number;
+  manual_review_count: number;
+  discrepancies: any[];
 }
 
 export interface CollectionEngineStatusResponse {
@@ -176,4 +189,89 @@ export interface AutopayMandateDetail {
   mandate: AutopayMandate;
   audit_logs: ConsentAudit[];
   attempts: AutopayAttempt[];
+}
+
+export interface BillTimelineEvent {
+  id: string;
+  event_type: string;
+  category: "confirmed_financial" | "non_final_state" | "governance";
+  title: string;
+  description: string;
+  timestamp: string;
+  amount_inr?: number | null;
+  amount_paise?: number | null;
+  provider_reference?: string | null;
+  is_confirmed: boolean;
+}
+
+export interface BillTimelineResponse {
+  bill_id: string;
+  bill_reference: string;
+  shop_name: string;
+  customer_name: string;
+  purchase_amount: number;
+  outstanding_amount: number;
+  status: string;
+  mandate_status?: string | null;
+  events: BillTimelineEvent[];
+}
+
+export interface ReconciliationCycleRequest {
+  business_id?: string;
+  bill_id?: string;
+  force_audit_all?: boolean;
+}
+
+export interface ReconciliationRecord {
+  id: string;
+  reconciliation_run_id: string;
+  bill_id?: string | null;
+  attempt_id?: string | null;
+  provider_payment_id?: string | null;
+  discrepancy_type: string;
+  observed_discrepancy: string;
+  provider_status?: string | null;
+  internal_status?: string | null;
+  resolution_action: string;
+  resolution_status: string;
+  manual_review_required: boolean;
+  amount_paise?: number | null;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface BusinessAutopayBillItem {
+  bill_id: string;
+  reference: string;
+  customer_id: string;
+  customer_name: string;
+  customer_phone?: string | null;
+  purchase_amount: number;
+  paid_amount: number;
+  outstanding_amount: number;
+  agreed_repayment_date?: string | null;
+  is_overdue: boolean;
+  autopay_status: string;
+  mandate_id?: string | null;
+  max_amount?: number | null;
+  latest_attempt_status?: string | null;
+  latest_attempt_result?: string | null;
+  next_scheduled_action?: string | null;
+}
+
+export interface BusinessAutopayDashboardSummary {
+  shop_id: string;
+  total_bills: number;
+  eligible_bills_count: number;
+  awaiting_authorization_count: number;
+  active_mandates_count: number;
+  overdue_protected_count: number;
+  overdue_unprotected_count: number;
+  total_protected_outstanding_inr: number;
+  total_unprotected_outstanding_inr: number;
+  collection_attempts_count: number;
+  successful_collections_count: number;
+  failed_collections_count: number;
+  reconciliation_discrepancies_count: number;
+  bills: BusinessAutopayBillItem[];
 }

@@ -932,7 +932,7 @@ class RazorpayService:
         if (
             event_name.startswith("mandate.")
             or event_name.startswith("subscription.")
-            or event_name == "token.confirmed"
+            or event_name.startswith("token.")
         ):
             from backend.app.services.autopay_service import autopay_service
             mnd_res = autopay_service.handle_mandate_webhook(event_name, payload, db)
@@ -978,8 +978,8 @@ class RazorpayService:
                 "message": "Payment failure logged. Bill balance left unchanged.",
             }
 
-        # 5. Handle Success Events: payment.captured, payment_link.paid, qr_code.credited, order.paid
-        if event_name in ("payment.captured", "payment_link.paid", "qr_code.credited", "order.paid"):
+        # 5. Handle Success Events: payment.captured, payment_link.paid, qr_code.credited, order.paid, payment.authorized
+        if event_name in ("payment.captured", "payment_link.paid", "qr_code.credited", "order.paid", "payment.authorized"):
             payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
             if not payment_entity:
                 # Some payment_link events place entity directly in payload.payment_link
@@ -1065,6 +1065,67 @@ class RazorpayService:
                 "amount_paise": amount_paise,
             }
 
+        # 6. Handle Refund / Reversal Events: Ledger Adjustment
+        if event_name in ("refund.processed", "refund.created"):
+            refund_entity = payload.get("payload", {}).get("refund", {}).get("entity", {})
+            payment_id = refund_entity.get("payment_id")
+            refund_amount_paise = int(refund_entity.get("amount", 0))
+            notes = refund_entity.get("notes", {})
+            bill_id = notes.get("bill_id") or notes.get("kosha_bill_id")
+
+            bill = None
+            if bill_id:
+                bill = db.query(CreditTransactionModel).filter_by(id=bill_id).first()
+            elif payment_id:
+                verif = db.query(PaymentVerificationModel).filter_by(razorpay_payment_id=payment_id).first()
+                if verif:
+                    bill = verif.bill
+
+            if bill and refund_amount_paise > 0:
+                refund_inr = Decimal(refund_amount_paise) / Decimal(100)
+                reversal = RepaymentModel(
+                    id=str(uuid.uuid4()),
+                    transaction_id=bill.id,
+                    amount=-refund_inr,
+                    repayment_date=datetime.now(timezone.utc).date(),
+                    payment_method="refund_reversal",
+                    payment_status="completed",
+                    provider_reference=refund_entity.get("id") or f"rfd_{uuid.uuid4().hex[:12]}",
+                    idempotency_key=f"rfd:{refund_entity.get('id', uuid.uuid4().hex)}",
+                    recorded_by="razorpay_webhook_refund",
+                    notes=f"Refund adjustment of ₹{refund_inr:,.2f} recorded for payment {payment_id}.",
+                )
+                db.add(reversal)
+                db.flush()
+
+                # Re-audit balance
+                repayments = db.query(RepaymentModel).filter_by(transaction_id=bill.id, payment_status="completed").all()
+                total_paise = int(Decimal(str(bill.purchase_amount or 0)) * Decimal(100))
+                init_paise = int(Decimal(str(bill.initial_paid_amount or 0)) * Decimal(100))
+                rep_paise = sum(int(Decimal(str(r.amount or 0)) * Decimal(100)) for r in repayments)
+                rem_paise = max(0, total_paise - init_paise - rep_paise)
+
+                bill.outstanding_amount = Decimal(rem_paise) / Decimal(100)
+                if rem_paise > 0 and bill.status == "paid":
+                    bill.status = "overdue" if (bill.agreed_repayment_date and bill.agreed_repayment_date < datetime.now(timezone.utc).date()) else "upcoming"
+
+                db.commit()
+                return {
+                    "status": "processed",
+                    "event": event_name,
+                    "refund_id": refund_entity.get("id"),
+                    "bill_id": bill.id,
+                    "adjusted_outstanding": float(bill.outstanding_amount),
+                }
+
+        # 7. Non-Final / Pending Events
+        if event_name in ("payment.pending", "payment.disputed"):
+            return {
+                "status": "logged_non_final",
+                "event": event_name,
+                "message": "Non-final provider state logged without modifying bill balance.",
+            }
+
         return {"status": "unhandled_event", "event": event_name}
 
     # -------------------------------------------------------------------------
@@ -1079,10 +1140,10 @@ class RazorpayService:
         razorpay_order_id: Optional[str],
         amount_paise: int,
         payment_method: str,
-        vpa: Optional[str],
-        signature: Optional[str],
-        source: str,
-        db: Session,
+        vpa: Optional[str] = None,
+        signature: Optional[str] = None,
+        source: str = "server",
+        db: Session = None,
     ) -> PaymentVerificationModel:
         """
         Applies a verified payment to a bill in a strict database transaction.

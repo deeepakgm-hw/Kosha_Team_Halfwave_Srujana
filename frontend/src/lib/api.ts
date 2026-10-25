@@ -7,9 +7,14 @@ import {
   AutopaySetupResponse,
   AutopayVerifyPayload,
   BillCollectionEligibilityResponse,
+  BillTimelineResponse,
+  BusinessAutopayDashboardSummary,
   CollectionCycleResponse,
   CollectionCycleTriggerRequest,
   CollectionEngineStatusResponse,
+  ReconciliationCycleRequest,
+  ReconciliationCycleResponse,
+  ReconciliationRecord,
 } from "../types/autopay";
 import {
   AuthResponse,
@@ -782,5 +787,44 @@ export const apiClient = {
   ): Promise<BillCollectionEligibilityResponse> {
     const qs = bypassNotificationWindow ? "?bypass_notification_window=true" : "";
     return fetchApi<BillCollectionEligibilityResponse>(`/autopay/collection/bill/${billId}/eligibility${qs}`);
+  },
+
+  async getBillTimeline(
+    billId: string,
+    customerId?: string,
+    businessId?: string
+  ): Promise<BillTimelineResponse> {
+    const query = new URLSearchParams();
+    if (customerId) query.append("customer_id", customerId);
+    if (businessId) query.append("business_id", businessId);
+    const qs = query.toString() ? `?${query.toString()}` : "";
+    return fetchApi<BillTimelineResponse>(`/autopay/bills/${billId}/timeline${qs}`);
+  },
+
+  async getBusinessAutopayDashboard(businessId?: string): Promise<BusinessAutopayDashboardSummary> {
+    const qs = businessId ? `?business_id=${encodeURIComponent(businessId)}` : "";
+    return fetchApi<BusinessAutopayDashboardSummary>(`/autopay/business/dashboard${qs}`);
+  },
+
+  async runReconciliation(payload?: ReconciliationCycleRequest): Promise<ReconciliationCycleResponse> {
+    return fetchApi<ReconciliationCycleResponse>("/autopay/reconciliation/run", {
+      method: "POST",
+      body: JSON.stringify(payload || {}),
+    });
+  },
+
+  async getReconciliationHistory(params?: {
+    business_id?: string;
+    bill_id?: string;
+    manual_review_only?: boolean;
+    limit?: number;
+  }): Promise<ReconciliationRecord[]> {
+    const query = new URLSearchParams();
+    if (params?.business_id) query.append("business_id", params.business_id);
+    if (params?.bill_id) query.append("bill_id", params.bill_id);
+    if (params?.manual_review_only) query.append("manual_review_only", "true");
+    if (params?.limit) query.append("limit", params.limit.toString());
+    const qs = query.toString() ? `?${query.toString()}` : "";
+    return fetchApi<ReconciliationRecord[]>(`/autopay/reconciliation/history${qs}`);
   },
 };

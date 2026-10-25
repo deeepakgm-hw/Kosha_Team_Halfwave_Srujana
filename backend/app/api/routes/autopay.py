@@ -22,12 +22,18 @@ from backend.app.schemas.autopay import (
     AutopaySetupRequest,
     AutopaySetupResponse,
     AutopayVerifyRequest,
+    BillTimelineResponse,
+    BusinessAutopayDashboardSummary,
     CollectionCycleResponse,
     CollectionCycleTriggerRequest,
     CollectionEngineStatusResponse,
+    ReconciliationCycleRequest,
+    ReconciliationCycleResponse,
+    ReconciliationRecordOut,
 )
 from backend.app.services.autopay_service import autopay_service
 from backend.app.services.collection_engine import collection_engine
+from backend.app.services.reconciliation_service import reconciliation_service
 
 router = APIRouter()
 
@@ -379,3 +385,121 @@ def evaluate_bill_eligibility(
             "mandate_id": eligibility["mandate"].id if eligibility["mandate"] else None,
         },
     }
+
+
+# =============================================================================
+# 6. Transaction Timeline Endpoint
+# =============================================================================
+
+@router.get(
+    "/bills/{bill_id}/timeline",
+    response_model=BillTimelineResponse,
+    summary="Get Complete Bill Lifecycle & Transaction Timeline",
+    description="Returns chronological events distinguishing confirmed financial payments from non-final states.",
+)
+def get_bill_timeline(
+    bill_id: str,
+    customer_id: Optional[str] = Query(None),
+    business_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+) -> BillTimelineResponse:
+    eff_cust_id = resolve_auth_customer_id(current_user, customer_id) if (current_user and current_user.role == "customer") else customer_id
+    eff_biz_id = resolve_auth_business_id(current_user, business_id) if (current_user and current_user.role == "business_owner") else business_id
+
+    res = collection_engine.build_bill_timeline(
+        bill_id=bill_id,
+        db=db,
+        customer_id=eff_cust_id,
+        business_id=eff_biz_id,
+    )
+    return BillTimelineResponse(**res)
+
+
+# =============================================================================
+# 7. Business Owner AutoPay Overview Endpoint
+# =============================================================================
+
+@router.get(
+    "/business/dashboard",
+    response_model=BusinessAutopayDashboardSummary,
+    summary="Get Business Owner AutoPay Overview",
+    description="Returns all bills with AutoPay protection status, scheduled actions, and aggregate metrics.",
+)
+def get_business_autopay_dashboard(
+    business_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+) -> BusinessAutopayDashboardSummary:
+    eff_biz_id = resolve_auth_business_id(current_user, business_id)
+    res = collection_engine.get_business_autopay_dashboard(business_id=eff_biz_id, db=db)
+    return BusinessAutopayDashboardSummary(**res)
+
+
+# =============================================================================
+# 8. Automated Reconciliation Endpoints
+# =============================================================================
+
+@router.post(
+    "/reconciliation/run",
+    response_model=ReconciliationCycleResponse,
+    summary="Trigger Automated Financial Reconciliation Cycle",
+    description="Audits ambiguous attempts against Razorpay and repairs ledger balance drift transactionally.",
+)
+def run_reconciliation(
+    payload: ReconciliationCycleRequest = ReconciliationCycleRequest(),
+    db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+) -> ReconciliationCycleResponse:
+    eff_biz_id = resolve_auth_business_id(current_user, payload.business_id) if (current_user and current_user.role == "business_owner") else payload.business_id
+    res = reconciliation_service.run_reconciliation_cycle(
+        db=db,
+        business_id=eff_biz_id,
+        bill_id=payload.bill_id,
+        force_audit_all=payload.force_audit_all,
+    )
+    return ReconciliationCycleResponse(**res)
+
+
+@router.get(
+    "/reconciliation/history",
+    response_model=List[ReconciliationRecordOut],
+    summary="List Reconciliation Audit Records",
+    description="Returns recorded reconciliation discrepancies and resolutions.",
+)
+def get_reconciliation_history(
+    business_id: Optional[str] = Query(None),
+    bill_id: Optional[str] = Query(None),
+    manual_review_only: bool = Query(False),
+    limit: int = Query(50, le=200),
+    db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+) -> List[ReconciliationRecordOut]:
+    eff_biz_id = resolve_auth_business_id(current_user, business_id) if (current_user and current_user.role == "business_owner") else business_id
+    records = reconciliation_service.list_reconciliation_records(
+        db=db,
+        business_id=eff_biz_id,
+        bill_id=bill_id,
+        manual_review_only=manual_review_only,
+        limit=limit,
+    )
+    return [
+        ReconciliationRecordOut(
+            id=r.id,
+            reconciliation_run_id=r.reconciliation_run_id,
+            bill_id=r.bill_id,
+            attempt_id=r.attempt_id,
+            provider_payment_id=r.provider_payment_id,
+            discrepancy_type=r.discrepancy_type,
+            observed_discrepancy=r.observed_discrepancy,
+            provider_status=r.provider_status,
+            internal_status=r.internal_status,
+            resolution_action=r.resolution_action,
+            resolution_status=r.resolution_status,
+            manual_review_required=r.manual_review_required,
+            amount_paise=r.amount_paise,
+            notes=r.notes,
+            created_at=r.created_at,
+        )
+        for r in records
+    ]

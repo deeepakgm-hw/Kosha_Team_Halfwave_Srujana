@@ -778,7 +778,7 @@ class AutopayService:
 
             return {"status": "activated", "mandate_id": mandate.id}
 
-        elif event_name in ("mandate.paused", "subscription.paused"):
+        elif event_name in ("mandate.paused", "subscription.paused", "token.paused"):
             if mandate.status == "active":
                 mandate.status = "paused"
                 mandate.updated_at = datetime.now(timezone.utc)
@@ -798,7 +798,7 @@ class AutopayService:
                 db.commit()
             return {"status": "paused", "mandate_id": mandate.id}
 
-        elif event_name in ("mandate.cancelled", "mandate.revoked", "subscription.cancelled"):
+        elif event_name in ("mandate.cancelled", "mandate.revoked", "subscription.cancelled", "token.rejected", "token.cancelled"):
             if mandate.status != "revoked":
                 mandate.status = "revoked"
                 mandate.revocation_timestamp = datetime.now(timezone.utc)

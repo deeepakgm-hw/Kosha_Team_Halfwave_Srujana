@@ -167,3 +167,113 @@ class AutopayMandateDetailOut(BaseModel):
     mandate: AutopayMandateOut
     audit_logs: List[ConsentAuditOut] = []
     attempts: List[AutopayAttemptOut] = []
+
+
+# =============================================================================
+# Transaction Timeline Schemas
+# =============================================================================
+
+class BillTimelineEventOut(BaseModel):
+    """Immutable single event in the bill's transaction & mandate lifecycle."""
+    id: str
+    event_type: str
+    category: str  # "confirmed_financial", "non_final_state", "governance"
+    title: str
+    description: str
+    timestamp: datetime
+    amount_inr: Optional[float] = None
+    amount_paise: Optional[int] = None
+    provider_reference: Optional[str] = None
+    is_confirmed: bool = False
+
+
+class BillTimelineResponse(BaseModel):
+    bill_id: str
+    bill_reference: str
+    shop_name: str
+    customer_name: str
+    purchase_amount: float
+    outstanding_amount: float
+    status: str
+    mandate_status: Optional[str] = None
+    events: List[BillTimelineEventOut] = []
+
+
+# =============================================================================
+# Reconciliation Schemas
+# =============================================================================
+
+class ReconciliationCycleRequest(BaseModel):
+    business_id: Optional[str] = Field(None, description="Optional shop filter")
+    bill_id: Optional[str] = Field(None, description="Optional bill filter")
+    force_audit_all: bool = Field(False, description="Whether to audit all bills or only ambiguous ones")
+
+
+class ReconciliationRecordOut(BaseModel):
+    id: str
+    reconciliation_run_id: str
+    bill_id: Optional[str] = None
+    attempt_id: Optional[str] = None
+    provider_payment_id: Optional[str] = None
+    discrepancy_type: str
+    observed_discrepancy: str
+    provider_status: Optional[str] = None
+    internal_status: Optional[str] = None
+    resolution_action: str
+    resolution_status: str
+    manual_review_required: bool
+    amount_paise: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+class ReconciliationCycleResponse(BaseModel):
+    success: bool
+    reconciliation_run_id: str
+    cycle_timestamp: str
+    total_attempts_audited: int
+    total_bills_audited: int
+    discrepancies_found: int
+    resolved_count: int
+    manual_review_count: int
+    discrepancies: List[Dict[str, Any]] = []
+
+
+# =============================================================================
+# Business Owner AutoPay Overview Schemas
+# =============================================================================
+
+class BusinessAutopayBillItem(BaseModel):
+    bill_id: str
+    reference: str
+    customer_id: str
+    customer_name: str
+    customer_phone: Optional[str] = None
+    purchase_amount: float
+    paid_amount: float
+    outstanding_amount: float
+    agreed_repayment_date: Optional[date] = None
+    is_overdue: bool
+    autopay_status: str  # active, pending_authorization, awaiting_notification, scheduled, processing, succeeded, failed, revoked, none
+    mandate_id: Optional[str] = None
+    max_amount: Optional[float] = None
+    latest_attempt_status: Optional[str] = None
+    latest_attempt_result: Optional[str] = None
+    next_scheduled_action: Optional[str] = None
+
+
+class BusinessAutopayDashboardSummary(BaseModel):
+    shop_id: str
+    total_bills: int
+    eligible_bills_count: int
+    awaiting_authorization_count: int
+    active_mandates_count: int
+    overdue_protected_count: int
+    overdue_unprotected_count: int
+    total_protected_outstanding_inr: float
+    total_unprotected_outstanding_inr: float
+    collection_attempts_count: int
+    successful_collections_count: int
+    failed_collections_count: int
+    reconciliation_discrepancies_count: int
+    bills: List[BusinessAutopayBillItem] = []

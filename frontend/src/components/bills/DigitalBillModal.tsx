@@ -22,6 +22,7 @@ import { BillPaymentHistory, RazorpayPaymentRequest } from "../../types/customer
 import { formatINR, parseUtcDate } from "../../lib/utils";
 import { apiClient, formatApiError } from "../../lib/api";
 import { AutoPayCard } from "./AutoPayCard";
+import { BillTimelineModal } from "./BillTimelineModal";
 
 interface DigitalBillModalProps {
   bill: BillPaymentHistory;
@@ -65,6 +66,7 @@ export const DigitalBillModal: React.FC<DigitalBillModalProps> = ({
   const [countdownSeconds, setCountdownSeconds] = useState<number>(300);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [showTimeline, setShowTimeline] = useState<boolean>(false);
 
   // Sync bill data when prop changes
   useEffect(() => {
@@ -259,6 +261,14 @@ export const DigitalBillModal: React.FC<DigitalBillModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowTimeline(true)}
+              className="px-3 py-1.5 rounded-full bg-white hover:bg-slate-100 text-[#001C64] border border-[#E1E7EC] text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+              title="View Complete Lifecycle Timeline"
+            >
+              <Clock className="w-3.5 h-3.5 text-[#0070E0]" />
+              <span>Timeline</span>
+            </button>
             <button
               onClick={handlePrint}
               className="p-2 rounded-full hover:bg-white text-slate-600 hover:text-[#001C64] border border-transparent hover:border-[#E1E7EC] transition-all"
@@ -838,6 +848,15 @@ export const DigitalBillModal: React.FC<DigitalBillModalProps> = ({
             </form>
           </div>
         </div>
+      )}
+      {/* Audited Transaction Timeline Modal */}
+      {showTimeline && (
+        <BillTimelineModal
+          billId={currentBill.bill_id || currentBill.id || ""}
+          onClose={() => setShowTimeline(false)}
+          customerId={_customerId || currentBill.customer_id}
+          businessId={currentBill.shop_id}
+        />
       )}
     </div>
   );

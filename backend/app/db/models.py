@@ -701,3 +701,38 @@ class ConsentAuditModel(Base):
     notes = Column(Text, nullable=True)
 
     mandate = relationship("AutopayMandateModel", back_populates="audit_logs")
+
+
+class AutopayReconciliationModel(Base):
+    """
+    Authoritative audit record of automated and manual reconciliation cycles.
+    Tracks discrepancies between local ledger, collection attempts, and Razorpay provider records.
+    """
+    __tablename__ = "autopay_reconciliations"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    reconciliation_run_id = Column(String(100), nullable=False, index=True)
+    bill_id = Column(String(50), ForeignKey("customer_credit_transactions.id"), nullable=True, index=True)
+    attempt_id = Column(String(50), ForeignKey("autopay_attempts.id"), nullable=True, index=True)
+    mandate_id = Column(String(50), ForeignKey("autopay_mandates.id"), nullable=True, index=True)
+    business_id = Column(String(50), nullable=True, index=True)
+
+    provider_payment_id = Column(String(100), nullable=True, index=True)
+    discrepancy_type = Column(String(50), nullable=False, index=True)
+    # timeout_resolved, unrecorded_payment, status_mismatch, pending_resolved, ledger_balance_repaired, mandate_desync
+
+    observed_discrepancy = Column(Text, nullable=False)
+    provider_status = Column(String(50), nullable=True)
+    internal_status = Column(String(50), nullable=True)
+
+    resolution_action = Column(String(50), nullable=False)
+    # ledger_credited, status_reconciled, balance_repaired, manual_review_flagged, marked_failed
+
+    resolution_status = Column(String(30), default="resolved", nullable=False, index=True)
+    # resolved, manual_review_required, unresolved
+
+    manual_review_required = Column(Boolean, default=False, nullable=False)
+    amount_paise = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

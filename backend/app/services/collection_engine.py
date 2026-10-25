@@ -32,6 +32,7 @@ from backend.app.db.models import (
     ActivityEventModel,
     AutopayAttemptModel,
     AutopayMandateModel,
+    AutopayReconciliationModel,
     ConsentAuditModel,
     CreditTransactionModel,
     PaymentVerificationModel,
@@ -889,6 +890,355 @@ class CollectionEngineService:
             "active_mandates_count": active_mandates_count,
             "pending_attempts_count": pending_count,
             "reconciliation_required_count": mismatch_count,
+        }
+
+    # =========================================================================
+    # 8. Transaction Timeline Aggregator (Multi-Tenant, Auditable)
+    # =========================================================================
+
+    def build_bill_timeline(
+        self,
+        bill_id: str,
+        db: Session,
+        customer_id: Optional[str] = None,
+        business_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Dynamically aggregates a transparent, immutable chronological timeline
+        of financial transactions, mandate events, notifications, and reconciliation audits.
+        """
+        bill = db.query(CreditTransactionModel).filter_by(id=bill_id).first()
+        if not bill:
+            raise NotFoundException(f"Bill '{bill_id}' not found.")
+
+        # Multi-tenant object authorization:
+        if customer_id and bill.customer_id != customer_id:
+            raise AppException(status_code=403, message="Unauthorized: You cannot access timeline for another customer's bill.")
+        if business_id and bill.shop_id != business_id:
+            raise AppException(status_code=403, message="Unauthorized: Business does not own this bill.")
+
+        events: List[Dict[str, Any]] = []
+
+        # 1. Bill Invoiced
+        created_dt = bill.created_at or datetime.combine(bill.transaction_date, datetime.min.time(), tzinfo=timezone.utc)
+        events.append({
+            "id": f"evt_bill_{bill.id}",
+            "event_type": "bill_created",
+            "category": "confirmed_financial",
+            "title": f"Bill Invoiced: ₹{float(bill.purchase_amount):,.2f}",
+            "description": f"Credit purchase recorded at {bill.shop.shop_name if bill.shop else 'Store'}. Items: {bill.description or 'Store goods'}",
+            "timestamp": created_dt,
+            "amount_inr": float(bill.purchase_amount),
+            "amount_paise": int(Decimal(str(bill.purchase_amount)) * Decimal(100)),
+            "provider_reference": bill.reference,
+            "is_confirmed": True,
+        })
+
+        # 2. Counter Cash / Initial Payment
+        if bill.initial_paid_amount and bill.initial_paid_amount > 0:
+            events.append({
+                "id": f"evt_init_{bill.id}",
+                "event_type": "initial_payment",
+                "category": "confirmed_financial",
+                "title": f"Counter Cash Paid: ₹{float(bill.initial_paid_amount):,.2f}",
+                "description": "Immediate cash settlement recorded at counter upon invoice generation.",
+                "timestamp": created_dt + timedelta(seconds=1),
+                "amount_inr": float(bill.initial_paid_amount),
+                "amount_paise": int(Decimal(str(bill.initial_paid_amount)) * Decimal(100)),
+                "provider_reference": "counter_receipt",
+                "is_confirmed": True,
+            })
+
+        # 3. Verified Repayments (Cash or UPI)
+        repayments = (
+            db.query(RepaymentModel)
+            .filter_by(transaction_id=bill.id, payment_status="completed")
+            .all()
+        )
+        for rep in repayments:
+            events.append({
+                "id": f"evt_rep_{rep.id}",
+                "event_type": "payment_confirmed",
+                "category": "confirmed_financial",
+                "title": f"Payment Verified ({rep.payment_method.replace('_', ' ').upper()}): ₹{float(rep.amount):,.2f}",
+                "description": f"Verified payment credited to canonical ledger. Ref: {rep.provider_payment_id or rep.id}",
+                "timestamp": rep.payment_date or created_dt,
+                "amount_inr": float(rep.amount),
+                "amount_paise": int(Decimal(str(rep.amount)) * Decimal(100)),
+                "provider_reference": rep.provider_payment_id or rep.id,
+                "is_confirmed": True,
+            })
+
+        # 4. Consent Audits (Mandate Lifecycle)
+        audits = (
+            db.query(ConsentAuditModel)
+            .filter_by(bill_id=bill.id)
+            .all()
+        )
+        for audit in audits:
+            title_map = {
+                "consent_granted": "AutoPay Terms Accepted",
+                "consent_rejected": "AutoPay Authorization Signature Rejected",
+                "mandate_authorized": "AutoPay Mandate Authorized (Active)",
+                "mandate_paused": "AutoPay Mandate Suspended",
+                "mandate_resumed": "AutoPay Mandate Resumed",
+                "mandate_revoked": "AutoPay Mandate Revoked by Customer",
+                "mandate_cancelled": "AutoPay Mandate Cancelled (Settled)",
+                "pre_debit_notification_sent": "Pre-Debit Notice Recorded (24h Window)",
+            }
+            events.append({
+                "id": f"evt_audit_{audit.id}",
+                "event_type": audit.action,
+                "category": "governance",
+                "title": title_map.get(audit.action, audit.action.replace("_", " ").title()),
+                "description": audit.notes or "Consent governance event logged.",
+                "timestamp": audit.timestamp,
+                "amount_inr": float(audit.max_amount_paise) / 100.0 if audit.max_amount_paise else None,
+                "amount_paise": audit.max_amount_paise,
+                "provider_reference": audit.auth_flow_reference,
+                "is_confirmed": audit.action == "mandate_authorized",
+            })
+
+        # 5. Collection Attempts
+        attempts = (
+            db.query(AutopayAttemptModel)
+            .filter_by(bill_id=bill.id)
+            .all()
+        )
+        for att in attempts:
+            if att.status == "succeeded":
+                events.append({
+                    "id": f"evt_att_{att.id}",
+                    "event_type": "autopay_collection_succeeded",
+                    "category": "confirmed_financial",
+                    "title": f"AutoPay Debit Succeeded: ₹{float(att.amount_paise) / 100:,.2f}",
+                    "description": f"Automated collection executed via Razorpay recurring payment. Provider Ref: {att.razorpay_payment_id}",
+                    "timestamp": att.result_time or att.initiation_time,
+                    "amount_inr": float(att.amount_paise) / 100.0,
+                    "amount_paise": att.amount_paise,
+                    "provider_reference": att.razorpay_payment_id,
+                    "is_confirmed": True,
+                })
+            elif att.status == "failed":
+                retry_str = f" Next retry: {att.next_retry_at.strftime('%Y-%m-%d %H:%M')}" if att.next_retry_at else ""
+                events.append({
+                    "id": f"evt_att_{att.id}",
+                    "event_type": "autopay_collection_failed",
+                    "category": "non_final_state",
+                    "title": f"Collection Attempt #{att.attempt_number} Failed",
+                    "description": f"{att.failure_reason or 'Payment provider rejected debit.'}{retry_str}",
+                    "timestamp": att.result_time or att.initiation_time,
+                    "amount_inr": float(att.amount_paise) / 100.0,
+                    "amount_paise": att.amount_paise,
+                    "provider_reference": att.razorpay_payment_id,
+                    "is_confirmed": False,
+                })
+            elif att.status == "reconciliation_required":
+                events.append({
+                    "id": f"evt_att_{att.id}",
+                    "event_type": "collection_timeout_reconciliation_required",
+                    "category": "non_final_state",
+                    "title": "Gateway Timeout: Reconciliation Required",
+                    "description": "Provider connection timed out during debit request. Attempt locked until verified against Razorpay.",
+                    "timestamp": att.initiation_time,
+                    "amount_inr": float(att.amount_paise) / 100.0,
+                    "amount_paise": att.amount_paise,
+                    "provider_reference": att.razorpay_payment_id,
+                    "is_confirmed": False,
+                })
+            elif att.status in ("initiated", "pending"):
+                events.append({
+                    "id": f"evt_att_{att.id}",
+                    "event_type": "collection_initiated",
+                    "category": "non_final_state",
+                    "title": f"Collection Attempt #{att.attempt_number} Initiated",
+                    "description": "Recurring debit submitted to Razorpay and banking network. Awaiting confirmation.",
+                    "timestamp": att.initiation_time,
+                    "amount_inr": float(att.amount_paise) / 100.0,
+                    "amount_paise": att.amount_paise,
+                    "provider_reference": att.razorpay_payment_id,
+                    "is_confirmed": False,
+                })
+
+        # 6. Reconciliation Records
+        reconciliations = (
+            db.query(AutopayReconciliationModel)
+            .filter_by(bill_id=bill.id)
+            .all()
+        )
+        for rec in reconciliations:
+            events.append({
+                "id": f"evt_rec_{rec.id}",
+                "event_type": "reconciliation_audit",
+                "category": "governance",
+                "title": f"Automated Reconciliation: {rec.resolution_action.replace('_', ' ').title()}",
+                "description": f"{rec.observed_discrepancy} Resolution: {rec.notes or rec.resolution_status}",
+                "timestamp": rec.created_at,
+                "amount_inr": float(rec.amount_paise) / 100.0 if rec.amount_paise else None,
+                "amount_paise": rec.amount_paise,
+                "provider_reference": rec.provider_payment_id,
+                "is_confirmed": rec.resolution_status == "resolved",
+            })
+
+        # Sort all events chronologically
+        events.sort(key=lambda e: e["timestamp"])
+
+        # Latest mandate status
+        mandate = (
+            db.query(AutopayMandateModel)
+            .filter_by(bill_id=bill.id)
+            .order_by(AutopayMandateModel.created_at.desc())
+            .first()
+        )
+
+        return {
+            "bill_id": bill.id,
+            "bill_reference": bill.reference,
+            "shop_name": bill.shop.shop_name if bill.shop else "Merchant Shop",
+            "customer_name": bill.customer.display_name if bill.customer else "Customer",
+            "purchase_amount": float(bill.purchase_amount),
+            "outstanding_amount": float(bill.outstanding_amount),
+            "status": bill.status,
+            "mandate_status": mandate.status if mandate else "none",
+            "events": events,
+        }
+
+    # =========================================================================
+    # 9. Business Owner AutoPay Overview Aggregator
+    # =========================================================================
+
+    def get_business_autopay_dashboard(
+        self,
+        business_id: str,
+        db: Session,
+    ) -> Dict[str, Any]:
+        """
+        Aggregates AutoPay overview metrics, eligible bills, active mandates,
+        and reconciliation items scoped strictly to the merchant's shop.
+        """
+        today = datetime.now(timezone.utc).date()
+
+        bills = (
+            db.query(CreditTransactionModel)
+            .filter(CreditTransactionModel.shop_id == business_id)
+            .order_by(CreditTransactionModel.transaction_date.desc())
+            .all()
+        )
+
+        bill_items: List[Dict[str, Any]] = []
+        eligible_count = 0
+        awaiting_auth_count = 0
+        active_mandates_count = 0
+        overdue_protected_count = 0
+        overdue_unprotected_count = 0
+        total_protected_paise = 0
+        total_unprotected_paise = 0
+        attempts_count = 0
+        succeeded_count = 0
+        failed_count = 0
+
+        for bill in bills:
+            outstanding_paise = int(Decimal(str(bill.outstanding_amount or 0)) * Decimal(100))
+            is_overdue = bool(bill.agreed_repayment_date and bill.agreed_repayment_date <= today and outstanding_paise > 0)
+
+            # Latest mandate for this bill
+            mandate = (
+                db.query(AutopayMandateModel)
+                .filter_by(bill_id=bill.id)
+                .order_by(AutopayMandateModel.created_at.desc())
+                .first()
+            )
+
+            # Latest collection attempt
+            latest_attempt = (
+                db.query(AutopayAttemptModel)
+                .filter_by(bill_id=bill.id)
+                .order_by(AutopayAttemptModel.initiation_time.desc())
+                .first()
+            )
+
+            autopay_status = "none"
+            next_action = "Invite AutoPay"
+
+            if mandate:
+                autopay_status = mandate.status
+                if mandate.status == "active":
+                    active_mandates_count += 1
+                    if is_overdue:
+                        overdue_protected_count += 1
+                        total_protected_paise += outstanding_paise
+                        eligible_count += 1
+                        next_action = "Scheduled for Auto-Collection"
+                    else:
+                        next_action = "Protected by Mandate"
+                elif mandate.status == "pending_authorization":
+                    awaiting_auth_count += 1
+                    next_action = "Awaiting Customer Authorization"
+                elif mandate.status in ("revoked", "cancelled", "failed", "paused"):
+                    next_action = f"Mandate {mandate.status.capitalize()} (Pay Manually)"
+            else:
+                if is_overdue:
+                    overdue_unprotected_count += 1
+                    total_unprotected_paise += outstanding_paise
+                    next_action = "Manual Follow-up Required"
+
+            if latest_attempt:
+                attempts_count += 1
+                if latest_attempt.status == "succeeded":
+                    succeeded_count += 1
+                    next_action = "AutoPay Settled"
+                elif latest_attempt.status == "failed":
+                    failed_count += 1
+                    next_action = f"Retry Scheduled: {latest_attempt.next_retry_at.strftime('%d %b') if latest_attempt.next_retry_at else 'Soon'}"
+                elif latest_attempt.status == "awaiting_notification":
+                    next_action = "Pre-Debit Notice Active (24h)"
+                elif latest_attempt.status == "reconciliation_required":
+                    next_action = "Reconciliation Required"
+
+            cust = bill.customer
+            paid_amount = float(bill.purchase_amount - bill.outstanding_amount) if bill.purchase_amount else 0.0
+
+            bill_items.append({
+                "bill_id": bill.id,
+                "reference": bill.reference,
+                "customer_id": bill.customer_id,
+                "customer_name": cust.display_name if cust else "Valued Customer",
+                "customer_phone": cust.phone if cust else None,
+                "purchase_amount": float(bill.purchase_amount),
+                "paid_amount": paid_amount,
+                "outstanding_amount": float(bill.outstanding_amount),
+                "agreed_repayment_date": bill.agreed_repayment_date,
+                "is_overdue": is_overdue,
+                "autopay_status": autopay_status,
+                "mandate_id": mandate.id if mandate else None,
+                "max_amount": float(mandate.max_amount_paise) / 100.0 if mandate else None,
+                "latest_attempt_status": latest_attempt.status if latest_attempt else None,
+                "latest_attempt_result": latest_attempt.failure_reason if (latest_attempt and latest_attempt.status == "failed") else None,
+                "next_scheduled_action": next_action,
+            })
+
+        # Discrepancies count
+        discrepancies_count = (
+            db.query(AutopayReconciliationModel)
+            .filter_by(business_id=business_id, resolution_status="manual_review_required")
+            .count()
+        )
+
+        return {
+            "shop_id": business_id,
+            "total_bills": len(bills),
+            "eligible_bills_count": eligible_count,
+            "awaiting_authorization_count": awaiting_auth_count,
+            "active_mandates_count": active_mandates_count,
+            "overdue_protected_count": overdue_protected_count,
+            "overdue_unprotected_count": overdue_unprotected_count,
+            "total_protected_outstanding_inr": float(Decimal(total_protected_paise) / Decimal(100)),
+            "total_unprotected_outstanding_inr": float(Decimal(total_unprotected_paise) / Decimal(100)),
+            "collection_attempts_count": attempts_count,
+            "successful_collections_count": succeeded_count,
+            "failed_collections_count": failed_count,
+            "reconciliation_discrepancies_count": discrepancies_count,
+            "bills": bill_items,
         }
 
 
