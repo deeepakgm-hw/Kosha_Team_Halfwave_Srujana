@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   QrCode,
@@ -31,8 +31,8 @@ export const CustomerDashboardPage: React.FC = () => {
   const [selectedTxnForRepay, setSelectedTxnForRepay] = useState<CreditTransaction | null>(null);
   const [selectedBillForCheckout, setSelectedBillForCheckout] = useState<BillPaymentHistory | null>(null);
 
-  const fetchDashboard = async () => {
-    setIsLoading(true);
+  const fetchDashboard = useCallback(async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
     setError(null);
     try {
       const res = await apiClient.getCustomerDashboard();
@@ -40,14 +40,18 @@ export const CustomerDashboardPage: React.FC = () => {
     } catch (err: unknown) {
       setError(formatApiError(err));
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
-  };
+  }, []);
 
-  // Real-Time Server-Sent Events listener for live balance updates
+  // Real-Time Server-Sent Events listener for live balance updates (silent refresh in background)
   const { isRealTime } = useRealTimeSync({
-    onRefresh: fetchDashboard,
+    onRefresh: () => fetchDashboard(true),
   });
+
+  useEffect(() => {
+    fetchDashboard(false);
+  }, [fetchDashboard]);
 
   const handleOpenUpiCheckout = async (txn: CreditTransaction) => {
     const custId = data?.customer?.id || "cust_rahul_01";
@@ -82,9 +86,7 @@ export const CustomerDashboardPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
+
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -113,7 +115,7 @@ export const CustomerDashboardPage: React.FC = () => {
         <h3 className="text-lg font-bold text-slate-900">Failed to load dashboard</h3>
         <p className="text-xs text-slate-500">{error || "Unable to retrieve customer data."}</p>
         <button
-          onClick={fetchDashboard}
+          onClick={() => fetchDashboard(false)}
           className="px-5 py-2.5 rounded-xl bg-kosha-blue text-white text-xs font-bold shadow-md hover:bg-kosha-deep"
         >
           Try Again
@@ -149,7 +151,7 @@ export const CustomerDashboardPage: React.FC = () => {
             </span>
           )}
           <button
-            onClick={fetchDashboard}
+            onClick={() => fetchDashboard(false)}
             className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/80 hover:bg-white text-slate-600 border border-slate-200 shadow-xs transition-colors"
             title="Refresh dashboard"
           >

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type RealTimeEvent = {
   event_type: string;
@@ -26,11 +26,12 @@ export function useRealTimeSync(options: UseRealTimeSyncOptions = {}) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollTimerRef = useRef<number | null>(null);
 
-  const handleRefresh = useCallback(() => {
-    if (onRefresh) {
-      onRefresh();
-    }
-  }, [onRefresh]);
+  // Keep stable refs to avoid recreating SSE subscriptions on every render
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
+
+  const onRefreshRef = useRef(onRefresh);
+  onRefreshRef.current = onRefresh;
 
   useEffect(() => {
     if (!enabled) {
@@ -39,6 +40,12 @@ export function useRealTimeSync(options: UseRealTimeSyncOptions = {}) {
     }
 
     let isSubscribed = true;
+
+    const triggerRefresh = () => {
+      if (onRefreshRef.current) {
+        onRefreshRef.current();
+      }
+    };
 
     // Connect to Server-Sent Events stream
     try {
@@ -68,11 +75,15 @@ export function useRealTimeSync(options: UseRealTimeSyncOptions = {}) {
           };
           setLastEventAt(evt.timestamp);
 
-          if (onEvent) {
-            onEvent(evt);
+          if (onEventRef.current) {
+            onEventRef.current(evt);
           }
-          // Automatically trigger data refresh when ledger changes
-          handleRefresh();
+
+          // Handshake 'connected' event should NOT trigger a reload.
+          // Only trigger data refresh when an actual business data mutation event occurs.
+          if (type !== "connected") {
+            triggerRefresh();
+          }
         } catch {
           // ignore malformed frame
         }
@@ -91,7 +102,7 @@ export function useRealTimeSync(options: UseRealTimeSyncOptions = {}) {
           setStatus("polling");
           if (!pollTimerRef.current) {
             pollTimerRef.current = window.setInterval(() => {
-              handleRefresh();
+              triggerRefresh();
             }, pollingIntervalMs);
           }
         }
@@ -100,7 +111,7 @@ export function useRealTimeSync(options: UseRealTimeSyncOptions = {}) {
       // Direct fallback to polling if EventSource is unsupported
       setStatus("polling");
       pollTimerRef.current = window.setInterval(() => {
-        handleRefresh();
+        triggerRefresh();
       }, pollingIntervalMs);
     }
 
@@ -115,7 +126,7 @@ export function useRealTimeSync(options: UseRealTimeSyncOptions = {}) {
         pollTimerRef.current = null;
       }
     };
-  }, [enabled, pollingIntervalMs, handleRefresh, onEvent]);
+  }, [enabled, pollingIntervalMs]);
 
   return {
     status,

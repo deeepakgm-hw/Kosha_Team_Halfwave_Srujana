@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Receipt,
@@ -37,8 +37,8 @@ export const CustomerDuesPage: React.FC = () => {
   const [selectedBillForCheckout, setSelectedBillForCheckout] = useState<BillPaymentHistory | null>(null);
   const [isResolvingCheckout, setIsResolvingCheckout] = useState<boolean>(false);
 
-  const fetchDues = async (filter: string) => {
-    setIsLoading(true);
+  const fetchDues = useCallback(async (filter: string, isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
     setError(null);
     try {
       const [duesRes, billsRes] = await Promise.all([
@@ -50,18 +50,18 @@ export const CustomerDuesPage: React.FC = () => {
     } catch (err: unknown) {
       setError(formatApiError(err));
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
-  };
+  }, [currentCustomerId]);
 
-  // Real-Time Server-Sent Events listener
+  // Real-Time Server-Sent Events listener (silent refresh in background)
   const { isRealTime } = useRealTimeSync({
-    onRefresh: () => fetchDues(activeFilter),
+    onRefresh: () => fetchDues(activeFilter, true),
   });
 
   useEffect(() => {
-    fetchDues(activeFilter);
-  }, [activeFilter, currentCustomerId]);
+    fetchDues(activeFilter, false);
+  }, [fetchDues, activeFilter]);
 
   const handleFilterChange = (filter: string) => {
     setActiveFilter(filter);
