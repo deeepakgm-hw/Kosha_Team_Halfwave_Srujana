@@ -30,6 +30,12 @@ class ShopOut(BaseModel):
     created_at: datetime
 
 
+class ShopProfileUpdate(BaseModel):
+    upi_id: Optional[str] = Field(None, max_length=100, description="Real merchant UPI VPA e.g. shop@paytm")
+    phone: Optional[str] = Field(None, max_length=20)
+    shop_name: Optional[str] = Field(None, max_length=200)
+
+
 class ShopQrOut(BaseModel):
     shop_code: str
     shop_name: str
@@ -67,6 +73,8 @@ class CreditTransactionCreate(BaseModel):
     purchase_amount: Decimal = Field(..., gt=0, description="Total purchase value")
     amount_paid_now: Decimal = Field(Decimal("0.00"), ge=0, description="Initial payment made at checkout")
     agreed_repayment_date: date = Field(..., description="Agreed date to clear remaining balance (YYYY-MM-DD)")
+    payment_method: Optional[str] = Field("upi", description="Method used for initial downpayment (upi, counter_cash, etc.)")
+    payment_reference: Optional[str] = Field(None, max_length=100, description="UPI reference or UTR number for downpayment")
     idempotency_key: Optional[str] = Field(None, max_length=100)
 
 

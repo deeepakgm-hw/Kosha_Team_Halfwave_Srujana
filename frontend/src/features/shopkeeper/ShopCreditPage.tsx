@@ -22,6 +22,8 @@ import {
   Clock,
   PlayCircle,
   RotateCcw,
+  Edit3,
+  Smartphone,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { apiClient, formatApiError } from "../../lib/api";
@@ -56,10 +58,14 @@ export const ShopCreditPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // QR Code State
+  // QR Code & UPI State
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
+  const [isEditingUpi, setIsEditingUpi] = useState<boolean>(false);
+  const [customUpiInput, setCustomUpiInput] = useState<string>("");
+  const [isSavingUpi, setIsSavingUpi] = useState<boolean>(false);
+  const [upiSaveSuccess, setUpiSaveSuccess] = useState<boolean>(false);
 
   // Modals
   const [selectedTxnForDetails, setSelectedTxnForDetails] = useState<ShopkeeperTransaction | null>(null);
@@ -97,15 +103,20 @@ export const ShopCreditPage: React.FC = () => {
       ]);
       setSummary(sumRes);
       setTransactions(txnsRes);
+      if (sumRes?.shop?.upi_id) {
+        setCustomUpiInput(sumRes.shop.upi_id);
+      }
 
-      // Generate crisp QR code data URL client-side safely
+      // Generate crisp QR code data URL client-side with standard NPCI UPI specification
       try {
-        const qrPayload = `kosha://shop/${selectedShopCode}`;
+        const vpa = sumRes?.shop?.upi_id || "kosha.msme@razorpay";
+        const shopName = sumRes?.shop?.shop_name || "Merchant";
+        const qrPayload = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(shopName)}&cu=INR&tn=${encodeURIComponent(selectedShopCode)}`;
         const url = await QRCode.toDataURL(qrPayload, {
           width: 320,
           margin: 2,
           color: {
-            dark: "#0a2540",
+            dark: "#001C64",
             light: "#ffffff",
           },
         });
@@ -118,6 +129,23 @@ export const ShopCreditPage: React.FC = () => {
       setError(formatApiError(err));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSaveUpi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customUpiInput.trim()) return;
+    setIsSavingUpi(true);
+    try {
+      await apiClient.updateShopProfile(selectedShopCode, { upi_id: customUpiInput.trim() });
+      setUpiSaveSuccess(true);
+      setIsEditingUpi(false);
+      await loadShopData();
+      setTimeout(() => setUpiSaveSuccess(false), 3000);
+    } catch (err: unknown) {
+      alert(`Error updating UPI ID: ${formatApiError(err)}`);
+    } finally {
+      setIsSavingUpi(false);
     }
   };
 
@@ -697,6 +725,23 @@ export const ShopCreditPage: React.FC = () => {
               <span className="text-[#0070E0]">{selectedShopCode}</span>
             </div>
 
+            {/* Merchant Real UPI ID Pill & Editor */}
+            <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-blue-50 text-xs font-mono font-bold text-[#001C64] border border-blue-200">
+              <span className="text-[#545D68]">UPI ID:</span>
+              <span className="text-[#0070E0]">{summary?.shop?.upi_id || "kosha.msme@razorpay"}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomUpiInput(summary?.shop?.upi_id || "");
+                  setIsEditingUpi(!isEditingUpi);
+                }}
+                className="ml-1 text-[#0070E0] hover:text-[#003087] p-0.5"
+                title="Edit real UPI ID for receiving payments"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             <button
               onClick={handleCopyCode}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-white hover:bg-[#F5F7FA] text-[#001C64] border border-[#E1E7EC] shadow-xs transition-colors"
@@ -718,9 +763,60 @@ export const ShopCreditPage: React.FC = () => {
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-[#F5F7FA] hover:bg-[#E1E7EC] text-[#001C64] border border-[#E1E7EC] transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span>Fullscreen QR Display</span>
+              <span>Fullscreen QR</span>
             </button>
+
+            {/* Test Simulation Shortcut */}
+            <a
+              href={`/customer/pay?shop=${selectedShopCode}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs transition-colors cursor-pointer"
+              title="Test the customer checkout & partial bill creation flow"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Simulate Customer Scan &amp; Pay</span>
+            </a>
           </div>
+
+          {/* Inline UPI ID Editor Form */}
+          {isEditingUpi && (
+            <form onSubmit={handleSaveUpi} className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2 mt-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#001C64]">Set Real UPI ID (VPA) for {summary?.shop?.shop_name}</span>
+                <button type="button" onClick={() => setIsEditingUpi(false)} className="text-slate-400 hover:text-slate-600">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-[11px] text-[#545D68]">
+                Enter your real registered UPI handle (e.g. your GPay, PhonePe, or Paytm UPI ID) so customer UPI scans with external apps will resolve properly on NPCI.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customUpiInput}
+                  onChange={(e) => setCustomUpiInput(e.target.value)}
+                  placeholder="e.g. 9876543210@paytm or shop@okaxis"
+                  className="flex-1 px-3 py-1.5 rounded-lg border border-[#E1E7EC] font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[#0070E0] bg-white"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={isSavingUpi}
+                  className="px-4 py-1.5 rounded-lg bg-[#0070E0] hover:bg-[#003087] text-white text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
+                >
+                  {isSavingUpi ? "Saving..." : "Update UPI ID"}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {upiSaveSuccess && (
+            <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Merchant UPI ID updated! QR code has been regenerated.</span>
+            </div>
+          )}
         </div>
 
         {/* QR Preview Thumbnail */}
@@ -948,13 +1044,13 @@ export const ShopCreditPage: React.FC = () => {
 
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#0070E0] bg-[#0070E0]/10 px-3 py-1 rounded-full border border-[#0070E0]/20">
-                Counter QR Code
+                Official UPI QR Code
               </span>
               <h3 className="text-xl font-black text-[#001C64] mt-2 tracking-tight">
                 {summary?.shop.shop_name}
               </h3>
               <p className="text-xs text-[#545D68] font-medium mt-0.5">
-                Scan with KOSHA app to record credit
+                Scan with any UPI app (GPay / PhonePe / Paytm) or KOSHA
               </p>
             </div>
 
@@ -962,24 +1058,43 @@ export const ShopCreditPage: React.FC = () => {
               {qrDataUrl && <img src={qrDataUrl} alt="Store QR" className="w-56 h-56 mx-auto" />}
             </div>
 
-            <div className="bg-[#F5F7FA] rounded-full p-3 text-xs font-mono font-bold text-slate-700 border border-[#E1E7EC]">
-              Shop Code: <span className="text-[#0070E0]">{selectedShopCode}</span>
+            <div className="bg-[#F5F7FA] rounded-2xl p-3 text-xs space-y-1 border border-[#E1E7EC] text-left">
+              <div className="flex justify-between font-mono font-bold text-slate-700">
+                <span>Shop Code:</span>
+                <span className="text-[#0070E0]">{selectedShopCode}</span>
+              </div>
+              <div className="flex justify-between font-mono font-bold text-slate-700">
+                <span>Payee VPA:</span>
+                <span className="text-[#001C64]">{summary?.shop?.upi_id || "kosha.msme@razorpay"}</span>
+              </div>
             </div>
 
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={handleDownloadQr}
-                className="w-full py-2.5 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white text-xs font-bold shadow-paypal transition-all flex items-center justify-center gap-2"
+            <div className="space-y-2 pt-1">
+              <a
+                href={`/customer/pay?shop=${selectedShopCode}`}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-2.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Download className="w-4 h-4" />
-                <span>Save Image</span>
-              </button>
-              <button
-                onClick={() => setShowQrModal(false)}
-                className="w-full py-2.5 rounded-full bg-[#F5F7FA] hover:bg-[#E1E7EC] text-slate-700 text-xs font-bold transition-colors border border-[#E1E7EC]"
-              >
-                Close
-              </button>
+                <Smartphone className="w-4 h-4 text-emerald-600" />
+                <span>Simulate Customer Scan &amp; Pay</span>
+              </a>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDownloadQr}
+                  className="w-full py-2.5 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white text-xs font-bold shadow-paypal transition-all flex items-center justify-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Save Image</span>
+                </button>
+                <button
+                  onClick={() => setShowQrModal(false)}
+                  className="w-full py-2.5 rounded-full bg-[#F5F7FA] hover:bg-[#E1E7EC] text-slate-700 text-xs font-bold transition-colors border border-[#E1E7EC]"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

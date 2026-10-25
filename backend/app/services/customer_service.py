@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import uuid
 from typing import Any, Dict, List, Optional
+from urllib.parse import quote_plus
 import qrcode
 import qrcode.image.svg
 from sqlalchemy.orm import Session
@@ -34,6 +35,7 @@ from backend.app.schemas.customer import (
     RepaymentCreate,
     RepaymentOut,
     ShopOut,
+    ShopProfileUpdate,
     ShopQrOut,
     ShopkeeperFinancialSummaryOut,
     ShopkeeperRepaymentCreate,
@@ -65,7 +67,7 @@ class CustomerService:
                 "owner_name": "Vikram Mehta",
                 "phone": "+91 98220 11223",
                 "upi_id": "apexworks@upi",
-                "qr_payload": "kosha://shop/KOSHA-APEX",
+                "qr_payload": "upi://pay?pa=apexworks@upi&pn=Apex+Precision+Works&cu=INR&tn=KOSHA-APEX",
                 "status": "active",
             },
             {
@@ -76,7 +78,7 @@ class CustomerService:
                 "owner_name": "Lakshmi Narayanan",
                 "phone": "+91 98440 22334",
                 "upi_id": "lakshmiprovisions@upi",
-                "qr_payload": "kosha://shop/KOSHA-LAKSHMI",
+                "qr_payload": "upi://pay?pa=lakshmiprovisions@upi&pn=Sri+Lakshmi+Provisions&cu=INR&tn=KOSHA-LAKSHMI",
                 "status": "active",
             },
             {
@@ -87,7 +89,7 @@ class CustomerService:
                 "owner_name": "Rajesh Patil",
                 "phone": "+91 98110 33445",
                 "upi_id": "cityhardware@upi",
-                "qr_payload": "kosha://shop/KOSHA-CITY",
+                "qr_payload": "upi://pay?pa=cityhardware@upi&pn=City+Hardware+%26+Tools&cu=INR&tn=KOSHA-CITY",
                 "status": "active",
             },
         ]
@@ -157,7 +159,7 @@ class CustomerService:
                 "owner_name": "Vikram Mehta",
                 "phone": "+91 98220 11223",
                 "upi_id": "apexworks@upi",
-                "qr_payload": "kosha://shop/KOSHA-APEX",
+                "qr_payload": "upi://pay?pa=apexworks@upi&pn=Apex+Precision+Works&cu=INR&tn=KOSHA-APEX",
                 "status": "active",
             },
             {
@@ -168,7 +170,7 @@ class CustomerService:
                 "owner_name": "Lakshmi Narayanan",
                 "phone": "+91 98440 22334",
                 "upi_id": "lakshmiprovisions@upi",
-                "qr_payload": "kosha://shop/KOSHA-LAKSHMI",
+                "qr_payload": "upi://pay?pa=lakshmiprovisions@upi&pn=Sri+Lakshmi+Provisions&cu=INR&tn=KOSHA-LAKSHMI",
                 "status": "active",
             },
             {
@@ -179,7 +181,7 @@ class CustomerService:
                 "owner_name": "Rajesh Patil",
                 "phone": "+91 98110 33445",
                 "upi_id": "cityhardware@upi",
-                "qr_payload": "kosha://shop/KOSHA-CITY",
+                "qr_payload": "upi://pay?pa=cityhardware@upi&pn=City+Hardware+%26+Tools&cu=INR&tn=KOSHA-CITY",
                 "status": "active",
             },
         ]
@@ -654,7 +656,7 @@ class CustomerService:
         total_verified_online = Decimal("0.00")
         for t in txns:
             for r in (t.repayments or []):
-                if r.payment_status == "completed" and r.payment_method in ("razorpay_upi", "upi"):
+                if r.payment_status == "completed" and r.payment_method in ("razorpay_upi", "upi", "initial_downpayment", "demo_upi"):
                     total_verified_online += Decimal(str(r.amount))
         total_paid_amount = total_initial_paid + total_verified_online
         active_bills_count = sum(1 for t in txns if t.outstanding_amount > 0)
@@ -751,7 +753,7 @@ class CustomerService:
         total_verified_online = Decimal("0.00")
         for t in txns:
             for r in (t.repayments or []):
-                if r.payment_status == "completed" and r.payment_method in ("razorpay_upi", "upi"):
+                if r.payment_status == "completed" and r.payment_method in ("razorpay_upi", "upi", "initial_downpayment", "demo_upi"):
                     total_verified_online += Decimal(str(r.amount))
 
         return CustomerDuesResponse(
@@ -898,15 +900,17 @@ class CustomerService:
         db.flush()
 
         if data.amount_paid_now > 0:
+            method = getattr(data, "payment_method", None) or "upi"
+            pref = getattr(data, "payment_reference", None) or f"UPI-{uuid.uuid4().hex[:8].upper()}"
             rep = RepaymentModel(
                 transaction_id=txn.id,
                 amount=data.amount_paid_now,
                 repayment_date=today,
-                payment_method="initial_downpayment",
+                payment_method=method,
                 payment_status="completed",
                 recorded_by="customer",
-                provider_reference=f"DOWN-{uuid.uuid4().hex[:6].upper()}",
-                notes="Initial payment at checkout",
+                provider_reference=pref,
+                notes=f"Initial downpayment via {method.upper()}",
             )
             db.add(rep)
 
@@ -1078,9 +1082,10 @@ class CustomerService:
         return [ActivityEventOut.model_validate(a) for a in acts]
 
     def get_shop_qr(self, shop_code: str, db: Session) -> ShopQrOut:
-        """Generates real SVG QR code and instructions for a shop."""
+        """Generates real SVG QR code and instructions for a shop in standard NPCI UPI format."""
         shop = self.get_shop_by_code(shop_code=shop_code, db=db)
-        payload = f"kosha://shop/{shop.shop_code}"
+        merchant_vpa = (shop.upi_id if shop and shop.upi_id else None) or "kosha.merchant@razorpay"
+        payload = f"upi://pay?pa={merchant_vpa}&pn={quote_plus(shop.shop_name)}&cu=INR&tn={quote_plus(shop.shop_code)}"
         
         # Generate SVG QR image in memory
         img = qrcode.make(payload, image_factory=qrcode.image.svg.SvgPathImage)
@@ -1091,7 +1096,7 @@ class CustomerService:
             shop_name=shop.shop_name,
             qr_payload=payload,
             qr_svg=qr_svg,
-            instructions=f"Scan this QR code with the KOSHA Customer app or enter shop code {shop.shop_code} to record credit purchases.",
+            instructions=f"Scan this QR code with any UPI app (GPay, PhonePe, Paytm) or KOSHA to record purchases and credit bills for {shop.shop_name}.",
         )
 
     # =========================================================================
@@ -1120,6 +1125,24 @@ class CustomerService:
     def get_shopkeeper_shop(self, shop_id_or_code: Optional[str], db: Session) -> ShopOut:
         """Returns the active shopkeeper's shop details."""
         shop = self._resolve_shop(shop_id_or_code or "shop_apex_01", db)
+        return ShopOut.model_validate(shop)
+
+    def update_shop_profile(self, shop_id_or_code: str, data: ShopProfileUpdate, db: Session) -> ShopOut:
+        """Updates shop details, including real UPI ID for receiving payments via GPay/PhonePe/Paytm."""
+        shop = self._resolve_shop(shop_id_or_code, db)
+        if data.upi_id is not None:
+            clean_upi = data.upi_id.strip()
+            shop.upi_id = clean_upi
+            shop.qr_payload = f"upi://pay?pa={clean_upi}&pn={quote_plus(shop.shop_name)}&cu=INR&tn={quote_plus(shop.shop_code)}"
+        if data.phone is not None:
+            shop.phone = data.phone.strip()
+        if data.shop_name is not None and data.shop_name.strip():
+            shop.shop_name = data.shop_name.strip()
+            if shop.upi_id:
+                shop.qr_payload = f"upi://pay?pa={shop.upi_id}&pn={quote_plus(shop.shop_name)}&cu=INR&tn={quote_plus(shop.shop_code)}"
+        db.add(shop)
+        db.commit()
+        db.refresh(shop)
         return ShopOut.model_validate(shop)
 
     def get_shopkeeper_summary(

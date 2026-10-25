@@ -390,6 +390,16 @@ export const apiClient = {
     return fetchApi<Shop>(`/shopkeeper/shop?shop_id=${shopId}`);
   },
 
+  async updateShopProfile(
+    shopId = "shop_apex_01",
+    data: { upi_id?: string; phone?: string; shop_name?: string }
+  ): Promise<Shop> {
+    return fetchApi<Shop>(`/shopkeeper/shop/${encodeURIComponent(shopId)}/profile`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
   async getShopkeeperSummary(shopId = "shop_apex_01"): Promise<ShopkeeperSummary> {
     return fetchApi<ShopkeeperSummary>(`/shopkeeper/shop/summary?shop_id=${shopId}`);
   },

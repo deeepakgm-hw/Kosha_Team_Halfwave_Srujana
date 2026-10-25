@@ -14,6 +14,7 @@ from backend.app.schemas.customer import (
     CustomerProfileOut,
     CustomerRegisterCreate,
     ShopOut,
+    ShopProfileUpdate,
     ShopkeeperBillCreate,
     ShopkeeperFinancialSummaryOut,
     ShopkeeperRepaymentCreate,
@@ -465,6 +466,20 @@ def get_shopkeeper_shop(
     db: Session = Depends(get_db),
 ) -> ShopOut:
     return customer_service.get_shopkeeper_shop(shop_id_or_code=shop_id, db=db)
+
+
+@router.patch(
+    "/shop/{shop_id}/profile",
+    response_model=ShopOut,
+    summary="Update Shop Profile and Real UPI ID",
+    description="Updates shop profile details including merchant UPI VPA so customers can pay directly with real UPI apps.",
+)
+def update_shop_profile(
+    shop_id: str,
+    data: ShopProfileUpdate,
+    db: Session = Depends(get_db),
+) -> ShopOut:
+    return customer_service.update_shop_profile(shop_id_or_code=shop_id, data=data, db=db)
 
 
 @router.get(

@@ -119,6 +119,8 @@ export interface CreditTransactionCreatePayload {
   purchase_amount: number;
   amount_paid_now: number;
   agreed_repayment_date: string;
+  payment_method?: string;
+  payment_reference?: string;
 }
 
 export interface RepaymentCreatePayload {

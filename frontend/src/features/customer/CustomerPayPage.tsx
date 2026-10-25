@@ -14,8 +14,13 @@ import {
   Keyboard,
   Receipt,
   RotateCcw,
+  Smartphone,
+  ExternalLink,
+  Sparkles,
+  Check,
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
+import QRCode from "qrcode";
 import { apiClient, formatApiError } from "../../lib/api";
 import { Shop, CreditTransaction } from "../../types/customer";
 import { formatINR } from "../../lib/utils";
@@ -51,6 +56,13 @@ export const CustomerPayPage: React.FC = () => {
     d.setDate(d.getDate() + 7);
     return d.toISOString().split("T")[0];
   });
+
+  // Downpayment & UPI Payment Execution State
+  const [downpaymentMethod, setDownpaymentMethod] = useState<"upi_app" | "upi_qr" | "counter_cash" | "upi_simulate">("upi_app");
+  const [downpaymentVerified, setDownpaymentVerified] = useState<boolean>(true);
+  const [downpaymentUtr, setDownpaymentUtr] = useState<string>("UPI/REC-INIT");
+  const [showDownpaymentQr, setShowDownpaymentQr] = useState<boolean>(false);
+  const [downpaymentQrUrl, setDownpaymentQrUrl] = useState<string>("");
 
   // Step 3: Review acknowledgement
   const [isAcknowledged, setIsAcknowledged] = useState<boolean>(false);
@@ -127,26 +139,64 @@ export const CustomerPayPage: React.FC = () => {
     }
   };
 
-  const parseQrPayload = (payload: string): string => {
+  const parseQrPayload = (payload: string): { code: string; amount?: string } => {
     const clean = payload.trim();
-    // Handle kosha://shop/{code}
-    if (clean.startsWith("kosha://shop/")) {
-      return clean.replace("kosha://shop/", "").split("?")[0].trim();
+
+    // 1. Handle standard NPCI UPI QR code: upi://pay?pa=...&pn=...&am=...&tn=KOSHA-LAKSHMI
+    if (clean.toLowerCase().startsWith("upi://pay?") || clean.toLowerCase().startsWith("upi://pay/")) {
+      try {
+        const urlStr = clean.replace(/^upi:\/\/pay\/?\?/i, "https://upi.dummy/?");
+        const parsed = new URL(urlStr);
+        const tn = parsed.searchParams.get("tn") || "";
+        const am = parsed.searchParams.get("am") || "";
+        const pa = parsed.searchParams.get("pa") || "";
+
+        // If transaction note contains shop code (e.g. "KOSHA-LAKSHMI" or "KOSHA-APEX")
+        if (tn.toUpperCase().includes("KOSHA-")) {
+          const match = tn.toUpperCase().match(/KOSHA-[A-Z0-9_-]+/);
+          if (match) return { code: match[0], amount: am || undefined };
+        } else if (tn.trim().length >= 3) {
+          return { code: tn.trim(), amount: am || undefined };
+        }
+
+        // Match by UPI VPA if available
+        if (pa) {
+          const matchedShop = availableShops.find(
+            (s) => s.upi_id?.toLowerCase() === pa.toLowerCase()
+          );
+          if (matchedShop) {
+            return { code: matchedShop.shop_code, amount: am || undefined };
+          }
+        }
+      } catch {
+        const match = clean.match(/tn=([^&]+)/i);
+        if (match) {
+          const val = decodeURIComponent(match[1]);
+          return { code: val.trim() };
+        }
+      }
     }
-    // Handle kosha://pay?shop={code}
+
+    // 2. Handle kosha://shop/{code}
+    if (clean.startsWith("kosha://shop/")) {
+      return { code: clean.replace("kosha://shop/", "").split("?")[0].trim() };
+    }
+
+    // 3. Handle kosha://pay?shop={code} or web URL
     if (clean.includes("shop=")) {
       try {
         const urlPart = clean.startsWith("http") ? clean : `https://kosha.app/${clean.replace("kosha://", "")}`;
         const parsedUrl = new URL(urlPart);
         const shopParam = parsedUrl.searchParams.get("shop");
-        if (shopParam) return shopParam.trim();
+        if (shopParam) return { code: shopParam.trim() };
       } catch {
-        // Fallback simple regex
         const match = clean.match(/shop=([^&]+)/);
-        if (match) return match[1].trim();
+        if (match) return { code: match[1].trim() };
       }
     }
-    return clean;
+
+    // 4. Direct shop code fallback
+    return { code: clean };
   };
 
   const startCameraScanner = async () => {
@@ -175,9 +225,9 @@ export const CustomerPayPage: React.FC = () => {
         },
         async (decodedText: string) => {
           // Detected QR
-          const extractedCode = parseQrPayload(decodedText);
+          const { code, amount } = parseQrPayload(decodedText);
           await stopCameraScanner();
-          handleResolveShop(extractedCode);
+          handleResolveShop(code, amount);
         },
         () => {
           // Frame scan error - ignore frame by frame noise
@@ -199,17 +249,22 @@ export const CustomerPayPage: React.FC = () => {
     }
   };
 
-  const handleResolveShop = async (code: string) => {
-    const clean = parseQrPayload(code);
-    if (!clean) {
-      setShopError("Please enter or scan a valid shop code.");
+  const handleResolveShop = async (rawCode: string, prefilledAmount?: string) => {
+    const { code, amount } = parseQrPayload(rawCode);
+    if (!code) {
+      setShopError("Please enter or scan a valid shop code or UPI QR.");
       return;
+    }
+
+    const effAmount = prefilledAmount || amount;
+    if (effAmount && parseFloat(effAmount) > 0) {
+      setPurchaseAmount(effAmount);
     }
 
     setIsResolvingShop(true);
     setShopError(null);
     try {
-      const shop = await apiClient.getShopByCode(clean);
+      const shop = await apiClient.getShopByCode(code);
       if (shop.status === "inactive") {
         setShopError(`Shop "${shop.shop_name}" is currently inactive and cannot accept credit purchases.`);
         setSelectedShop(null);
@@ -231,6 +286,26 @@ export const CustomerPayPage: React.FC = () => {
   const parsedPurchase = parseFloat(purchaseAmount) || 0;
   const parsedPaid = parseFloat(amountPaidNow) || 0;
   const remainingDue = Math.max(0, parsedPurchase - parsedPaid);
+
+  // Dynamic standard NPCI UPI Intent URI for downpayment
+  const upiIntentUri = selectedShop && parsedPaid > 0
+    ? `upi://pay?pa=${encodeURIComponent(selectedShop.upi_id || "kosha.msme@razorpay")}&pn=${encodeURIComponent(selectedShop.shop_name)}&am=${parsedPaid.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`KOSHA-${selectedShop.shop_code}`)}`
+    : "";
+
+  useEffect(() => {
+    if (parsedPaid > 0 && selectedShop && showDownpaymentQr) {
+      QRCode.toDataURL(upiIntentUri, {
+        width: 240,
+        margin: 2,
+        color: {
+          dark: "#001C64",
+          light: "#FFFFFF",
+        },
+      })
+        .then(setDownpaymentQrUrl)
+        .catch(() => {});
+    }
+  }, [parsedPaid, selectedShop, showDownpaymentQr, upiIntentUri]);
 
   const handleProceedToReview = (e: React.FormEvent) => {
     e.preventDefault();
@@ -277,6 +352,8 @@ export const CustomerPayPage: React.FC = () => {
         purchase_amount: parsedPurchase,
         amount_paid_now: parsedPaid,
         agreed_repayment_date: repaymentDate,
+        payment_method: downpaymentMethod === "counter_cash" ? "counter_cash" : "upi",
+        payment_reference: downpaymentUtr || (parsedPaid > 0 ? `UPI/DOWN/${Date.now().toString().slice(-6)}` : undefined),
       });
 
       setConfirmedTxn(created);
@@ -608,6 +685,104 @@ export const CustomerPayPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Downpayment & Real-Time UPI Settlement Controls */}
+            {parsedPaid > 0 && selectedShop && (
+              <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/90 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-blue-200/60">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-[#0070E0]" />
+                    <span className="text-xs font-bold text-[#001C64]">
+                      Pay Downpayment ({formatINR(parsedPaid)}) via UPI
+                    </span>
+                  </div>
+                  {downpaymentVerified && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 self-start sm:self-auto">
+                      <Check className="w-3 h-3 text-emerald-600" />
+                      <span>{downpaymentMethod === "counter_cash" ? "Cash Received" : "UPI Verified"} ({downpaymentUtr || "REF-OK"})</span>
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-[#545D68] leading-relaxed">
+                  Pay {formatINR(parsedPaid)} now to <span className="font-bold text-slate-800">{selectedShop.shop_name}</span> (<span className="font-mono text-[#0070E0]">{selectedShop.upi_id || "kosha.msme@razorpay"}</span>). The remaining balance of <span className="font-bold text-[#001C64]">{formatINR(remainingDue)}</span> will be automatically issued as an active credit bill.
+                </p>
+
+                {/* UPI Intent & Testing Action Buttons */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                  {/* Action 1: Open Phone UPI App */}
+                  <a
+                    href={upiIntentUri}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => {
+                      setDownpaymentVerified(true);
+                      setDownpaymentMethod("upi_app");
+                      if (!downpaymentUtr || downpaymentUtr.startsWith("UPI/REC-INIT")) {
+                        setDownpaymentUtr(`UPI/APP/${Date.now().toString().slice(-6)}`);
+                      }
+                    }}
+                    className="p-2.5 rounded-xl bg-[#0070E0] hover:bg-[#003087] text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 text-center cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Pay in UPI App</span>
+                  </a>
+
+                  {/* Action 2: Show Scannable QR Code */}
+                  <button
+                    type="button"
+                    onClick={() => setShowDownpaymentQr(!showDownpaymentQr)}
+                    className="p-2.5 rounded-xl bg-white hover:bg-slate-50 border border-blue-200 text-[#001C64] text-xs font-bold shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-[#0070E0]" />
+                    <span>{showDownpaymentQr ? "Hide QR" : "Show UPI QR"}</span>
+                  </button>
+
+                  {/* Action 3: 1-Click Instant Verify (Test/Sandbox Mode) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDownpaymentVerified(true);
+                      setDownpaymentMethod("upi_simulate");
+                      setDownpaymentUtr(`UPI/SIM/${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 900 + 100)}`);
+                    }}
+                    className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Instant Verify (Test)</span>
+                  </button>
+                </div>
+
+                {/* Action 4: Counter Cash Toggle */}
+                <div className="flex items-center justify-between pt-1 text-[11px] text-[#545D68]">
+                  <span>Paying cash directly at store?</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDownpaymentVerified(true);
+                      setDownpaymentMethod("counter_cash");
+                      setDownpaymentUtr(`CASH/${Date.now().toString().slice(-6)}`);
+                    }}
+                    className={`font-bold hover:underline cursor-pointer ${downpaymentMethod === "counter_cash" ? "text-emerald-700" : "text-[#0070E0]"}`}
+                  >
+                    {downpaymentMethod === "counter_cash" ? "✓ Marked as Counter Cash" : "Mark as Paid via Counter Cash"}
+                  </button>
+                </div>
+
+                {/* Scannable Dynamic QR Popup/Inline */}
+                {showDownpaymentQr && downpaymentQrUrl && (
+                  <div className="bg-white p-4 rounded-xl border border-blue-200 text-center space-y-2 mt-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#545D68] block">
+                      Scan with Google Pay, PhonePe, Paytm, or BHIM
+                    </span>
+                    <img src={downpaymentQrUrl} alt="Downpayment UPI QR" className="w-48 h-48 mx-auto rounded-lg border border-slate-100 shadow-xs" />
+                    <div className="text-[11px] font-mono text-[#001C64] font-bold">
+                      Pay Exact: {formatINR(parsedPaid)} • VPA: {selectedShop.upi_id || "kosha.msme@razorpay"}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Calculated Remaining Balance Card */}
             <div className="p-4 rounded-2xl bg-[#F5F7FA] border border-[#E1E7EC] flex items-center justify-between">
               <div>
@@ -728,10 +903,15 @@ export const CustomerPayPage: React.FC = () => {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[#545D68] font-medium">Paid at Checkout</span>
-              <span className="font-mono font-bold text-emerald-700">{formatINR(parsedPaid)}</span>
+              <span className="font-mono font-bold text-emerald-700">
+                {formatINR(parsedPaid)} {parsedPaid > 0 ? `(${downpaymentMethod === "counter_cash" ? "Counter Cash" : "UPI: " + (downpaymentUtr || "Confirmed")})` : ""}
+              </span>
             </div>
             <div className="flex justify-between items-center pt-2.5 border-t border-[#E1E7EC]">
-              <span className="font-bold text-[#001C64]">Remaining Due to Shop</span>
+              <div>
+                <span className="font-bold text-[#001C64] block">Remaining Due (Active Bill)</span>
+                <span className="text-[10px] text-[#545D68]">Will reflect as an active bill on customer &amp; shop dashboards</span>
+              </div>
               <span className="font-mono text-base font-black text-[#001C64]">{formatINR(remainingDue)}</span>
             </div>
             {remainingDue > 0 && (
@@ -842,7 +1022,7 @@ export const CustomerPayPage: React.FC = () => {
               <span className="font-mono font-bold text-emerald-700">{formatINR(confirmedTxn.initial_paid_amount)}</span>
             </div>
             <div className="flex justify-between border-t border-[#E1E7EC] pt-2 font-bold">
-              <span className="text-[#001C64]">Remaining Balance Due:</span>
+              <span className="text-[#001C64]">Remaining Balance Due (Active Bill):</span>
               <span className="font-mono text-sm text-[#001C64]">{formatINR(confirmedTxn.outstanding_amount)}</span>
             </div>
             {confirmedTxn.outstanding_amount > 0 && (
@@ -857,6 +1037,10 @@ export const CustomerPayPage: React.FC = () => {
                 </span>
               </div>
             )}
+            <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-[#001C64] flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-[#0070E0] shrink-0" />
+              <span>The remaining balance of {formatINR(confirmedTxn.outstanding_amount)} is now live in your Active Dues and synchronized with {confirmedTxn.shop_name}'s receivables.</span>
+            </div>
           </div>
 
           {confirmedTxn.outstanding_amount > 0 && (

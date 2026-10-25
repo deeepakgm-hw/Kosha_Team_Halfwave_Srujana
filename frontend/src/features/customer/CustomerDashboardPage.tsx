@@ -98,7 +98,7 @@ export const CustomerDashboardPage: React.FC = () => {
         width: 280,
         margin: 2,
         color: {
-          dark: "#064e3b",
+          dark: "#001C64",
           light: "#ffffff",
         },
       }).then(setMyQrDataUrl).catch(() => {});

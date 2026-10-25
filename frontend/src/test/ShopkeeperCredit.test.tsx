@@ -191,7 +191,7 @@ describe("Shopkeeper Shop Credit & QR Experience", () => {
 
     // Should advance to step 2
     await waitFor(() => {
-      expect(screen.getByText("Apex Precision Works")).toBeInTheDocument();
+      expect(screen.getAllByText("Apex Precision Works").length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText("KOSHA-APEX")).toBeInTheDocument();
       expect(screen.getByText("Total Purchase Value (₹) *")).toBeInTheDocument();
     });
