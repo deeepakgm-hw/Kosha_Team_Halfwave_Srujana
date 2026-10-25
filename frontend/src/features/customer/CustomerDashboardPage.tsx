@@ -15,7 +15,7 @@ import {
   FileText,
 } from "lucide-react";
 import { apiClient, formatApiError } from "../../lib/api";
-import { CustomerDashboardSummary, CreditTransaction, BillPaymentHistory } from "../../types/customer";
+import { CustomerDashboardSummary, CreditTransaction, BillPaymentHistory, CustomerProfile } from "../../types/customer";
 import { formatINR } from "../../lib/utils";
 import { RepayModal } from "./RepayModal";
 import { RazorpayCheckoutModal } from "../payments/RazorpayCheckoutModal";
@@ -25,24 +25,36 @@ import { useRealTimeSync } from "../../hooks/useRealTimeSync";
 export const CustomerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<CustomerDashboardSummary | null>(null);
+  const [customers, setCustomers] = useState<CustomerProfile[]>([]);
+  const [currentCustomerId, setCurrentCustomerId] = useState<string>(() => {
+    return localStorage.getItem("kosha_active_customer_id") || "cust_amit_03";
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTxnForRepay, setSelectedTxnForRepay] = useState<CreditTransaction | null>(null);
   const [selectedBillForCheckout, setSelectedBillForCheckout] = useState<BillPaymentHistory | null>(null);
   const [selectedBillForDigitalModal, setSelectedBillForDigitalModal] = useState<BillPaymentHistory | null>(null);
 
-  const fetchDashboard = useCallback(async (isSilent = false) => {
-    if (!isSilent) setIsLoading(true);
-    setError(null);
-    try {
-      const res = await apiClient.getCustomerDashboard();
-      setData(res);
-    } catch (err: unknown) {
-      setError(formatApiError(err));
-    } finally {
-      if (!isSilent) setIsLoading(false);
-    }
-  }, []);
+  const fetchDashboard = useCallback(
+    async (isSilent = false, custId?: string) => {
+      if (!isSilent) setIsLoading(true);
+      setError(null);
+      const targetId = custId || currentCustomerId;
+      try {
+        const [dashRes, custList] = await Promise.all([
+          apiClient.getCustomerDashboard(targetId),
+          apiClient.listShopkeeperCustomers().catch(() => []),
+        ]);
+        setData(dashRes);
+        if (custList.length > 0) setCustomers(custList);
+      } catch (err: unknown) {
+        setError(formatApiError(err));
+      } finally {
+        if (!isSilent) setIsLoading(false);
+      }
+    },
+    [currentCustomerId]
+  );
 
   // Real-Time Server-Sent Events listener for live balance updates (silent refresh in background)
   const { isRealTime } = useRealTimeSync({
@@ -52,6 +64,12 @@ export const CustomerDashboardPage: React.FC = () => {
   useEffect(() => {
     fetchDashboard(false);
   }, [fetchDashboard]);
+
+  const handleSelectCustomer = (newId: string) => {
+    setCurrentCustomerId(newId);
+    localStorage.setItem("kosha_active_customer_id", newId);
+    fetchDashboard(false, newId);
+  };
 
   const handleOpenUpiCheckout = async (txn: CreditTransaction) => {
     const custId = data?.customer?.id || "cust_rahul_01";
@@ -141,7 +159,25 @@ export const CustomerDashboardPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {customers.length > 0 && (
+            <div className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-full border border-[#E1E7EC] shadow-2xs">
+              <span className="text-[11px] font-bold text-[#545D68] uppercase tracking-wider">Account:</span>
+              <select
+                value={currentCustomerId}
+                onChange={(e) => handleSelectCustomer(e.target.value)}
+                className="text-xs font-bold text-[#001C64] bg-transparent focus:outline-hidden cursor-pointer"
+                aria-label="Select Customer Account"
+              >
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.display_name} ({c.phone})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {isRealTime && (
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

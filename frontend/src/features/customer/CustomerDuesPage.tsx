@@ -14,7 +14,7 @@ import {
   FileText,
 } from "lucide-react";
 import { apiClient, formatApiError } from "../../lib/api";
-import { BillPaymentHistory, CreditTransaction, CustomerDuesResponse } from "../../types/customer";
+import { BillPaymentHistory, CreditTransaction, CustomerDuesResponse, CustomerProfile } from "../../types/customer";
 import { formatINR } from "../../lib/utils";
 import { RepayModal } from "./RepayModal";
 import { RazorpayCheckoutModal } from "../payments/RazorpayCheckoutModal";
@@ -24,7 +24,14 @@ import { useRealTimeSync } from "../../hooks/useRealTimeSync";
 export const CustomerDuesPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilter = searchParams.get("status") || "all";
-  const currentCustomerId = searchParams.get("customer_id") || "cust_rahul_01";
+  const [currentCustomerId, setCurrentCustomerId] = useState<string>(() => {
+    return (
+      searchParams.get("customer_id") ||
+      localStorage.getItem("kosha_active_customer_id") ||
+      "cust_amit_03"
+    );
+  });
+  const [customers, setCustomers] = useState<CustomerProfile[]>([]);
 
   const [activeTab, setActiveTab] = useState<"all" | "upi_bills">("all");
   const [activeFilter, setActiveFilter] = useState<string>(initialFilter);
@@ -43,12 +50,14 @@ export const CustomerDuesPage: React.FC = () => {
     if (!isSilent) setIsLoading(true);
     setError(null);
     try {
-      const [duesRes, billsRes] = await Promise.all([
+      const [duesRes, billsRes, custList] = await Promise.all([
         apiClient.getCustomerDues(currentCustomerId, filter === "all" ? undefined : filter),
         apiClient.listCustomerBills(currentCustomerId, filter === "all" ? undefined : filter).catch(() => []),
+        apiClient.listShopkeeperCustomers().catch(() => []),
       ]);
       setData(duesRes);
       setCustomerBills(billsRes);
+      if (custList.length > 0) setCustomers(custList);
     } catch (err: unknown) {
       setError(formatApiError(err));
     } finally {
@@ -65,11 +74,20 @@ export const CustomerDuesPage: React.FC = () => {
     fetchDues(activeFilter, false);
   }, [fetchDues, activeFilter]);
 
+  const handleSelectCustomer = (newId: string) => {
+    setCurrentCustomerId(newId);
+    localStorage.setItem("kosha_active_customer_id", newId);
+    const newParams: Record<string, string> = {};
+    if (activeFilter !== "all") newParams.status = activeFilter;
+    newParams.customer_id = newId;
+    setSearchParams(newParams);
+  };
+
   const handleFilterChange = (filter: string) => {
     setActiveFilter(filter);
     const newParams: Record<string, string> = {};
     if (filter !== "all") newParams.status = filter;
-    if (currentCustomerId !== "cust_rahul_01") newParams.customer_id = currentCustomerId;
+    newParams.customer_id = currentCustomerId;
     setSearchParams(newParams);
   };
 
@@ -155,7 +173,25 @@ export const CustomerDuesPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {customers.length > 0 && (
+            <div className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-full border border-[#E1E7EC] shadow-2xs">
+              <span className="text-[11px] font-bold text-[#545D68] uppercase tracking-wider">Account:</span>
+              <select
+                value={currentCustomerId}
+                onChange={(e) => handleSelectCustomer(e.target.value)}
+                className="text-xs font-bold text-[#001C64] bg-transparent focus:outline-hidden cursor-pointer"
+                aria-label="Select Customer Account"
+              >
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.display_name} ({c.phone})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {isRealTime && (
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
