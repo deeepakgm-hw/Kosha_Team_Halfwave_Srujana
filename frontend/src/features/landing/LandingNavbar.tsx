@@ -24,7 +24,7 @@ export const LandingNavbar: React.FC = () => {
 
   const handleOpenBusiness = () => {
     if (isAuthenticated && user?.role === "business_owner") {
-      navigate("/load");
+      navigate("/overview");
     } else {
       navigate("/login?role=business");
     }
@@ -169,7 +169,7 @@ export const LandingNavbar: React.FC = () => {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => navigate(user.role === "customer" ? "/customer/dashboard" : "/load")}
+                onClick={() => navigate(user.role === "customer" ? "/customer/dashboard" : "/overview")}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all cursor-pointer"
               >
                 {user.role === "customer" ? <User className="w-3.5 h-3.5" /> : <Store className="w-3.5 h-3.5" />}
@@ -315,7 +315,7 @@ export const LandingNavbar: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    navigate(user.role === "customer" ? "/customer/dashboard" : "/load");
+                    navigate(user.role === "customer" ? "/customer/dashboard" : "/overview");
                   }}
                   className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-xs flex items-center justify-center gap-2"
                 >

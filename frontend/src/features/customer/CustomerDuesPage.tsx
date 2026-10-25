@@ -187,7 +187,7 @@ export const CustomerDuesPage: React.FC = () => {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-[#545D68] font-medium mt-1">
-            Track and settle store credit with instant UPI &amp; PayPal verification.
+            Track and settle store credit with instant Razorpay UPI verification.
           </p>
         </div>
 
@@ -290,7 +290,7 @@ export const CustomerDuesPage: React.FC = () => {
           }`}
         >
           <Smartphone className="w-3.5 h-3.5" />
-          <span>PayPal &amp; UPI Bills</span>
+          <span>UPI Store Bills</span>
           {customerBills.length > 0 && (
             <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-black">
               {customerBills.length}

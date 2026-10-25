@@ -21,6 +21,7 @@ const mockRazorpayConfig: RazorpayConfig = {
   currency: "INR",
   upi_vpa: "kosha.business@icici",
   upi_flow_enabled: true,
+  is_configured: true,
 };
 
 const mockCustomers: CustomerProfile[] = [
@@ -134,6 +135,20 @@ describe("Razorpay UPI Payment Integration Frontend Tests", () => {
     vi.clearAllMocks();
 
     vi.spyOn(apiClient, "getRazorpayConfig").mockResolvedValue(mockRazorpayConfig);
+    vi.spyOn(apiClient, "getShopkeeperFinancialSummary").mockResolvedValue({
+      total_invoiced_paise: 500000,
+      total_invoiced_inr: 5000.0,
+      total_verified_paid_paise: 200000,
+      total_verified_paid_inr: 2000.0,
+      total_outstanding_paise: 300000,
+      total_outstanding_inr: 3000.0,
+      total_bills_count: 2,
+      active_bills_count: 1,
+      settled_bills_count: 1,
+      today_collections_inr: 0,
+      today_transactions_count: 0,
+      active_upi_requests_count: 1,
+    });
     vi.spyOn(apiClient, "listShopkeeperCustomers").mockResolvedValue(mockCustomers);
     vi.spyOn(apiClient, "listShopkeeperBills").mockResolvedValue(mockBills);
     vi.spyOn(apiClient, "createShopkeeperBill").mockResolvedValue({
@@ -183,6 +198,7 @@ describe("Razorpay UPI Payment Integration Frontend Tests", () => {
       ],
     });
     vi.spyOn(apiClient, "listCustomerBills").mockResolvedValue(mockBills);
+    vi.spyOn(apiClient, "getAutopayMandateByBill").mockResolvedValue(null);
     vi.spyOn(apiClient, "getBillPaymentHistory").mockResolvedValue(mockBills[0]);
   });
 
@@ -201,7 +217,7 @@ describe("Razorpay UPI Payment Integration Frontend Tests", () => {
       expect(screen.getByText(/Customer UPI Billing & Payment Requests/i)).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/Test Mode Active/i)).toBeInTheDocument();
+    expect(screen.getByText(/Test Sandbox Mode/i)).toBeInTheDocument();
     expect(screen.getByText(/BILL-APEX-001/i)).toBeInTheDocument();
     expect(screen.getByText(/BILL-APEX-002/i)).toBeInTheDocument();
   });
@@ -223,9 +239,9 @@ describe("Razorpay UPI Payment Integration Frontend Tests", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Create New Customer Bill/i }));
 
-    expect(screen.getByText(/Register bill & generate Razorpay UPI request/i)).toBeInTheDocument();
+    expect(screen.getByText(/Register genuine store bill/i)).toBeInTheDocument();
 
-    const descInput = screen.getByPlaceholderText(/Industrial fasteners/i);
+    const descInput = screen.getByPlaceholderText(/monthly hardware supplies|Brass valves/i);
     const totalInput = screen.getByPlaceholderText("2500.00");
     const initialInput = screen.getByPlaceholderText("0.00");
 
@@ -233,7 +249,7 @@ describe("Razorpay UPI Payment Integration Frontend Tests", () => {
     fireEvent.change(totalInput, { target: { value: "4500" } });
     fireEvent.change(initialInput, { target: { value: "1500" } });
 
-    const submitBtn = screen.getByRole("button", { name: /Create Bill & Generate QR/i });
+    const submitBtn = screen.getByRole("button", { name: /Create Bill & Show UPI QR|Create Customer Bill/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
@@ -242,7 +258,7 @@ describe("Razorpay UPI Payment Integration Frontend Tests", () => {
           customer_id: "cust_rahul_01",
           description: "Grade 8 Bolts and Lathe Fasteners",
           total_amount: 4500,
-          initial_manual_paid: 1500,
+          initial_payment_amount: 1500,
           generate_payment_request: true,
         }),
         "shop_apex_01"
@@ -265,9 +281,9 @@ describe("Razorpay UPI Payment Integration Frontend Tests", () => {
       expect(screen.getByText(/BILL-APEX-001/i)).toBeInTheDocument();
     });
 
-    // Click "View QR & History" on first bill
-    const viewButtons = screen.getAllByText(/View QR & History/i);
-    fireEvent.click(viewButtons[0]);
+    // Click on first bill card to open detail view
+    const billCard = screen.getByText(/BILL-APEX-001/i);
+    fireEvent.click(billCard);
 
     await waitFor(() => {
       expect(screen.getByText(/Copy UPI Link/i)).toBeInTheDocument();
@@ -375,14 +391,14 @@ describe("Razorpay UPI Payment Integration Frontend Tests", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/My Shop Dues/i)).toBeInTheDocument();
+      expect(screen.getByText(/My Dues & Repayments/i)).toBeInTheDocument();
     });
 
     // Check "Pay via UPI" button exists on credit transaction
     expect(screen.getByRole("button", { name: /Pay via UPI/i })).toBeInTheDocument();
 
     // Switch to "Razorpay UPI Invoices" tab
-    const upiBillsTab = screen.getByRole("button", { name: /Razorpay UPI Invoices/i });
+    const upiBillsTab = screen.getByRole("button", { name: /UPI Store Bills/i });
     fireEvent.click(upiBillsTab);
 
     await waitFor(() => {

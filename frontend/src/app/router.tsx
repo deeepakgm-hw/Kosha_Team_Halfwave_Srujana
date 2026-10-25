@@ -18,6 +18,7 @@ import { CustomerDuesPage } from "../features/customer/CustomerDuesPage";
 import { CustomerPayPage } from "../features/customer/CustomerPayPage";
 import { CustomerActivityPage } from "../features/customer/CustomerActivityPage";
 import { CustomerProfilePage } from "../features/customer/CustomerProfilePage";
+import { BusinessOverviewPage } from "../features/dashboard/BusinessOverviewPage";
 import { RouteErrorBoundary } from "../components/layout/RouteErrorBoundary";
 import { ProtectedRoute } from "../components/layout/ProtectedRoute";
 
@@ -102,6 +103,23 @@ export const router = createBrowserRouter([
     ),
     errorElement: <RouteErrorBoundary />,
     children: [
+      // 0. Primary UPI-First Payment & Treasury Overview
+      {
+        index: true,
+        element: <BusinessOverviewPage />,
+      },
+      {
+        path: "overview",
+        element: <BusinessOverviewPage />,
+      },
+      {
+        path: "dashboard",
+        element: <BusinessOverviewPage />,
+      },
+      {
+        path: "payments-overview",
+        element: <BusinessOverviewPage />,
+      },
       // 1. Load data
       {
         path: "load",

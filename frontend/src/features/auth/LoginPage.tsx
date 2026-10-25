@@ -61,7 +61,7 @@ export const LoginPage: React.FC = () => {
       if (user.role === "customer") {
         navigate("/customer/dashboard");
       } else {
-        navigate("/load");
+        navigate("/overview");
       }
     }
   }, [user, navigate]);
