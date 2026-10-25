@@ -593,7 +593,7 @@ export const GlassNavbar: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Srujana Automation Pvt Ltd"
+                  placeholder="e.g. Apex Industrial Solutions Pvt Ltd"
                   value={newBizName}
                   onChange={(e) => setNewBizName(e.target.value)}
                   className="w-full border border-[#E1E7EC] rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0070E0] bg-[#F5F7FA]"

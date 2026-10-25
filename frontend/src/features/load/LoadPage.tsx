@@ -115,9 +115,9 @@ export const LoadPage: React.FC = () => {
           >
             <div>
               <div className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-kosha-blue mb-4">
-                Recommended for Hackathon Demo
+                Industry Benchmark Template
               </div>
-              <h2 className="text-xl font-bold text-kosha-navy">Sample business</h2>
+              <h2 className="text-xl font-bold text-kosha-navy">Industry Template</h2>
               <p className="text-xs text-slate-500 mt-1">Pre-configured synthetic data with reconciled cash ledgers.</p>
 
               {/* Persona Radios */}

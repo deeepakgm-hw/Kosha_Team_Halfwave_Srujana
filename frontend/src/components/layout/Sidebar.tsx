@@ -120,7 +120,7 @@ export const Sidebar: React.FC = () => {
           "Know your treasury before it runs dry."
         </p>
         <div className="mt-2 text-center text-[10px] text-slate-500">
-          Srujana Tech Fest 2026 • Phase 1
+          KOSHA Enterprise Treasury Platform
         </div>
       </div>
     </aside>

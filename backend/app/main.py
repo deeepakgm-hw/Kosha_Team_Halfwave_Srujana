@@ -18,7 +18,7 @@ def create_application() -> FastAPI:
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.VERSION,
-        description="Predictive Cash-Flow Early Warning System for Small Businesses (Srujana Tech Fest 2026).",
+        description="Predictive Cash-Flow Early Warning & Enterprise MSME Treasury Platform.",
         docs_url="/docs",
         redoc_url="/redoc",
     )

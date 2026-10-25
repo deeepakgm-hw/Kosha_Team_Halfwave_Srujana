@@ -4,30 +4,26 @@ import {
   Store,
   User,
   ArrowRight,
-  TrendingUp,
-  ShieldCheck,
   Receipt,
-  QrCode,
   CalendarCheck,
   CheckCircle2,
   Sparkles,
   Smartphone,
   BarChart3,
+  ShieldCheck,
+  TrendingUp,
+  CreditCard,
 } from "lucide-react";
-import { useBusiness } from "../../context/BusinessContext";
 
 export const LandingPersonaSelector: React.FC = () => {
   const navigate = useNavigate();
-  const { setIsDemoMode, setSelectedPersona } = useBusiness();
 
   const handleOpenBusiness = () => {
-    setIsDemoMode(true);
-    setSelectedPersona("manufacturer");
-    navigate("/load");
+    navigate("/login?role=business");
   };
 
   const handleOpenCustomer = () => {
-    navigate("/customer/dashboard");
+    navigate("/login?role=customer");
   };
 
   return (
@@ -59,17 +55,17 @@ export const LandingPersonaSelector: React.FC = () => {
                 <div className="w-14 h-14 rounded-2xl bg-blue-50 text-kosha-blue flex items-center justify-center border border-blue-100 shadow-xs">
                   <Store className="w-7 h-7" />
                 </div>
-                <span className="text-xs font-bold uppercase tracking-wider text-kosha-blue bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-800 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
                   Business Owner
                 </span>
               </div>
 
               <div>
                 <h3 className="text-2xl sm:text-3xl font-black text-kosha-navy group-hover:text-kosha-blue transition-colors">
-                  Business Owner & Merchant
+                  MSME Merchant Portal
                 </h3>
                 <p className="text-sm sm:text-base text-slate-600 font-medium mt-2 leading-relaxed">
-                  Predict runway, manage customer credit, and recover corporate receivables with statutory backing.
+                  Predictive runway forecasting, real-time UPI collections, customer credit ledgers, and statutory MSMED Act protection.
                 </p>
               </div>
 
@@ -77,15 +73,15 @@ export const LandingPersonaSelector: React.FC = () => {
               <div className="space-y-3 pt-2 text-sm text-slate-700 font-medium">
                 <div className="flex items-center gap-3">
                   <TrendingUp className="w-4.5 h-4.5 text-kosha-blue shrink-0" />
-                  <span>90-day predictive rolling cash runway</span>
+                  <span>90-day cash runway forecast &amp; safety buffer alerts</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <QrCode className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
-                  <span>Shop QR code generator for in-store credit</span>
+                  <CreditCard className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
+                  <span>Dynamic UPI QR generation with instant webhook sync</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <ShieldCheck className="w-4.5 h-4.5 text-indigo-600 shrink-0" />
-                  <span>MSMED Section 16 penal interest tracking</span>
+                  <ShieldCheck className="w-4.5 h-4.5 text-blue-700 shrink-0" />
+                  <span>MSMED Section 16 penal interest tracking engine</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <BarChart3 className="w-4.5 h-4.5 text-amber-600 shrink-0" />
@@ -98,13 +94,13 @@ export const LandingPersonaSelector: React.FC = () => {
               <button
                 type="button"
                 onClick={handleOpenBusiness}
-                className="w-full py-4 rounded-2xl bg-kosha-blue hover:bg-kosha-deep text-white text-base font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group-hover:gap-3"
+                className="w-full py-4 rounded-2xl bg-kosha-blue hover:bg-kosha-deep text-white text-base font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group-hover:gap-3 cursor-pointer"
               >
                 <span>Launch Business Login</span>
                 <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
               </button>
               <p className="text-xs text-slate-400 text-center mt-2.5 font-medium">
-                Includes sample MSME manufacturing & retail demo data
+                Instant setup · Bank-grade data encryption · Role-based security
               </p>
             </div>
           </div>
@@ -125,7 +121,7 @@ export const LandingPersonaSelector: React.FC = () => {
 
               <div>
                 <h3 className="text-2xl sm:text-3xl font-black text-kosha-navy group-hover:text-emerald-700 transition-colors">
-                  Customer & Shopper Member
+                  Customer &amp; Shopper Member
                 </h3>
                 <p className="text-sm sm:text-base text-slate-600 font-medium mt-2 leading-relaxed">
                   Scan store QR codes, track shop purchases made on credit, and manage upcoming repayment commitments.
@@ -140,11 +136,11 @@ export const LandingPersonaSelector: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <CalendarCheck className="w-4.5 h-4.5 text-amber-600 shrink-0" />
-                  <span>Agreed repayment commitments & polite reminders</span>
+                  <span>Agreed repayment commitments &amp; polite reminders</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Receipt className="w-4.5 h-4.5 text-teal-600 shrink-0" />
-                  <span>Track cleared balances & digital transaction receipts</span>
+                  <span>Track cleared balances &amp; digital transaction receipts</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="w-4.5 h-4.5 text-blue-600 shrink-0" />
@@ -157,13 +153,13 @@ export const LandingPersonaSelector: React.FC = () => {
               <button
                 type="button"
                 onClick={handleOpenCustomer}
-                className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group-hover:gap-3"
+                className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group-hover:gap-3 cursor-pointer"
               >
                 <span>Launch Member Login</span>
                 <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
               </button>
               <p className="text-xs text-slate-400 text-center mt-2.5 font-medium">
-                Mobile-optimized · Preloaded as customer Rahul Sharma
+                Mobile-optimized · Live QR counter checkout · Real-time ledger sync
               </p>
             </div>
           </div>

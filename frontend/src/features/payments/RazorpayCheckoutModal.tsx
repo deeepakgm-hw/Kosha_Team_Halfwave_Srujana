@@ -224,7 +224,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
     const publicRazorpayKey =
       paymentRequest.key_id || gatewayConfig?.key_id || "rzp_test_kosha_sandbox";
     const merchantDisplayName =
-      gatewayConfig?.merchant_name || bill.shop_name || "Halfwaveplatforms";
+      gatewayConfig?.merchant_name || bill.shop_name || "KOSHA Merchant Treasury";
 
     const win = window as any;
     if (win.Razorpay) {
@@ -909,7 +909,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
                 Amount: {formatINR(paymentRequest.amount_inr)}
               </div>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Pay to: <span className="font-bold text-slate-700">{gatewayConfig?.merchant_name || "Halfwaveplatforms"}</span>
+                Pay to: <span className="font-bold text-slate-700">{gatewayConfig?.merchant_name || bill.shop_name || "KOSHA Merchant Treasury"}</span>
               </p>
             </div>
 

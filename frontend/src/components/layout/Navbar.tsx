@@ -183,7 +183,7 @@ export const Navbar: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Srujana Automation Pvt Ltd"
+                  placeholder="e.g. Apex Industrial Solutions Pvt Ltd"
                   value={newBizName}
                   onChange={(e) => setNewBizName(e.target.value)}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"

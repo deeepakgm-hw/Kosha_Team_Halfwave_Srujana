@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { KoshaLogo } from "../../components/ui/KoshaLogo";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Lock, CheckCircle2 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 
 export const LandingFooter: React.FC = () => {
@@ -64,7 +64,7 @@ export const LandingFooter: React.FC = () => {
             <ul className="space-y-2 text-[#545D68]">
               <li>
                 <Link to="/load" className="hover:text-[#0070E0] transition-colors">
-                  Business Owner Dashboard
+                  Merchant Portal
                 </Link>
               </li>
               <li>
@@ -78,8 +78,8 @@ export const LandingFooter: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/welcome" className="hover:text-[#0070E0] transition-colors">
-                  Interactive Demo Mode
+                <Link to="/payments" className="hover:text-[#0070E0] transition-colors">
+                  UPI Payments &amp; Invoicing
                 </Link>
               </li>
               <li>
@@ -90,24 +90,29 @@ export const LandingFooter: React.FC = () => {
             </ul>
           </div>
 
-          {/* Col 4: Hackathon & Team */}
+          {/* Col 4: Security & Compliance */}
           <div className="space-y-3">
-            <h4 className="text-[#001C64] font-bold text-xs uppercase tracking-wider">Team Halfwave</h4>
+            <h4 className="text-[#001C64] font-bold text-xs uppercase tracking-wider">Security &amp; Trust</h4>
             <ul className="space-y-2 text-[#545D68]">
-              <li>
-                <span className="text-[#001C64] font-bold">Srujana Tech Fest 2026</span>
+              <li className="flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-[#0070E0]" />
+                <span className="text-[#001C64] font-semibold">256-Bit Bank Encryption</span>
               </li>
-              <li>
-                <span>Finance &amp; Fintech Category</span>
+              <li className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Real-Time Webhook Audit</span>
               </li>
-              <li>
-                <span>FastAPI + React 18 Architecture</span>
+              <li className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Multi-Tenant DB Isolation</span>
               </li>
-              <li>
-                <span>Multi-lingual (EN, HI, KN)</span>
+              <li className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Multi-Lingual (EN, HI, KN)</span>
               </li>
-              <li>
-                <span>Open Source Demo</span>
+              <li className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>High-Availability Cloud SLA</span>
               </li>
             </ul>
           </div>
@@ -116,7 +121,7 @@ export const LandingFooter: React.FC = () => {
         {/* Legal Disclaimer Box */}
         <div className="p-4 rounded-xl bg-[#F5F7FA] border border-[#E1E7EC] text-[11px] text-[#545D68] leading-relaxed space-y-2">
           <p>
-            <strong className="text-[#001C64]">Regulatory &amp; Platform Notice:</strong> KOSHA is a financial planning, cash-flow forecasting, and credit management facilitation technology developed by Team Halfwave for Srujana Tech Fest 2026. This platform does not operate as a licensed deposit-taking bank or non-banking financial company (NBFC).
+            <strong className="text-[#001C64]">Regulatory &amp; Platform Notice:</strong> KOSHA is an enterprise financial treasury, predictive cash-flow intelligence, and customer credit ledger platform for MSMEs. This platform operates as an analytical planning and billing aid and does not engage in unlicenced deposit taking.
           </p>
           <p>
             Late-payment calculations and penal interest metrics follow statutory provisions under Section 15 and Section 16 of the Micro, Small and Medium Enterprises Development (MSMED) Act, 2006, and Section 43B(h) of the Income Tax Act, 1961.
@@ -126,7 +131,7 @@ export const LandingFooter: React.FC = () => {
         {/* Bottom Bar */}
         <div className="pt-6 border-t border-[#E1E7EC] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
           <div className="flex items-center gap-4">
-            <span className="text-[#545D68]">© 2026 KOSHA · Team Halfwave. All rights reserved.</span>
+            <span className="text-[#545D68]">© {new Date().getFullYear()} KOSHA Treasury Technologies. All rights reserved.</span>
           </div>
 
           {/* Language Selector */}
@@ -135,7 +140,7 @@ export const LandingFooter: React.FC = () => {
             <div className="flex items-center gap-1 bg-[#F5F7FA] p-0.5 rounded-full border border-[#E1E7EC]">
               <button
                 onClick={() => setLanguage("EN")}
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold cursor-pointer ${
                   language === "EN" ? "bg-white text-[#001C64] shadow-xs font-bold" : "text-[#545D68] hover:text-[#0C0C0D]"
                 }`}
               >
@@ -143,7 +148,7 @@ export const LandingFooter: React.FC = () => {
               </button>
               <button
                 onClick={() => setLanguage("HI")}
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold cursor-pointer ${
                   language === "HI" ? "bg-white text-[#001C64] shadow-xs font-bold" : "text-[#545D68] hover:text-[#0C0C0D]"
                 }`}
               >
@@ -151,7 +156,7 @@ export const LandingFooter: React.FC = () => {
               </button>
               <button
                 onClick={() => setLanguage("KN")}
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold cursor-pointer ${
                   language === "KN" ? "bg-white text-[#001C64] shadow-xs font-bold" : "text-[#545D68] hover:text-[#0C0C0D]"
                 }`}
               >

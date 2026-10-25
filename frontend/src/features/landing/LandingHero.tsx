@@ -7,20 +7,16 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { HeroDeviceMockups } from "./HeroDeviceMockups";
-import { useBusiness } from "../../context/BusinessContext";
 
 export const LandingHero: React.FC = () => {
   const navigate = useNavigate();
-  const { setIsDemoMode, setSelectedPersona } = useBusiness();
 
   const handleOpenBusiness = () => {
-    setIsDemoMode(true);
-    setSelectedPersona("manufacturer");
-    navigate("/load");
+    navigate("/login?role=business");
   };
 
   const handleOpenCustomer = () => {
-    navigate("/customer/dashboard");
+    navigate("/login?role=customer");
   };
 
   return (
@@ -32,7 +28,7 @@ export const LandingHero: React.FC = () => {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[#545D68] font-medium">India MSME Checkout &amp; Treasury</span>
             <span className="text-slate-300">|</span>
-            <span className="text-[#0070E0] font-semibold">Srujana Tech Fest 2026</span>
+            <span className="text-[#0070E0] font-semibold">Real-Time UPI &amp; Cash Flow Engine</span>
           </div>
         </div>
 
@@ -55,7 +51,7 @@ export const LandingHero: React.FC = () => {
             <button
               type="button"
               onClick={handleOpenBusiness}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-[#FFC439] hover:bg-[#F6B623] text-[#001C64] font-black text-base shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2.5 active:scale-[0.98]"
+              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-[#FFC439] hover:bg-[#F6B623] text-[#001C64] font-black text-base shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2.5 active:scale-[0.98] cursor-pointer"
             >
               <Store className="w-5 h-5 text-[#001C64]" />
               <span>Business Login — Start Free Forecast</span>
@@ -66,29 +62,32 @@ export const LandingHero: React.FC = () => {
             <button
               type="button"
               onClick={handleOpenCustomer}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white hover:bg-[#0070E0]/5 text-[#0070E0] border-2 border-[#0070E0] font-bold text-base shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-2.5 active:scale-[0.98]"
+              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white hover:bg-[#0070E0]/5 text-[#0070E0] border-2 border-[#0070E0] font-bold text-base shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-2.5 active:scale-[0.98] cursor-pointer"
             >
               <User className="w-5 h-5 text-[#0070E0]" />
               <span>Member Login — View Dues &amp; Pay</span>
             </button>
           </div>
 
-          {/* Trust Guarantees Strip */}
-          <div className="pt-4 flex flex-wrap items-center justify-center gap-y-2 gap-x-6 text-xs text-[#545D68] font-medium">
+          {/* Micro Trust Proof Bar */}
+          <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-[#545D68] font-semibold">
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> No setup fees or hardware required
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>MSMED Act Sec. 16 Protection</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Instant dynamic QR counter activation
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Real-Time UPI Dynamic QR</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> MSMED Act Section 16 penal compliant
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>No App Download for Shoppers</span>
             </span>
           </div>
         </div>
 
-        {/* Hero Interactive Device Mockup Visual */}
-        <div className="mt-8 sm:mt-12">
+        {/* Device Mockups (PayPal-style Hero Showcase) */}
+        <div className="mt-12 sm:mt-16">
           <HeroDeviceMockups />
         </div>
       </div>
