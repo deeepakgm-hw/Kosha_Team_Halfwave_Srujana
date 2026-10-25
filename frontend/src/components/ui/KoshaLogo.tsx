@@ -15,8 +15,8 @@ export const KoshaLogo: React.FC<KoshaLogoProps> = ({
 }) => {
   const iconSizes = {
     sm: "w-7 h-7",
-    md: "w-9 h-9",
-    lg: "w-14 h-14",
+    md: "w-8 h-8",
+    lg: "w-12 h-12",
   };
 
   const textSizes = {
@@ -26,8 +26,8 @@ export const KoshaLogo: React.FC<KoshaLogoProps> = ({
   };
 
   return (
-    <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
-      {/* Brand Icon SVG */}
+    <div className={`inline-flex items-center gap-2 select-none ${className}`}>
+      {/* PayPal Inspired Monogram Glyphs */}
       <svg
         className={`${iconSizes[size]} shrink-0`}
         viewBox="0 0 100 100"
@@ -35,72 +35,45 @@ export const KoshaLogo: React.FC<KoshaLogoProps> = ({
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <linearGradient id="koshaGradient" x1="20" y1="10" x2="80" y2="90" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#5EB0FF" />
-            <stop offset="100%" stopColor="#1D6FD6" />
+          <linearGradient id="ppBlueDeep" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#003087" />
+            <stop offset="100%" stopColor="#001C64" />
+          </linearGradient>
+          <linearGradient id="ppBlueBright" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#0070E0" />
+            <stop offset="100%" stopColor="#00457C" />
           </linearGradient>
         </defs>
-        {/* Rounded Squircle Body */}
-        <rect width="100" height="100" rx="28" fill="url(#koshaGradient)" />
 
-        {/* Inner subtle glow ring */}
-        <rect
-          x="2"
-          y="2"
-          width="96"
-          height="96"
-          rx="26"
-          stroke="rgba(255, 255, 255, 0.4)"
-          strokeWidth="3"
-        />
+        {/* Back layered glyph (Deep Blue) */}
+        <rect x="8" y="10" width="70" height="80" rx="22" fill="url(#ppBlueDeep)" />
 
-        {/* White Stylized 'K' */}
-        {/* Vertical stem */}
-        <line
-          x1="36"
-          y1="26"
-          x2="36"
-          y2="74"
-          stroke="#FFFFFF"
-          strokeWidth="11"
-          strokeLinecap="round"
-        />
+        {/* Front overlapping tilted glyph (Vivid PayPal Blue) */}
+        <rect x="22" y="10" width="70" height="80" rx="22" fill="url(#ppBlueBright)" fillOpacity="0.94" />
 
-        {/* Upper diagonal branch to golden sun */}
-        <line
-          x1="38"
-          y1="50"
-          x2="64"
-          y2="33"
-          stroke="#FFFFFF"
-          strokeWidth="11"
-          strokeLinecap="round"
-        />
+        {/* Stylized White 'K' Monogram */}
+        <line x1="44" y1="30" x2="44" y2="70" stroke="#FFFFFF" strokeWidth="9" strokeLinecap="round" />
+        <line x1="46" y1="50" x2="68" y2="34" stroke="#FFFFFF" strokeWidth="9" strokeLinecap="round" />
+        <line x1="52" y1="46" x2="70" y2="68" stroke="#FFFFFF" strokeWidth="9" strokeLinecap="round" />
 
-        {/* Lower diagonal branch */}
-        <line
-          x1="45"
-          y1="45"
-          x2="69"
-          y2="72"
-          stroke="#FFFFFF"
-          strokeWidth="11"
-          strokeLinecap="round"
-        />
-
-        {/* Golden Sun / Coin Dot at top right */}
-        <circle cx="73" cy="28" r="7.5" fill="#FBBF24" />
+        {/* Signature PayPal Gold Coin Sparkle */}
+        <circle cx="78" cy="22" r="7" fill="#FFC439" />
       </svg>
 
       {/* Wordmark */}
       {showWordmark && (
         <div className="flex flex-col">
-          <span className={`${textSizes[size]} text-kosha-navy font-black tracking-wider leading-none`}>
-            KOSHA
-          </span>
+          <div className="flex items-center">
+            <span className={`${textSizes[size]} text-[#001C64] font-black tracking-tight leading-none italic`}>
+              KO
+            </span>
+            <span className={`${textSizes[size]} text-[#0070E0] font-black tracking-tight leading-none italic`}>
+              SHA
+            </span>
+          </div>
           {showSubtitle && (
-            <span className="text-xs font-semibold text-[#14509E] mt-0.5 tracking-normal">
-              कोश
+            <span className="text-[10px] font-bold text-[#003087] uppercase tracking-wider mt-0.5">
+              Pay · Credit · Treasury
             </span>
           )}
         </div>

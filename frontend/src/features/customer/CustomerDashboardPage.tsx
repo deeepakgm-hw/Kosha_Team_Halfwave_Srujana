@@ -3,9 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   QrCode,
   CreditCard,
-  Receipt,
-  Keyboard,
-  Clock,
   CheckCircle2,
   AlertTriangle,
   Calendar,
@@ -14,6 +11,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Bell,
+  Smartphone,
 } from "lucide-react";
 import { apiClient, formatApiError } from "../../lib/api";
 import { CustomerDashboardSummary, CreditTransaction, BillPaymentHistory } from "../../types/customer";
@@ -21,7 +19,6 @@ import { formatINR } from "../../lib/utils";
 import { RepayModal } from "./RepayModal";
 import { RazorpayCheckoutModal } from "../payments/RazorpayCheckoutModal";
 import { useRealTimeSync } from "../../hooks/useRealTimeSync";
-import { Smartphone } from "lucide-react";
 
 export const CustomerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -86,8 +83,6 @@ export const CustomerDashboardPage: React.FC = () => {
     }
   };
 
-
-
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
@@ -96,27 +91,27 @@ export const CustomerDashboardPage: React.FC = () => {
   };
 
   const handleRepaySuccess = (_updatedTxn: CreditTransaction) => {
-    fetchDashboard();
+    fetchDashboard(true);
   };
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <div className="w-8 h-8 border-3 border-kosha-blue border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-semibold text-slate-500">Loading your shop credit overview...</p>
+        <div className="w-9 h-9 border-3 border-[#0070E0] border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-semibold text-[#545D68]">Loading your PayPal Credit overview...</p>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="bg-white/80 rounded-3xl p-8 border border-rose-200 text-center max-w-md mx-auto my-12 shadow-sm space-y-4">
-        <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto" />
-        <h3 className="text-lg font-bold text-slate-900">Failed to load dashboard</h3>
-        <p className="text-xs text-slate-500">{error || "Unable to retrieve customer data."}</p>
+      <div className="bg-white rounded-3xl p-8 border border-[#E1E7EC] text-center max-w-md mx-auto my-12 shadow-paypal space-y-4">
+        <AlertTriangle className="w-10 h-10 text-[#D9383A] mx-auto" />
+        <h3 className="text-lg font-bold text-[#001C64]">Failed to load dashboard</h3>
+        <p className="text-xs text-[#545D68]">{error || "Unable to retrieve customer data."}</p>
         <button
           onClick={() => fetchDashboard(false)}
-          className="px-5 py-2.5 rounded-xl bg-kosha-blue text-white text-xs font-bold shadow-md hover:bg-kosha-deep"
+          className="px-6 py-2.5 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white text-xs font-bold shadow-xs"
         >
           Try Again
         </button>
@@ -125,37 +120,37 @@ export const CustomerDashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* A. Welcome Header */}
+    <div className="space-y-6 max-w-5xl mx-auto">
+      {/* A. Welcome Header (PayPal Style) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-black text-kosha-navy tracking-tight">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-black text-[#001C64] tracking-tight">
               {getGreeting()}, {data.customer.display_name.split(" ")[0]}
             </h1>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-kosha-blue border border-blue-200/80">
-              <ShieldCheck className="w-3 h-3 text-kosha-blue" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-[#003087] border border-blue-200">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#0070E0]" />
               <span>Verified Account</span>
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Here is your shop-credit overview across participating merchants.
+          <p className="text-xs sm:text-sm text-[#545D68] font-medium mt-1">
+            PayPal MSME Credit Ledger &amp; Instant Counter Collections
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           {isRealTime && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>Live Sync</span>
             </span>
           )}
           <button
             onClick={() => fetchDashboard(false)}
-            className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/80 hover:bg-white text-slate-600 border border-slate-200 shadow-xs transition-colors"
+            className="self-start sm:self-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-white hover:bg-slate-50 text-[#001C64] border border-[#E1E7EC] shadow-2xs transition-colors"
             title="Refresh dashboard"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className="w-3.5 h-3.5 text-[#0070E0]" />
             <span>Refresh</span>
           </button>
         </div>
@@ -163,18 +158,18 @@ export const CustomerDashboardPage: React.FC = () => {
 
       {/* F. Helpful Status Message Banner */}
       <div
-        className={`p-4 rounded-2xl border flex items-start gap-3 transition-colors ${
+        className={`p-4 rounded-2xl border flex items-start gap-3 transition-colors shadow-paypal ${
           data.overdue_amount > 0
-            ? "bg-amber-50/90 border-amber-200/90 text-amber-900"
+            ? "bg-rose-50/70 border-rose-200 text-rose-900"
             : data.total_outstanding > 0
-            ? "bg-blue-50/90 border-blue-200/90 text-blue-900"
-            : "bg-emerald-50/90 border-emerald-200/90 text-emerald-900"
+            ? "bg-blue-50/70 border-blue-200 text-blue-900"
+            : "bg-white border-[#E1E7EC] text-[#001C64]"
         }`}
       >
         {data.overdue_amount > 0 ? (
-          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
         ) : (
-          <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <ShieldCheck className="w-5 h-5 text-[#0070E0] shrink-0 mt-0.5" />
         )}
         <div className="flex-1 text-xs sm:text-sm font-medium leading-relaxed">
           <p>{data.status_message}</p>
@@ -182,102 +177,103 @@ export const CustomerDashboardPage: React.FC = () => {
         {data.overdue_amount > 0 && (
           <button
             onClick={() => navigate("/customer/dues?status=overdue")}
-            className="text-xs font-bold text-amber-800 underline hover:text-amber-950 shrink-0"
+            className="text-xs font-bold text-rose-700 underline hover:text-rose-900 shrink-0"
           >
             Review Overdue
           </button>
         )}
       </div>
 
-      {/* B. Outstanding Balance Cards */}
+      {/* B. Outstanding Balance Cards (PayPal Clean Fintech Card) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Outstanding */}
-        <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-white/90 shadow-glass-sm flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+        <div className="bg-white p-5 rounded-2xl border border-[#E1E7EC] shadow-paypal flex flex-col justify-between hover:shadow-paypal-lg transition-all">
+          <span className="text-[11px] font-bold text-[#545D68] uppercase tracking-wider">
             Total Outstanding
           </span>
           <div className="mt-2">
-            <span className="text-xl sm:text-2xl font-black text-kosha-navy font-mono">
+            <span className="text-2xl sm:text-3xl font-black text-[#001C64] font-mono tracking-tight">
               {formatINR(data.total_outstanding)}
             </span>
-            <p className="text-[10px] text-slate-400 mt-0.5">Across all shops</p>
+            <p className="text-[11px] text-[#545D68] mt-0.5">Across all registered shops</p>
           </div>
         </div>
 
         {/* Due within 7 Days */}
-        <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-white/90 shadow-glass-sm flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-[#E1E7EC] shadow-paypal flex flex-col justify-between hover:shadow-paypal-lg transition-all">
           <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5 text-amber-600" />
             <span>Due in 7 Days</span>
           </span>
           <div className="mt-2">
-            <span className="text-xl sm:text-2xl font-black text-amber-700 font-mono">
+            <span className="text-2xl sm:text-3xl font-black text-amber-700 font-mono tracking-tight">
               {formatINR(data.due_within_7_days)}
             </span>
-            <p className="text-[10px] text-slate-400 mt-0.5">Upcoming commitments</p>
+            <p className="text-[11px] text-[#545D68] mt-0.5">Upcoming commitments</p>
           </div>
         </div>
 
         {/* Overdue Amount */}
-        <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-white/90 shadow-glass-sm flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-[#E1E7EC] shadow-paypal flex flex-col justify-between hover:shadow-paypal-lg transition-all">
           <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider flex items-center gap-1">
             <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
             <span>Overdue Amount</span>
           </span>
           <div className="mt-2">
-            <span className="text-xl sm:text-2xl font-black text-rose-600 font-mono">
+            <span className="text-2xl sm:text-3xl font-black text-rose-600 font-mono tracking-tight">
               {formatINR(data.overdue_amount)}
             </span>
-            <p className="text-[10px] text-slate-400 mt-0.5">Past agreed date</p>
+            <p className="text-[11px] text-[#545D68] mt-0.5">Past agreed payment date</p>
           </div>
         </div>
 
         {/* Participating Shops with Dues */}
-        <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-white/90 shadow-glass-sm flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-            <Building2 className="w-3.5 h-3.5 text-slate-400" />
+        <div className="bg-white p-5 rounded-2xl border border-[#E1E7EC] shadow-paypal flex flex-col justify-between hover:shadow-paypal-lg transition-all">
+          <span className="text-[11px] font-bold text-[#545D68] uppercase tracking-wider flex items-center gap-1">
+            <Building2 className="w-3.5 h-3.5 text-[#0070E0]" />
             <span>Active Shops</span>
           </span>
           <div className="mt-2">
-            <span className="text-xl sm:text-2xl font-black text-slate-800 font-mono">
+            <span className="text-2xl sm:text-3xl font-black text-[#001C64] font-mono tracking-tight">
               {data.shops_count}
             </span>
-            <p className="text-[10px] text-slate-400 mt-0.5">With pending dues</p>
+            <p className="text-[11px] text-[#545D68] mt-0.5">Participating merchants</p>
           </div>
         </div>
       </div>
 
       {/* Exact Financial Reconciliation Banner */}
-      <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-glass-sm">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Reconciled Financial Ledger Details
+      <div className="bg-white p-5 rounded-2xl border border-[#E1E7EC] shadow-paypal">
+        <div className="flex items-center justify-between pb-3 border-b border-[#E1E7EC]">
+          <span className="text-xs font-bold text-[#001C64] uppercase tracking-wider flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#0070E0]" />
+            <span>Reconciled Financial Ledger Details</span>
           </span>
-          <span className="text-xs font-bold text-kosha-blue">
+          <span className="text-xs font-bold text-[#0070E0] bg-blue-50 px-2.5 py-0.5 rounded-full">
             Exact Invariant Formula
           </span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3 text-xs">
           <div>
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">Total Credit Incurred</span>
-            <span className="text-base font-black text-slate-900 font-mono mt-0.5 block">
+            <span className="text-[#545D68] block text-[10px] uppercase font-bold">Total Credit Incurred</span>
+            <span className="text-base font-black text-[#001C64] font-mono mt-0.5 block">
               {formatINR(data.total_purchase_amount || (data.total_outstanding + (data.total_paid_amount || 0)))}
             </span>
           </div>
           <div>
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">Counter Cash Paid</span>
-            <span className="text-base font-bold text-slate-700 font-mono mt-0.5 block">
+            <span className="text-[#545D68] block text-[10px] uppercase font-bold">Counter Cash Paid</span>
+            <span className="text-base font-bold text-[#0C0C0D] font-mono mt-0.5 block">
               - {formatINR(data.total_initial_paid || 0)}
             </span>
           </div>
           <div>
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">Razorpay Online Paid</span>
+            <span className="text-[#545D68] block text-[10px] uppercase font-bold">Razorpay Online Paid</span>
             <span className="text-base font-bold text-emerald-700 font-mono mt-0.5 block">
               - {formatINR(data.total_verified_online_paid || 0)}
             </span>
           </div>
           <div>
-            <span className="text-rose-600 block text-[10px] uppercase font-extrabold">(=) Exact Remaining Due</span>
+            <span className="text-rose-600 block text-[10px] uppercase font-black">(=) Exact Remaining Due</span>
             <span className="text-base font-black text-rose-600 font-mono mt-0.5 block">
               = {formatINR(data.total_outstanding)}
             </span>
@@ -285,65 +281,65 @@ export const CustomerDashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* C. Quick Actions (4 Actions) */}
-      <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-white/90 shadow-glass-sm">
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+      {/* C. Quick Actions (PayPal Rounded Cards) */}
+      <div className="bg-white rounded-2xl p-5 border border-[#E1E7EC] shadow-paypal">
+        <h2 className="text-xs font-bold text-[#545D68] uppercase tracking-wider mb-3">
           Quick Actions
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* Action 1: Scan shop QR */}
           <button
             onClick={() => navigate("/customer/pay")}
-            className="p-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/80 text-left transition-all group flex flex-col justify-between gap-3 shadow-xs"
+            className="p-4 rounded-2xl bg-white hover:bg-blue-50/40 border border-[#E1E7EC] hover:border-[#0070E0] text-left transition-all group flex flex-col justify-between gap-3 shadow-2xs hover:shadow-paypal"
           >
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0070E0] flex items-center justify-center group-hover:bg-[#0070E0] group-hover:text-white transition-colors">
               <QrCode className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs font-bold text-emerald-950 block">Scan Shop QR</span>
-              <span className="text-[10px] text-emerald-700 font-medium">Record credit buy</span>
+              <span className="text-xs font-bold text-[#001C64] block">Scan Shop QR</span>
+              <span className="text-[11px] text-[#545D68]">Instant credit purchase</span>
             </div>
           </button>
 
-          {/* Action 2: Pay a Due */}
+          {/* Action 2: Pay a Due (PayPal Gold Accent) */}
           <button
             onClick={() => navigate("/customer/dues")}
-            className="p-3.5 rounded-2xl bg-blue-50 hover:bg-blue-100/80 border border-blue-200/80 text-left transition-all group flex flex-col justify-between gap-3 shadow-xs"
+            className="p-4 rounded-2xl bg-white hover:bg-amber-50/40 border border-[#E1E7EC] hover:border-[#FFC439] text-left transition-all group flex flex-col justify-between gap-3 shadow-2xs hover:shadow-paypal"
           >
-            <div className="w-10 h-10 rounded-xl bg-kosha-blue text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-              <CreditCard className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-[#001C64] flex items-center justify-center group-hover:bg-[#FFC439] transition-colors">
+              <CreditCard className="w-5 h-5 text-[#001C64]" />
             </div>
             <div>
-              <span className="text-xs font-bold text-slate-900 block">Pay a Due</span>
-              <span className="text-[10px] text-slate-500 font-medium">Clear pending balance</span>
+              <span className="text-xs font-bold text-[#001C64] block">Pay a Due</span>
+              <span className="text-[11px] text-[#545D68]">Clear pending balance</span>
             </div>
           </button>
 
           {/* Action 3: View My Dues */}
           <button
             onClick={() => navigate("/customer/dues")}
-            className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 text-left transition-all group flex flex-col justify-between gap-3 shadow-xs"
+            className="p-4 rounded-2xl bg-white hover:bg-blue-50/40 border border-[#E1E7EC] hover:border-[#0070E0] text-left transition-all group flex flex-col justify-between gap-3 shadow-2xs hover:shadow-paypal"
           >
-            <div className="w-10 h-10 rounded-xl bg-slate-700 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-              <Receipt className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0070E0] flex items-center justify-center group-hover:bg-[#0070E0] group-hover:text-white transition-colors">
+              <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs font-bold text-slate-900 block">View My Dues</span>
-              <span className="text-[10px] text-slate-500 font-medium">Filtered dues list</span>
+              <span className="text-xs font-bold text-[#001C64] block">View My Dues</span>
+              <span className="text-[11px] text-[#545D68]">Filter by merchant</span>
             </div>
           </button>
 
           {/* Action 4: Enter Shop Code */}
           <button
-            onClick={() => navigate("/customer/pay?mode=code")}
-            className="p-3.5 rounded-2xl bg-indigo-50 hover:bg-indigo-100/80 border border-indigo-200/80 text-left transition-all group flex flex-col justify-between gap-3 shadow-xs"
+            onClick={() => navigate("/customer/pay")}
+            className="p-4 rounded-2xl bg-white hover:bg-blue-50/40 border border-[#E1E7EC] hover:border-[#0070E0] text-left transition-all group flex flex-col justify-between gap-3 shadow-2xs hover:shadow-paypal"
           >
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-              <Keyboard className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0070E0] flex items-center justify-center group-hover:bg-[#0070E0] group-hover:text-white transition-colors">
+              <Smartphone className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs font-bold text-indigo-950 block">Enter Shop Code</span>
-              <span className="text-[10px] text-indigo-700 font-medium">Manual merchant code</span>
+              <span className="text-xs font-bold text-[#001C64] block">Enter Shop Code</span>
+              <span className="text-[11px] text-[#545D68]">Manual store lookup</span>
             </div>
           </button>
         </div>
@@ -351,13 +347,13 @@ export const CustomerDashboardPage: React.FC = () => {
 
       {/* D. Repayment Reminders & Alerts */}
       {data.reminders && data.reminders.length > 0 && (
-        <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-white/90 shadow-glass-sm space-y-3">
+        <div className="bg-white rounded-2xl p-5 border border-[#E1E7EC] shadow-paypal space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-amber-600" />
-              <h2 className="text-sm font-extrabold text-kosha-navy">Repayment Reminders</h2>
+              <h2 className="text-sm font-extrabold text-[#001C64]">Repayment Reminders</h2>
             </div>
-            <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+            <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-3 py-0.5 rounded-full border border-amber-200">
               {data.reminders.length} Active Notice{data.reminders.length > 1 ? "s" : ""}
             </span>
           </div>
@@ -370,7 +366,7 @@ export const CustomerDashboardPage: React.FC = () => {
               return (
                 <div
                   key={rem.transaction_id}
-                  className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs ${
+                  className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs ${
                     isOverdue
                       ? "bg-rose-50/70 border-rose-200 text-rose-900"
                       : isDueToday
@@ -400,10 +396,10 @@ export const CustomerDashboardPage: React.FC = () => {
                       if (matched) setSelectedTxnForRepay(matched);
                       else navigate("/customer/dues");
                     }}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold shrink-0 transition-colors ${
+                    className={`px-4 py-1.5 rounded-full text-xs font-black shrink-0 transition-all ${
                       isOverdue
-                        ? "bg-rose-600 hover:bg-rose-700 text-white"
-                        : "bg-amber-600 hover:bg-amber-700 text-white"
+                        ? "bg-[#D9383A] hover:bg-rose-700 text-white"
+                        : "bg-[#FFC439] hover:bg-[#F6B623] text-[#001C64]"
                     }`}
                   >
                     Clear Due
@@ -415,16 +411,16 @@ export const CustomerDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* E. Upcoming Repayments */}
-      <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-white/90 shadow-glass-sm space-y-4">
+      {/* E. Upcoming Repayments (PayPal Card Style with Gold Action Pill) */}
+      <div className="bg-white rounded-2xl p-5 border border-[#E1E7EC] shadow-paypal space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-extrabold text-kosha-navy">Upcoming Repayments</h2>
-            <p className="text-xs text-slate-500">Nearest agreed dates across shops</p>
+            <h2 className="text-sm font-extrabold text-[#001C64]">Upcoming Repayments</h2>
+            <p className="text-xs text-[#545D68]">Nearest agreed dates across shops</p>
           </div>
           <button
             onClick={() => navigate("/customer/dues")}
-            className="text-xs font-bold text-kosha-blue hover:text-kosha-deep inline-flex items-center gap-1"
+            className="text-xs font-bold text-[#0070E0] hover:text-[#003087] inline-flex items-center gap-1"
           >
             <span>View All ({data.upcoming_repayments.length})</span>
             <ChevronRight className="w-4 h-4" />
@@ -432,10 +428,10 @@ export const CustomerDashboardPage: React.FC = () => {
         </div>
 
         {data.upcoming_repayments.length === 0 ? (
-          <div className="text-center py-8 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-            <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
-            <p className="text-xs font-bold text-slate-700">No upcoming commitments</p>
-            <p className="text-[11px] text-slate-400">All your shop purchases are clear!</p>
+          <div className="text-center py-10 text-[#545D68] bg-[#F5F7FA] rounded-xl border border-dashed border-[#E1E7EC]">
+            <CheckCircle2 className="w-9 h-9 mx-auto text-[#0070E0] mb-2" />
+            <p className="text-xs font-bold text-[#001C64]">No upcoming commitments</p>
+            <p className="text-[11px] text-[#545D68] mt-0.5">All your shop purchases are clear!</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -451,27 +447,27 @@ export const CustomerDashboardPage: React.FC = () => {
                       ? "bg-rose-50/40 border-rose-200 hover:border-rose-300"
                       : isDueToday
                       ? "bg-amber-50/40 border-amber-200 hover:border-amber-300"
-                      : "bg-slate-50/60 border-slate-200 hover:border-slate-300"
+                      : "bg-[#F5F7FA]/70 border-[#E1E7EC] hover:border-[#0070E0]"
                   }`}
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-900">{txn.shop_name}</span>
+                      <span className="text-xs font-bold text-[#001C64]">{txn.shop_name}</span>
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                           isOverdue
                             ? "bg-rose-100 text-rose-800"
                             : isDueToday
                             ? "bg-amber-100 text-amber-800"
-                            : "bg-blue-100 text-kosha-blue"
+                            : "bg-blue-100 text-[#003087]"
                         }`}
                       >
                         {isOverdue ? "Overdue" : isDueToday ? "Due Today" : "Upcoming"}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 font-medium">{txn.description}</p>
-                    <div className="flex items-center gap-3 text-[11px] text-slate-400">
-                      <span>Agreed due: <strong className="text-slate-600">{txn.agreed_repayment_date}</strong></span>
+                    <p className="text-xs text-[#0C0C0D] font-medium">{txn.description}</p>
+                    <div className="flex items-center gap-3 text-[11px] text-[#545D68]">
+                      <span>Agreed due: <strong className="text-[#001C64]">{txn.agreed_repayment_date}</strong></span>
                       <span>·</span>
                       <span>Total: {formatINR(txn.purchase_amount)}</span>
                     </div>
@@ -479,15 +475,16 @@ export const CustomerDashboardPage: React.FC = () => {
 
                   <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
                     <div className="text-right">
-                      <span className="text-[10px] text-slate-400 block">Remaining Due</span>
+                      <span className="text-[10px] text-[#545D68] block">Remaining Due</span>
                       <span className="text-base font-black text-rose-600 font-mono">
                         {formatINR(txn.outstanding_amount)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
+                      {/* PayPal Gold Action Button */}
                       <button
                         onClick={() => handleOpenUpiCheckout(txn)}
-                        className="px-3 py-1.5 rounded-xl bg-kosha-blue hover:bg-kosha-deep text-white text-xs font-bold shadow-xs hover:shadow-sm transition-all flex items-center gap-1"
+                        className="px-4 py-2 rounded-full bg-[#FFC439] hover:bg-[#F6B623] text-[#001C64] text-xs font-black shadow-xs hover:shadow-sm transition-all flex items-center gap-1.5 active:scale-[0.98]"
                         title="Pay instantly via UPI QR or Razorpay"
                       >
                         <Smartphone className="w-3.5 h-3.5" />
@@ -495,7 +492,7 @@ export const CustomerDashboardPage: React.FC = () => {
                       </button>
                       <button
                         onClick={() => setSelectedTxnForRepay(txn)}
-                        className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-all"
+                        className="px-3 py-2 rounded-full border border-[#E1E7EC] hover:bg-slate-100 text-[#545D68] text-xs font-bold transition-all"
                         title="Document counter or manual repayment"
                       >
                         Manual
@@ -510,43 +507,39 @@ export const CustomerDashboardPage: React.FC = () => {
       </div>
 
       {/* E. Recent Activity */}
-      <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-white/90 shadow-glass-sm space-y-4">
+      <div className="bg-white rounded-2xl p-5 border border-[#E1E7EC] shadow-paypal space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-extrabold text-kosha-navy">Recent Activity</h2>
-            <p className="text-xs text-slate-500">Audit timeline of purchases and repayments</p>
+            <h2 className="text-sm font-extrabold text-[#001C64]">Recent Activity</h2>
+            <p className="text-xs text-[#545D68]">Audit timeline of purchases and repayments</p>
           </div>
           <button
             onClick={() => navigate("/customer/activity")}
-            className="text-xs font-bold text-kosha-blue hover:text-kosha-deep inline-flex items-center gap-1"
+            className="text-xs font-bold text-[#0070E0] hover:text-[#003087] inline-flex items-center gap-1"
           >
-            <span>Full History</span>
+            <span>View All</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
         {data.recent_activity.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-4">No recent activity recorded.</p>
+          <div className="text-center py-8 text-[#545D68] bg-[#F5F7FA] rounded-xl border border-dashed border-[#E1E7EC]">
+            <p className="text-xs font-bold text-[#001C64]">No recent activity</p>
+            <p className="text-[11px] text-[#545D68]">Transactions recorded at shops will appear here.</p>
+          </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="space-y-2">
             {data.recent_activity.slice(0, 5).map((act) => (
-              <div key={act.id} className="py-3 flex items-start justify-between gap-3 first:pt-0 last:pb-0">
-                <div className="flex items-start gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 shrink-0 mt-0.5">
-                    {act.event_type.includes("repayment") ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    ) : (
-                      <Clock className="w-4 h-4 text-kosha-blue" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">{act.title}</p>
-                    <p className="text-[11px] text-slate-500 leading-snug">{act.description}</p>
-                  </div>
+              <div
+                key={act.id}
+                className="p-3.5 rounded-xl border border-[#E1E7EC] hover:bg-slate-50 flex items-center justify-between text-xs transition-colors"
+              >
+                <div>
+                  <p className="font-bold text-[#001C64]">{act.title}</p>
+                  <p className="text-[11px] text-[#545D68] mt-0.5">{act.description}</p>
                 </div>
-
-                {act.amount !== undefined && act.amount !== null && (
-                  <span className="text-xs font-mono font-bold text-slate-700 shrink-0">
+                {act.amount !== undefined && (
+                  <span className="font-mono font-bold text-[#001C64] text-xs">
                     {formatINR(act.amount)}
                   </span>
                 )}
@@ -556,27 +549,26 @@ export const CustomerDashboardPage: React.FC = () => {
         )}
       </div>
 
-      {/* Repay Modal */}
+      {/* Modals */}
       {selectedTxnForRepay && (
         <RepayModal
-          isOpen={Boolean(selectedTxnForRepay)}
           transaction={selectedTxnForRepay}
+          isOpen={true}
           onClose={() => setSelectedTxnForRepay(null)}
           onSuccess={handleRepaySuccess}
         />
       )}
 
-      {/* Razorpay UPI Checkout Modal */}
       {selectedBillForCheckout && (
         <RazorpayCheckoutModal
-          isOpen={Boolean(selectedBillForCheckout)}
           bill={selectedBillForCheckout}
+          isOpen={true}
           onClose={() => setSelectedBillForCheckout(null)}
           onSuccess={() => {
-            fetchDashboard();
             setSelectedBillForCheckout(null);
+            fetchDashboard(true);
           }}
-          customerId="cust_rahul_01"
+          customerId={data.customer.id}
         />
       )}
     </div>

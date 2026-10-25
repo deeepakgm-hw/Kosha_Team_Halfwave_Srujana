@@ -5,42 +5,50 @@
 @layer base {
   body {
     @apply min-h-screen antialiased;
-    color: #12304F;
-    background: radial-gradient(circle at 15% 15%, #c8e4fc 0%, #e8f3fe 45%, #d5e9fc 100%);
-    background-attachment: fixed;
+    color: #0C0C0D;
+    background-color: #F5F7FA;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 }
 
-/* Glassmorphism helpers */
+/* PayPal Design Language Card & Panel Utilities */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.95);
-  box-shadow: 0 20px 45px -15px rgba(18, 48, 79, 0.08), 0 0 1px 1px rgba(255, 255, 255, 0.85);
+  background: #FFFFFF;
+  border: 1px solid #E1E7EC;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.04);
 }
 
 .glass-card-subtle {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: #FFFFFF;
+  border: 1px solid #E1E7EC;
 }
 
 .glass-pill {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: #FFFFFF;
+  border: 1px solid #E1E7EC;
 }
 
-/* Custom Range Slider matching Decide.png */
+/* PayPal Signature Buttons */
+.paypal-btn-primary {
+  @apply bg-[#0070E0] hover:bg-[#003087] text-white font-bold rounded-full px-6 py-2.5 shadow-sm transition-all active:scale-[0.98];
+}
+
+.paypal-btn-gold {
+  @apply bg-[#FFC439] hover:bg-[#F6B623] text-[#001C64] font-black rounded-full px-6 py-2.5 shadow-sm transition-all active:scale-[0.98];
+}
+
+.paypal-btn-outline {
+  @apply bg-transparent hover:bg-blue-50/60 text-[#0070E0] border-2 border-[#0070E0] font-bold rounded-full px-5 py-2 transition-all active:scale-[0.98];
+}
+
+/* Range Slider */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
   height: 6px;
-  background: #e2e8f0;
+  background: #E1E7EC;
   border-radius: 9999px;
   outline: none;
 }
@@ -50,11 +58,11 @@ input[type="range"]::-webkit-slider-thumb {
   appearance: none;
   width: 18px;
   height: 18px;
-  background: #1D6FD6;
-  border: 2.5px solid #ffffff;
+  background: #0070E0;
+  border: 2.5px solid #FFFFFF;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(29, 111, 214, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 112, 224, 0.35);
   transition: transform 0.1s ease;
 }
 
@@ -65,11 +73,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
 input[type="range"]::-moz-range-thumb {
   width: 18px;
   height: 18px;
-  background: #1D6FD6;
-  border: 2.5px solid #ffffff;
+  background: #0070E0;
+  border: 2.5px solid #FFFFFF;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(29, 111, 214, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 112, 224, 0.35);
 }
 
 /* Hide scrollbars cross-browser */
@@ -78,39 +86,7 @@ input[type="range"]::-moz-range-thumb {
   width: 0 !important;
   height: 0 !important;
 }
-
 .no-scrollbar {
-  -ms-overflow-style: none !important; /* IE and Edge */
-  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
-
-/* Custom subtle scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(18, 48, 79, 0.15);
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(18, 48, 79, 0.25);
-}
-
-/* Html5Qrcode styling */
-#qr-camera-viewport video {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  border-radius: 1rem;
-}
-#qr-camera-viewport {
-  border: none !important;
-}
-

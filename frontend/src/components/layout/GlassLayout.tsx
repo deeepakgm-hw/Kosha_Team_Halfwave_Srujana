@@ -4,12 +4,8 @@ import { GlassNavbar } from "./GlassNavbar";
 
 export const GlassLayout: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col relative overflow-x-hidden">
-      {/* Ambient background glow orbs */}
-      <div className="fixed top-[-10%] left-[-5%] w-[45vw] h-[45vw] rounded-full bg-blue-200/40 blur-[100px] pointer-events-none -z-10" />
-      <div className="fixed bottom-[-10%] right-[-5%] w-[40vw] h-[40vw] rounded-full bg-sky-200/50 blur-[120px] pointer-events-none -z-10" />
-
-      {/* Top Glass Navbar */}
+    <div className="min-h-screen flex flex-col relative overflow-x-hidden bg-[#F5F7FA]">
+      {/* Top PayPal Navbar */}
       <GlassNavbar />
 
       {/* Main Screen Content */}

@@ -31,29 +31,29 @@ export const CustomerActivityPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-kosha-navy tracking-tight flex items-center gap-2">
-            <Clock className="w-7 h-7 text-kosha-blue" />
-            <span>Activity & Audit Trail</span>
+          <h1 className="text-2xl sm:text-3xl font-black text-[#001C64] tracking-tight flex items-center gap-2">
+            <Clock className="w-7 h-7 text-[#0070E0]" />
+            <span>Activity &amp; Audit Trail</span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+          <p className="text-xs sm:text-sm text-[#545D68] font-medium mt-0.5">
             Immutable log of purchases, payment receipts, and repayment commitments.
           </p>
         </div>
 
         <button
           onClick={fetchActivity}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/80 hover:bg-white text-slate-600 border border-slate-200 shadow-xs transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-white hover:bg-[#F5F7FA] text-[#001C64] border border-[#E1E7EC] shadow-xs transition-colors"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
+          <RefreshCw className="w-3.5 h-3.5 text-[#0070E0]" />
           <span>Refresh</span>
         </button>
       </div>
 
       {/* Activity Timeline */}
-      <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-6 sm:p-7 border border-white/90 shadow-glass-sm">
+      <div className="bg-white rounded-2xl p-6 sm:p-7 border border-[#E1E7EC] shadow-paypal">
         {isLoading ? (
           <div className="flex justify-center py-12">
-            <div className="w-8 h-8 border-3 border-kosha-blue border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-3 border-[#0070E0] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : error ? (
           <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2">
@@ -61,9 +61,9 @@ export const CustomerActivityPage: React.FC = () => {
             <span>{error}</span>
           </div>
         ) : activities.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-12">No activity events recorded yet.</p>
+          <p className="text-xs text-[#545D68] text-center py-12">No activity events recorded yet.</p>
         ) : (
-          <div className="relative pl-6 sm:pl-8 space-y-6 before:absolute before:left-2.5 sm:before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200">
+          <div className="relative pl-6 sm:pl-8 space-y-6 before:absolute before:left-2.5 sm:before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-[#E1E7EC]">
             {activities.map((act) => {
               const isRepayment = act.event_type.includes("repayment") || act.event_type.includes("payment");
 
@@ -72,7 +72,7 @@ export const CustomerActivityPage: React.FC = () => {
                   {/* Timeline Node Dot */}
                   <div
                     className={`absolute -left-6 sm:-left-8 top-1 w-6 h-6 rounded-full flex items-center justify-center ring-4 ring-white ${
-                      isRepayment ? "bg-emerald-600 text-white" : "bg-kosha-blue text-white"
+                      isRepayment ? "bg-emerald-600 text-white" : "bg-[#0070E0] text-white"
                     }`}
                   >
                     {isRepayment ? (
@@ -82,10 +82,10 @@ export const CustomerActivityPage: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80 hover:bg-slate-50 hover:border-slate-300 transition-all space-y-1">
+                  <div className="p-4 rounded-2xl bg-[#F5F7FA] border border-[#E1E7EC] hover:border-slate-300 transition-all space-y-1">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <span className="font-bold text-xs sm:text-sm text-slate-900">{act.title}</span>
-                      <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono">
+                      <span className="text-[10px] text-[#545D68] flex items-center gap-1 font-mono">
                         <Calendar className="w-3 h-3" />
                         {new Date(act.created_at).toLocaleDateString("en-IN", {
                           day: "numeric",
@@ -97,11 +97,11 @@ export const CustomerActivityPage: React.FC = () => {
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-600 font-medium leading-relaxed">{act.description}</p>
+                    <p className="text-xs text-[#545D68] font-medium leading-relaxed">{act.description}</p>
 
                     {act.amount !== undefined && act.amount !== null && (
                       <div className="pt-1 flex items-center justify-end">
-                        <span className="text-xs font-mono font-bold text-slate-800">
+                        <span className="text-xs font-mono font-bold text-[#001C64]">
                           {formatINR(act.amount)}
                         </span>
                       </div>

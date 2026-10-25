@@ -505,8 +505,8 @@ export const BusinessPaymentsSection: React.FC = () => {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-      background: linear-gradient(135deg, #0b132b 0%, #1c2541 50%, #0b132b 100%);
-      color: #f8fafc;
+      background: #F5F7FA;
+      color: #0C0C0D;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -516,12 +516,13 @@ export const BusinessPaymentsSection: React.FC = () => {
       -webkit-font-smoothing: antialiased;
     }
     .card {
-      background: rgba(255, 255, 255, 0.98);
-      color: #0f172a;
-      border-radius: 28px;
+      background: #ffffff;
+      color: #0C0C0D;
+      border: 1px solid #E1E7EC;
+      border-radius: 24px;
       width: 100%;
       max-width: 460px;
-      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 24px 0 rgba(0, 28, 100, 0.08);
       padding: 28px 24px;
       text-align: center;
       position: relative;
@@ -531,11 +532,11 @@ export const BusinessPaymentsSection: React.FC = () => {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 12px;
+      padding: 4px 14px;
       border-radius: 9999px;
       background: #eff6ff;
       border: 1px solid #bfdbfe;
-      color: #1d4ed8;
+      color: #0070E0;
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
@@ -544,44 +545,44 @@ export const BusinessPaymentsSection: React.FC = () => {
     .merchant {
       font-size: 13px;
       font-weight: 700;
-      color: #475569;
+      color: #545D68;
       margin-top: 8px;
     }
     .bill-title {
-      font-size: 17px;
+      font-size: 18px;
       font-weight: 800;
-      color: #0f172a;
+      color: #001C64;
       margin-top: 2px;
     }
     .amount-box {
       margin: 14px 0 12px;
-      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-      border: 1.5px solid #86efac;
+      background: #F5F7FA;
+      border: 1.5px solid #E1E7EC;
       border-radius: 18px;
       padding: 12px 16px;
     }
     .amount-label {
       font-size: 11px;
       font-weight: 700;
-      color: #166534;
+      color: #545D68;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
     .amount-value {
       font-size: 32px;
       font-weight: 900;
-      color: #14532d;
+      color: #001C64;
       font-family: 'JetBrains Mono', monospace;
       letter-spacing: -0.02em;
     }
     .qr-container {
       background: #ffffff;
-      border: 2px solid #e2e8f0;
+      border: 2px solid #E1E7EC;
       border-radius: 20px;
       padding: 14px;
       display: inline-block;
       margin: 8px auto 14px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.04);
     }
     .qr-container img {
       width: 270px;
@@ -592,7 +593,7 @@ export const BusinessPaymentsSection: React.FC = () => {
     }
     .timer-bar-wrap {
       width: 100%;
-      background: #e2e8f0;
+      background: #E1E7EC;
       border-radius: 9999px;
       height: 6px;
       overflow: hidden;
@@ -600,13 +601,13 @@ export const BusinessPaymentsSection: React.FC = () => {
     }
     .timer-bar {
       height: 100%;
-      background: #2563eb;
+      background: #0070E0;
       transition: width 1s linear, background-color 0.3s;
     }
     .timer-text {
       font-size: 12px;
       font-weight: 700;
-      color: #475569;
+      color: #545D68;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -616,14 +617,14 @@ export const BusinessPaymentsSection: React.FC = () => {
     .timer-badge {
       font-family: 'JetBrains Mono', monospace;
       font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 6px;
+      padding: 2px 10px;
+      border-radius: 9999px;
       background: #dbeafe;
-      color: #1e40af;
+      color: #003087;
     }
     .upi-apps {
       font-size: 11px;
-      color: #64748b;
+      color: #545D68;
       margin-bottom: 14px;
       display: flex;
       align-items: center;
@@ -637,8 +638,8 @@ export const BusinessPaymentsSection: React.FC = () => {
     }
     .btn {
       flex: 1;
-      padding: 10px 14px;
-      border-radius: 12px;
+      padding: 10px 16px;
+      border-radius: 9999px;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
@@ -651,19 +652,19 @@ export const BusinessPaymentsSection: React.FC = () => {
       text-decoration: none;
     }
     .btn-primary {
-      background: #2563eb;
-      color: white;
+      background: #FFC439;
+      color: #001C64;
     }
     .btn-primary:hover {
-      background: #1d4ed8;
+      background: #F6B623;
     }
     .btn-secondary {
-      background: #f1f5f9;
-      color: #334155;
-      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #0070E0;
+      border: 1.5px solid #0070E0;
     }
     .btn-secondary:hover {
-      background: #e2e8f0;
+      background: #F5F7FA;
     }
     .success-view {
       display: none;
@@ -916,17 +917,17 @@ export const BusinessPaymentsSection: React.FC = () => {
   return (
     <div className="space-y-6 sm:space-y-8 select-none">
       {/* Top Banner & Header */}
-      <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs">
+      <div className="bg-white border border-[#E1E7EC] rounded-2xl p-6 sm:p-7 shadow-paypal">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-kosha-blue border border-blue-200 inline-flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#0070E0]/10 text-[#0070E0] border border-[#0070E0]/20 inline-flex items-center gap-1.5">
                 <CreditCard className="w-3.5 h-3.5" />
                 <span>Razorpay UPI Engine</span>
               </span>
-              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+              <span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${
                 !razorpayConfig?.is_configured
-                  ? "bg-slate-100 text-slate-700 border-slate-300"
+                  ? "bg-slate-100 text-slate-700 border-[#E1E7EC]"
                   : (razorpayConfig?.mode === "live" || razorpayConfig?.has_live_credentials)
                   ? "bg-emerald-100 text-emerald-800 border-emerald-200"
                   : "bg-amber-100 text-amber-800 border-amber-200"
@@ -938,16 +939,16 @@ export const BusinessPaymentsSection: React.FC = () => {
                   : "Test Sandbox Mode"}
               </span>
               {isRealTime && (
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1.5">
+                <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span>Real-Time SSE</span>
                 </span>
               )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-kosha-navy">
-              Customer UPI Billing & Payment Requests
+            <h1 className="text-2xl sm:text-3xl font-black text-[#001C64] tracking-tight">
+              Customer UPI Billing &amp; Payment Requests
             </h1>
-            <p className="text-sm text-slate-500 font-medium">
+            <p className="text-sm text-[#545D68] font-medium mt-0.5">
               Create customer bills, generate dynamic Razorpay UPI QR codes, and track verified settlements.
             </p>
           </div>
@@ -955,7 +956,7 @@ export const BusinessPaymentsSection: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowCreateModal(true)}
-            className="px-5 py-3 rounded-2xl bg-gradient-to-r from-kosha-blue to-kosha-deep hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 hover:shadow-lg transition-all flex items-center justify-center gap-2 shrink-0 active:scale-[0.98]"
+            className="px-6 py-2.5 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white font-bold text-xs shadow-paypal hover:shadow-md transition-all flex items-center justify-center gap-2 shrink-0 active:scale-[0.98]"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Create New Customer Bill</span>
@@ -966,12 +967,12 @@ export const BusinessPaymentsSection: React.FC = () => {
       {/* Executive Financial Dues & Audit KPI Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Total Active Remaining Dues */}
-        <div className="bg-white/90 backdrop-blur-xl p-5 rounded-3xl border border-slate-200/90 shadow-glass-sm flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-[#E1E7EC] shadow-paypal flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[#545D68] uppercase tracking-wider">
               Remaining Customer Dues
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
               {financialSummary?.active_bills_count ?? 0} Active {(financialSummary?.active_bills_count ?? 0) === 1 ? "Bill" : "Bills"}
             </span>
           </div>
@@ -979,19 +980,19 @@ export const BusinessPaymentsSection: React.FC = () => {
             <div className="text-2xl sm:text-3xl font-black text-rose-600 font-mono tracking-tight">
               {formatINR(financialSummary?.remaining_customer_dues ?? 0)}
             </div>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+            <p className="text-[11px] text-[#545D68] font-medium mt-0.5">
               Across all customers &amp; credit commitments
             </p>
           </div>
         </div>
 
         {/* Card 2: Razorpay Online Verified Collections */}
-        <div className="bg-white/90 backdrop-blur-xl p-5 rounded-3xl border border-slate-200/90 shadow-glass-sm flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-[#E1E7EC] shadow-paypal flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[#545D68] uppercase tracking-wider">
               Razorpay Online Verified
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               <span>UPI Verified</span>
             </span>
@@ -1000,19 +1001,19 @@ export const BusinessPaymentsSection: React.FC = () => {
             <div className="text-2xl sm:text-3xl font-black text-emerald-700 font-mono tracking-tight">
               {formatINR(financialSummary?.razorpay_verified_collections ?? 0)}
             </div>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+            <p className="text-[11px] text-[#545D68] font-medium mt-0.5">
               Direct bank settlements via UPI QR &amp; links
             </p>
           </div>
         </div>
 
         {/* Card 3: Counter Cash Downpayments */}
-        <div className="bg-white/90 backdrop-blur-xl p-5 rounded-3xl border border-slate-200/90 shadow-glass-sm flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-[#E1E7EC] shadow-paypal flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[#545D68] uppercase tracking-wider">
               Counter Cash Paid
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#F5F7FA] text-slate-700 border border-[#E1E7EC]">
               Cash Receipts
             </span>
           </div>
@@ -1020,27 +1021,27 @@ export const BusinessPaymentsSection: React.FC = () => {
             <div className="text-2xl sm:text-3xl font-black text-slate-800 font-mono tracking-tight">
               {formatINR(financialSummary?.counter_cash_paid ?? 0)}
             </div>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+            <p className="text-[11px] text-[#545D68] font-medium mt-0.5">
               Initial downpayments &amp; counter settlements
             </p>
           </div>
         </div>
 
         {/* Card 4: Total Billed Value & Settlement Rate */}
-        <div className="bg-white/90 backdrop-blur-xl p-5 rounded-3xl border border-slate-200/90 shadow-glass-sm flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-[#E1E7EC] shadow-paypal flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[#545D68] uppercase tracking-wider">
               Total Billed Volume
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
               {financialSummary?.settled_bills_count ?? 0} Settled
             </span>
           </div>
           <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-black text-kosha-navy font-mono tracking-tight">
+            <div className="text-2xl sm:text-3xl font-black text-[#001C64] font-mono tracking-tight">
               {formatINR(financialSummary?.total_billed_volume ?? 0)}
             </div>
-            <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+            <div className="mt-1 flex items-center justify-between text-[11px] text-[#545D68] font-medium">
               <span>Settlement Rate:</span>
               <strong className="text-slate-800 font-bold">
                 {financialSummary?.settlement_rate_percentage ?? 0}% Settled
@@ -1051,15 +1052,15 @@ export const BusinessPaymentsSection: React.FC = () => {
       </div>
 
       {/* Authoritative Single Source of Truth Invariant Strip */}
-      <div className="bg-white/80 rounded-2xl px-5 py-3 border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="bg-white rounded-2xl px-5 py-3.5 border border-[#E1E7EC] shadow-paypal flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span className="font-bold text-slate-700">Financial Invariant:</span>
-          <span className="font-mono text-slate-600">
+          <span className="font-bold text-[#001C64]">Financial Invariant:</span>
+          <span className="font-mono text-[#545D68]">
             {formatINR(financialSummary?.total_billed_volume ?? 0)} Billed = {formatINR(financialSummary?.remaining_customer_dues ?? 0)} Due + {formatINR(financialSummary?.counter_cash_paid ?? 0)} Cash + {formatINR(financialSummary?.razorpay_verified_collections ?? 0)} Razorpay
           </span>
         </div>
-        <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] border ${
+        <span className={`px-3 py-1 rounded-full font-bold text-[11px] border ${
           (financialSummary?.is_reconciled ?? true)
             ? "bg-emerald-50 text-emerald-800 border-emerald-200"
             : "bg-rose-50 text-rose-800 border-rose-200"
@@ -1087,22 +1088,22 @@ export const BusinessPaymentsSection: React.FC = () => {
         {/* Left Column: Customer Bills Directory */}
         <div className="lg:col-span-7 space-y-4">
           {/* Filters Bar */}
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-3 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="bg-white rounded-2xl p-3.5 border border-[#E1E7EC] shadow-paypal flex flex-col sm:flex-row gap-3 items-center justify-between">
             {/* Search Input */}
             <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <Search className="w-4 h-4 text-[#545D68] absolute left-3.5 top-2.5" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && loadInitialData()}
                 placeholder="Search bills, customer..."
-                className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-9 pr-3 py-1.5 rounded-full border border-[#E1E7EC] text-xs text-slate-800 bg-[#F5F7FA] focus:outline-hidden focus:ring-2 focus:ring-[#0070E0]"
               />
             </div>
 
             {/* Status Pills */}
-            <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
               {["all", "outstanding", "paid", "overdue"].map((st) => (
                 <button
                   key={st}
@@ -1112,10 +1113,10 @@ export const BusinessPaymentsSection: React.FC = () => {
                       .listShopkeeperBills(selectedShop, st, searchQuery)
                       .then((res) => setBills(res));
                   }}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold capitalize transition-all whitespace-nowrap ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold capitalize transition-all whitespace-nowrap ${
                     statusFilter === st
-                      ? "bg-kosha-blue text-white shadow-xs"
-                      : "text-slate-600 hover:bg-slate-100"
+                      ? "bg-[#0070E0] text-white shadow-xs font-bold"
+                      : "bg-[#F5F7FA] text-[#545D68] hover:bg-[#E1E7EC]"
                   }`}
                 >
                   {st}
@@ -1126,15 +1127,15 @@ export const BusinessPaymentsSection: React.FC = () => {
 
           {/* Bills List */}
           {isLoading ? (
-            <div className="p-12 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">
-              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-kosha-blue" />
-              <span className="text-xs font-semibold">Loading verified customer bills...</span>
+            <div className="p-12 text-center text-slate-400 bg-white rounded-2xl border border-[#E1E7EC]">
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#0070E0]" />
+              <span className="text-xs font-semibold text-[#545D68]">Loading verified customer bills...</span>
             </div>
           ) : bills.length === 0 ? (
-            <div className="p-12 text-center text-slate-500 bg-white rounded-3xl border border-slate-200 space-y-2">
+            <div className="p-12 text-center text-slate-500 bg-white rounded-2xl border border-dashed border-[#E1E7EC] space-y-2">
               <Receipt className="w-10 h-10 mx-auto text-slate-300" />
               <h4 className="font-bold text-sm text-slate-800">No bills found</h4>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              <p className="text-xs text-[#545D68] max-w-sm mx-auto">
                 Create a bill for an existing customer to generate a dynamic Razorpay UPI payment QR.
               </p>
             </div>
@@ -1149,47 +1150,47 @@ export const BusinessPaymentsSection: React.FC = () => {
                   <div
                     key={bill.id}
                     onClick={() => setSelectedBillForDetail(bill)}
-                    className={`group bg-white rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-xs hover:shadow-md ${
+                    className={`group bg-white rounded-2xl p-5 border transition-all cursor-pointer shadow-paypal hover:shadow-md ${
                       isSelected
-                        ? "border-kosha-blue ring-2 ring-blue-500/20"
-                        : "border-slate-200/80 hover:border-slate-300"
+                        ? "border-[#0070E0] ring-2 ring-[#0070E0]/20"
+                        : "border-[#E1E7EC] hover:border-slate-300"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-extrabold text-kosha-navy font-mono">
+                          <span className="text-xs font-extrabold text-[#001C64] font-mono">
                             {bill.bill_number}
                           </span>
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${badge.bg}`}
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${badge.bg}`}
                           >
                             <BadgeIcon className="w-3 h-3" />
                             <span>{badge.label}</span>
                           </span>
                         </div>
                         <h4 className="font-bold text-sm text-slate-900 mt-1">{bill.description}</h4>
-                        <p className="text-xs text-slate-500 font-medium">
-                          Customer: <strong className="text-slate-700">{bill.customer_name}</strong>
+                        <p className="text-xs text-[#545D68] font-medium">
+                          Customer: <strong className="text-slate-800">{bill.customer_name}</strong>
                           {bill.customer_phone ? ` (${bill.customer_phone})` : ""}
                         </p>
                       </div>
 
                       <div className="text-right shrink-0">
-                        <div className="text-xs text-slate-400 font-medium">Outstanding</div>
-                        <div className="text-base sm:text-lg font-black text-slate-900">
+                        <div className="text-xs text-[#545D68] font-medium">Outstanding</div>
+                        <div className="text-base sm:text-lg font-black text-[#001C64]">
                           {formatINR(bill.outstanding_amount)}
                         </div>
-                        <div className="text-[11px] text-slate-400">Total: {formatINR(bill.total_amount)}</div>
+                        <div className="text-[11px] text-[#545D68]">Total: {formatINR(bill.total_amount)}</div>
                       </div>
                     </div>
 
                     {/* Breakdown strip */}
-                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                    <div className="mt-3 pt-3 border-t border-[#E1E7EC] flex items-center justify-between text-[11px] text-[#545D68] font-medium">
                       <div className="flex items-center gap-4">
                         <span>
                           Manual Cash:{" "}
-                          <strong className="text-slate-700">
+                          <strong className="text-slate-800">
                             {formatINR(bill.initial_paid_amount ?? (bill as any).initial_manual_paid ?? 0)}
                           </strong>
                         </span>
@@ -1200,7 +1201,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                           </strong>
                         </span>
                       </div>
-                      <span className="text-kosha-blue group-hover:translate-x-1 transition-transform flex items-center gap-1 font-bold">
+                      <span className="text-[#0070E0] group-hover:translate-x-1 transition-transform flex items-center gap-1 font-bold">
                         View QR &amp; History <ChevronRight className="w-3.5 h-3.5" />
                       </span>
                     </div>
@@ -1214,19 +1215,19 @@ export const BusinessPaymentsSection: React.FC = () => {
         {/* Right Column: Selected Bill QR & Payment History Card (5 cols) */}
         <div className="lg:col-span-5 sticky top-24">
           {selectedBillForDetail ? (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-glass-lg space-y-6">
+            <div className="bg-white rounded-2xl p-6 border border-[#E1E7EC] shadow-paypal space-y-6">
               {/* Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E1E7EC]">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-kosha-blue block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#0070E0] block">
                     Active Payment Request
                   </span>
-                  <h3 className="text-base font-black text-slate-900 mt-0.5">
+                  <h3 className="text-base font-black text-[#001C64] mt-0.5">
                     {selectedBillForDetail.bill_number}
                   </h3>
                 </div>
                 <span
-                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                  className={`px-3 py-1 rounded-full text-xs font-bold border ${
                     getStatusBadge(selectedBillForDetail.status).bg
                   }`}
                 >
@@ -1235,29 +1236,29 @@ export const BusinessPaymentsSection: React.FC = () => {
               </div>
 
               {/* Authoritative Financial Reconciliation Box */}
-              <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-200/80 space-y-2 text-xs">
-                <div className="flex items-center justify-between font-bold text-slate-500 text-[10px] uppercase tracking-wider">
+              <div className="bg-[#F5F7FA] rounded-2xl p-4 border border-[#E1E7EC] space-y-2 text-xs">
+                <div className="flex items-center justify-between font-bold text-[#545D68] text-[10px] uppercase tracking-wider">
                   <span>Ledger Reconciliation</span>
                   <span>Financial Invariant</span>
                 </div>
-                <div className="flex justify-between items-center text-slate-600">
+                <div className="flex justify-between items-center text-[#545D68]">
                   <span>Total Billed Amount:</span>
-                  <span className="font-mono font-bold text-slate-900">{formatINR(selectedBillForDetail.total_amount)}</span>
+                  <span className="font-mono font-bold text-[#001C64]">{formatINR(selectedBillForDetail.total_amount)}</span>
                 </div>
-                <div className="flex justify-between items-center text-slate-500">
+                <div className="flex justify-between items-center text-[#545D68]">
                   <span>(-) Counter Cash Downpayment:</span>
                   <span className="font-mono font-bold text-slate-700">
                     - {formatINR(selectedBillForDetail.initial_paid_amount ?? (selectedBillForDetail as any).initial_manual_paid ?? 0)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-slate-500">
+                <div className="flex justify-between items-center text-[#545D68]">
                   <span>(-) Razorpay Verified Collections:</span>
                   <span className="font-mono font-bold text-emerald-700">
                     - {formatINR(selectedBillForDetail.total_verified_payments ?? (selectedBillForDetail as any).verified_razorpay_paid ?? 0)}
                   </span>
                 </div>
-                <div className="pt-2 border-t border-slate-200 flex justify-between items-center font-bold">
-                  <span className="text-slate-900">(=) Exact Remaining Due:</span>
+                <div className="pt-2 border-t border-[#E1E7EC] flex justify-between items-center font-bold">
+                  <span className="text-[#001C64]">(=) Exact Remaining Due:</span>
                   <span className={`font-mono text-base ${selectedBillForDetail.outstanding_amount === 0 ? "text-emerald-600" : "text-rose-600 font-extrabold"}`}>
                     {formatINR(selectedBillForDetail.outstanding_amount)}
                   </span>
@@ -1385,7 +1386,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                       type="button"
                       onClick={() => handleOpenQrInNewWindow(selectedBillForDetail)}
                       disabled={isRegenerating}
-                      className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-kosha-deep hover:from-blue-700 hover:to-indigo-800 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                      className="w-full py-3 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white font-bold text-xs shadow-paypal transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
                     >
                       <Maximize2 className="w-4 h-4" />
                       <span>Generate &amp; Open QR in New Window Clearly</span>
@@ -1394,7 +1395,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                       type="button"
                       onClick={() => handleRegenerateRequest(selectedBillForDetail.active_payment_request!.id)}
                       disabled={isRegenerating}
-                      className="w-full py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5"
+                      className="w-full py-2 rounded-full bg-white border border-[#E1E7EC] hover:bg-[#F5F7FA] text-slate-700 font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? "animate-spin" : ""}`} />
                       <span>Regenerate Here (Fresh 5-Min Window)</span>
@@ -1404,22 +1405,22 @@ export const BusinessPaymentsSection: React.FC = () => {
               ) : selectedBillForDetail.active_payment_request &&
               selectedBillForDetail.status !== "paid" ? (
                 /* Dynamic Razorpay QR Card with Active 5-Minute Countdown & Real-Time Listening */
-                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 flex flex-col items-center text-center space-y-3.5">
+                <div className="bg-[#F5F7FA] rounded-2xl p-5 border border-[#E1E7EC] flex flex-col items-center text-center space-y-3.5">
                   {/* Live Recognition Listening Radar Banner with 5-Minute Timer */}
-                  <div className="w-full flex items-center justify-between px-3 py-2 bg-blue-50/90 border border-blue-200 rounded-xl text-xs text-blue-700">
+                  <div className="w-full flex items-center justify-between px-3.5 py-2 bg-[#0070E0]/10 border border-[#0070E0]/20 rounded-full text-xs text-[#0070E0]">
                     <div className="flex items-center gap-1.5 font-semibold">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0070E0]"></span>
                       </span>
                       <span>Real-Time Sync</span>
                       <span
-                        className={`px-2 py-0.5 rounded-md font-mono font-bold text-[11px] ${
+                        className={`px-2 py-0.5 rounded-full font-mono font-bold text-[11px] ${
                           countdownSeconds < 60
                             ? "bg-rose-100 text-rose-700 animate-pulse border border-rose-200"
                             : countdownSeconds < 120
                             ? "bg-amber-100 text-amber-800 border border-amber-200"
-                            : "bg-blue-100 text-blue-800 border border-blue-200"
+                            : "bg-blue-100 text-[#003087] border border-blue-200"
                         }`}
                         title="5-minute payment security window"
                       >
@@ -1430,7 +1431,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                       type="button"
                       onClick={handleManualCheckStatus}
                       disabled={isCheckingStatus}
-                      className="inline-flex items-center gap-1 font-bold text-[11px] text-blue-800 hover:text-blue-950 underline cursor-pointer"
+                      className="inline-flex items-center gap-1 font-bold text-[11px] text-[#0070E0] hover:text-[#001C64] underline cursor-pointer"
                     >
                       <RefreshCw className={`w-3 h-3 ${isCheckingStatus ? "animate-spin" : ""}`} />
                       <span>{isCheckingStatus ? "Checking..." : "Verify Now"}</span>
@@ -1438,16 +1439,16 @@ export const BusinessPaymentsSection: React.FC = () => {
                   </div>
 
                   {/* 5-Minute Progress Bar */}
-                  <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden -mt-1">
+                  <div className="w-full bg-[#E1E7EC] rounded-full h-1.5 overflow-hidden -mt-1">
                     <div
                       className={`h-full transition-all duration-1000 ${
-                        countdownSeconds < 60 ? "bg-rose-500" : countdownSeconds < 120 ? "bg-amber-500" : "bg-blue-600"
+                        countdownSeconds < 60 ? "bg-rose-500" : countdownSeconds < 120 ? "bg-amber-500" : "bg-[#0070E0]"
                       }`}
                       style={{ width: `${Math.max(0, Math.min(100, (countdownSeconds / 300) * 100))}%` }}
                     />
                   </div>
 
-                  <div className="p-2.5 bg-white rounded-2xl shadow-xs border border-slate-200">
+                  <div className="p-3 bg-white rounded-2xl shadow-paypal border border-[#E1E7EC]">
                     {selectedBillForDetail.active_payment_request.qr_image_url ? (
                       <img
                         src={selectedBillForDetail.active_payment_request.qr_image_url}
@@ -1455,17 +1456,17 @@ export const BusinessPaymentsSection: React.FC = () => {
                         className="w-48 h-48 object-contain"
                       />
                     ) : (
-                      <div className="w-48 h-48 bg-slate-100 flex items-center justify-center text-slate-400">
+                      <div className="w-48 h-48 bg-[#F5F7FA] rounded-xl flex items-center justify-center text-slate-400">
                         <QrCode className="w-12 h-12" />
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <div className="text-base font-black text-slate-900">
+                    <div className="text-base font-black text-[#001C64]">
                       Amount: {formatINR(selectedBillForDetail.active_payment_request.amount_inr)}
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-[#545D68] mt-0.5">
                       Customer scans via Phone Camera or Google Lens to pay with GPay, PhonePe, Paytm, or Cards
                     </p>
                   </div>
@@ -1475,7 +1476,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleOpenQrInNewWindow(selectedBillForDetail)}
-                      className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-kosha-deep hover:from-blue-700 hover:to-indigo-800 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
+                      className="w-full py-2.5 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-paypal transition-all active:scale-[0.98]"
                     >
                       <Maximize2 className="w-4 h-4" />
                       <span>Open QR in New Window Clearly</span>
@@ -1490,9 +1491,9 @@ export const BusinessPaymentsSection: React.FC = () => {
                           selectedBillForDetail.active_payment_request?.upi_qr_payload
                         )
                       }
-                      className="flex-1 py-1.5 px-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                      className="flex-1 py-2 px-3 rounded-full bg-white border border-[#E1E7EC] hover:bg-[#F5F7FA] text-[#001C64] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
                     >
-                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-[#0070E0]" />}
                       <span>{copiedLink ? "Link Copied" : "Copy UPI Link"}</span>
                     </button>
 
@@ -1501,7 +1502,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                         href={selectedBillForDetail.active_payment_request.short_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex-1 py-1.5 px-3 rounded-xl bg-kosha-blue hover:bg-kosha-deep text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                        className="flex-1 py-2 px-3 rounded-full bg-[#FFC439] hover:bg-[#F6B623] text-[#001C64] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-paypal"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         <span>Open Checkout</span>
@@ -1519,7 +1520,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                         )
                       }
                       disabled={isRegenerating}
-                      className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                      className="w-full py-2 rounded-full bg-white border border-[#E1E7EC] hover:bg-[#F5F7FA] text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? "animate-spin" : ""}`} />
                       <span>Regenerate Payment Request</span>
@@ -1654,12 +1655,12 @@ export const BusinessPaymentsSection: React.FC = () => {
       {/* CREATE BILL MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-7 border border-slate-200 my-8">
-            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-7 border border-[#E1E7EC] my-8">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#E1E7EC]">
               <div>
-                <h3 className="font-extrabold text-lg text-kosha-navy">Create Customer Bill</h3>
-                <p className="text-xs text-slate-500 font-medium">
-                  Register bill & generate Razorpay UPI request
+                <h3 className="font-extrabold text-lg text-[#001C64]">Create Customer Bill</h3>
+                <p className="text-xs text-[#545D68] font-medium">
+                  Register bill &amp; generate Razorpay UPI request
                 </p>
               </div>
               <button
@@ -1684,7 +1685,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                 <select
                   value={selectedCustomerId}
                   onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E1E7EC] text-xs font-semibold text-slate-800 bg-[#F5F7FA] focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
                 >
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -1704,7 +1705,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                   value={billDescription}
                   onChange={(e) => setBillDescription(e.target.value)}
                   placeholder="e.g. Industrial fasteners, monthly hardware..."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E1E7EC] text-xs text-slate-800 bg-[#F5F7FA] focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
                 />
               </div>
 
@@ -1721,7 +1722,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                     value={totalAmount}
                     onChange={(e) => setTotalAmount(e.target.value)}
                     placeholder="2500.00"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E1E7EC] text-xs font-bold text-slate-800 bg-[#F5F7FA] focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
                   />
                 </div>
 
@@ -1736,7 +1737,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                     value={initialManualPaid}
                     onChange={(e) => setInitialManualPaid(e.target.value)}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E1E7EC] text-xs text-slate-800 bg-[#F5F7FA] focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
                   />
                 </div>
               </div>
@@ -1750,7 +1751,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                   type="date"
                   value={agreedRepaymentDate}
                   onChange={(e) => setAgreedRepaymentDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E1E7EC] text-xs text-slate-800 bg-[#F5F7FA] focus:ring-2 focus:ring-[#0070E0] focus:outline-hidden"
                 />
               </div>
 
@@ -1761,7 +1762,7 @@ export const BusinessPaymentsSection: React.FC = () => {
                   id="genReq"
                   checked={generatePaymentReq}
                   onChange={(e) => setGeneratePaymentReq(e.target.checked)}
-                  className="rounded text-kosha-blue focus:ring-blue-500"
+                  className="rounded text-[#0070E0] focus:ring-[#0070E0]"
                 />
                 <label htmlFor="genReq" className="text-xs font-medium text-slate-700 cursor-pointer">
                   Automatically generate Razorpay UPI QR code for remaining balance
@@ -1769,18 +1770,18 @@ export const BusinessPaymentsSection: React.FC = () => {
               </div>
 
               {/* Submit Button */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-[#E1E7EC] flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs"
+                  className="px-5 py-2.5 rounded-full bg-[#F5F7FA] hover:bg-[#E1E7EC] text-slate-700 font-bold text-xs border border-[#E1E7EC]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 rounded-xl bg-kosha-blue hover:bg-kosha-deep text-white font-bold text-xs shadow-md shadow-blue-500/20 disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white font-bold text-xs shadow-paypal disabled:opacity-50"
                 >
                   {isSubmitting ? "Creating Bill..." : "Create Bill & Generate QR"}
                 </button>

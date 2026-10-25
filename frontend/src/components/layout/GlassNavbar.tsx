@@ -73,7 +73,7 @@ export const GlassNavbar: React.FC = () => {
   };
 
   return (
-    <header className="w-full px-4 sm:px-6 py-3.5 flex flex-col z-30 relative select-none">
+    <header className="w-full px-4 sm:px-6 py-3 bg-white border-b border-[#E1E7EC] shadow-2xs flex flex-col z-30 relative select-none">
       <div className="w-full flex items-center justify-between">
         {/* Left: Brand Lockup */}
         <Link to="/load" className="hover:opacity-95 transition-opacity shrink-0 flex items-center gap-2">
@@ -83,7 +83,7 @@ export const GlassNavbar: React.FC = () => {
         {/* Center: Stepper & Navigation Pills (Desktop & Tablet) */}
         <nav
           aria-label="Main Treasury Workflow Navigation"
-          className="hidden lg:flex items-center gap-0.5 xl:gap-1.5 p-1 rounded-full bg-white/50 backdrop-blur-md border border-white/70 shadow-xs overflow-x-auto no-scrollbar shrink-0"
+          className="hidden lg:flex items-center gap-0.5 xl:gap-1.5 p-1 rounded-full bg-[#F5F7FA] border border-[#E1E7EC] shadow-xs overflow-x-auto no-scrollbar shrink-0"
         >
           {/* Main 5-Step Flow */}
           {mainSteps.map((item) => {
@@ -94,10 +94,10 @@ export const GlassNavbar: React.FC = () => {
                 key={item.path}
                 to={item.path}
                 aria-current={active ? "page" : undefined}
-                className={`px-2 xl:px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                className={`px-3 xl:px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
                   active
-                    ? "bg-kosha-blue text-white shadow-xs ring-2 ring-blue-400/30"
-                    : "text-kosha-navy/80 hover:text-kosha-navy hover:bg-white/60"
+                    ? "bg-[#0070E0] text-white shadow-xs font-bold"
+                    : "text-[#545D68] hover:text-[#0C0C0D] hover:bg-white"
                 }`}
               >
                 <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
@@ -111,7 +111,7 @@ export const GlassNavbar: React.FC = () => {
           })}
 
           {/* Divider */}
-          <span className="w-px h-4 bg-slate-300/80 mx-1 shrink-0" />
+          <span className="w-px h-4 bg-[#E1E7EC] mx-1 shrink-0" />
 
           {/* Supporting Views */}
           {supportingNav.map((item) => {
@@ -121,10 +121,10 @@ export const GlassNavbar: React.FC = () => {
                 key={item.path}
                 to={item.path}
                 aria-current={active ? "page" : undefined}
-                className={`px-2 xl:px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                className={`px-3 xl:px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                   active
-                    ? "bg-kosha-blue text-white shadow-xs font-semibold ring-2 ring-blue-400/30"
-                    : "text-kosha-navy/80 hover:text-kosha-navy hover:bg-white/60"
+                    ? "bg-[#0070E0] text-white shadow-xs font-bold"
+                    : "text-[#545D68] hover:text-[#0C0C0D] hover:bg-white"
                 }`}
               >
                 {item.name}
@@ -139,24 +139,24 @@ export const GlassNavbar: React.FC = () => {
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/60 hover:bg-white/80 border border-white/80 text-kosha-navy shadow-xs transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#F5F7FA] hover:bg-white border border-[#E1E7EC] text-[#001C64] shadow-xs transition-all"
               title="Switch Workspace Mode"
               aria-label="Switch workspace mode"
             >
               {isDemoMode ? (
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               ) : (
-                <Database className="w-3.5 h-3.5 text-kosha-blue" />
+                <Database className="w-3.5 h-3.5 text-[#0070E0]" />
               )}
               <span className="max-w-[110px] sm:max-w-[140px] truncate">
                 {isDemoMode ? "Demo Mode" : activeBusiness?.legal_name || "Real Data"}
               </span>
-              <ChevronDown className="w-3 h-3 text-slate-500" />
+              <ChevronDown className="w-3 h-3 text-[#545D68]" />
             </button>
 
             {showDropdown && (
-              <div className="absolute right-0 top-10 w-64 rounded-2xl bg-white/95 backdrop-blur-xl border border-white/80 shadow-glass-lg p-2 z-50 text-xs">
-                <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              <div className="absolute right-0 top-10 w-64 rounded-2xl bg-white border border-[#E1E7EC] shadow-paypal p-2 z-50 text-xs">
+                <div className="px-3 py-1.5 text-[10px] font-bold text-[#545D68] uppercase tracking-wider">
                   Workspace
                 </div>
                 <button
@@ -165,7 +165,7 @@ export const GlassNavbar: React.FC = () => {
                     setShowDropdown(false);
                   }}
                   className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors ${
-                    isDemoMode ? "bg-amber-50 text-amber-900 font-semibold" : "hover:bg-slate-50 text-slate-700"
+                    isDemoMode ? "bg-amber-50 text-amber-900 font-semibold" : "hover:bg-[#F5F7FA] text-slate-700"
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -185,27 +185,27 @@ export const GlassNavbar: React.FC = () => {
                     }}
                     className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors ${
                       !isDemoMode && activeBusinessId === biz.id
-                        ? "bg-blue-50 text-kosha-blue font-semibold"
-                        : "hover:bg-slate-50 text-slate-700"
+                        ? "bg-[#0070E0]/10 text-[#0070E0] font-semibold"
+                        : "hover:bg-[#F5F7FA] text-slate-700"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate pr-2">
-                      <Database className="w-3.5 h-3.5 text-kosha-blue shrink-0" />
+                      <Database className="w-3.5 h-3.5 text-[#0070E0] shrink-0" />
                       <span className="truncate">{biz.legal_name}</span>
                     </div>
                     {!isDemoMode && activeBusinessId === biz.id && (
-                      <Check className="w-3.5 h-3.5 text-kosha-blue shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-[#0070E0] shrink-0" />
                     )}
                   </button>
                 ))}
 
-                <div className="pt-1 mt-1 border-t border-slate-100">
+                <div className="pt-1 mt-1 border-t border-[#E1E7EC]">
                   <button
                     onClick={() => {
                       setShowDropdown(false);
                       setShowCreateModal(true);
                     }}
-                    className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-blue-50 text-kosha-blue font-semibold flex items-center gap-1.5"
+                    className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-[#0070E0]/10 text-[#0070E0] font-semibold flex items-center gap-1.5"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Create Business Workspace</span>
@@ -216,13 +216,13 @@ export const GlassNavbar: React.FC = () => {
           </div>
 
           {/* Language Switcher EN · हि · ಕ */}
-          <div className="hidden sm:flex items-center p-0.5 rounded-full bg-white/50 border border-white/70 shadow-xs text-xs font-semibold">
+          <div className="hidden sm:flex items-center p-0.5 rounded-full bg-[#F5F7FA] border border-[#E1E7EC] shadow-xs text-xs font-semibold">
             <button
               onClick={() => setLanguage("EN")}
-              className={`px-2 py-1 rounded-full transition-all ${
+              className={`px-2.5 py-1 rounded-full transition-all ${
                 language === "EN"
-                  ? "bg-kosha-blue text-white shadow-xs font-bold"
-                  : "text-slate-600 hover:text-kosha-navy"
+                  ? "bg-[#0070E0] text-white shadow-xs font-bold"
+                  : "text-[#545D68] hover:text-[#0C0C0D]"
               }`}
               aria-label="English language"
             >
@@ -230,10 +230,10 @@ export const GlassNavbar: React.FC = () => {
             </button>
             <button
               onClick={() => setLanguage("HI")}
-              className={`px-2 py-1 rounded-full transition-all ${
+              className={`px-2.5 py-1 rounded-full transition-all ${
                 language === "HI"
-                  ? "bg-kosha-blue text-white shadow-xs font-bold"
-                  : "text-slate-600 hover:text-kosha-navy"
+                  ? "bg-[#0070E0] text-white shadow-xs font-bold"
+                  : "text-[#545D68] hover:text-[#0C0C0D]"
               }`}
               aria-label="Hindi language (हिन्दी)"
             >
@@ -241,10 +241,10 @@ export const GlassNavbar: React.FC = () => {
             </button>
             <button
               onClick={() => setLanguage("KN")}
-              className={`px-2 py-1 rounded-full transition-all ${
+              className={`px-2.5 py-1 rounded-full transition-all ${
                 language === "KN"
-                  ? "bg-kosha-blue text-white shadow-xs font-bold"
-                  : "text-slate-600 hover:text-kosha-navy"
+                  ? "bg-[#0070E0] text-white shadow-xs font-bold"
+                  : "text-[#545D68] hover:text-[#0C0C0D]"
               }`}
               aria-label="Kannada language (ಕನ್ನಡ)"
             >
@@ -255,38 +255,38 @@ export const GlassNavbar: React.FC = () => {
           {/* Customer View Switcher */}
           <Link
             to="/customer/dashboard"
-            className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 shadow-xs transition-all"
+            className="hidden xl:inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-[#0070E0]/10 hover:bg-[#0070E0]/20 text-[#0070E0] border border-[#0070E0]/20 shadow-xs transition-all"
             title="Open Customer Credit Dashboard"
           >
-            <User className="w-3.5 h-3.5 text-emerald-600" />
+            <User className="w-3.5 h-3.5 text-[#0070E0]" />
             <span>Customer View</span>
           </Link>
 
           {/* Product Overview / Welcome Link */}
           <Link
             to="/welcome"
-            className="px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold bg-white/50 hover:bg-white text-kosha-navy border border-white/80 shadow-xs transition-all flex items-center gap-1"
+            className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#F5F7FA] hover:bg-white text-[#001C64] border border-[#E1E7EC] shadow-xs transition-all flex items-center gap-1"
             title="KOSHA Welcome & Demo Overview"
           >
-            <HelpCircle className="w-3.5 h-3.5 text-kosha-blue" />
+            <HelpCircle className="w-3.5 h-3.5 text-[#0070E0]" />
             <span className="hidden xl:inline">{t("overview")}</span>
           </Link>
 
           {/* Sign Out Button */}
           <button
             onClick={handleSignOut}
-            className="px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold bg-white/50 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-white/80 hover:border-rose-200 shadow-xs transition-all flex items-center gap-1.5 group"
+            className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#F5F7FA] hover:bg-rose-50 text-[#545D68] hover:text-rose-600 border border-[#E1E7EC] hover:border-rose-200 shadow-xs transition-all flex items-center gap-1.5 group"
             title={t("signOut")}
             aria-label={t("signOut")}
           >
-            <LogOut className="w-3.5 h-3.5 text-slate-500 group-hover:text-rose-600 transition-colors" />
+            <LogOut className="w-3.5 h-3.5 text-[#545D68] group-hover:text-rose-600 transition-colors" />
             <span className="hidden md:inline">{t("signOut")}</span>
           </button>
 
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-1.5 rounded-full bg-white/60 text-kosha-navy border border-white/80"
+            className="lg:hidden p-1.5 rounded-full bg-[#F5F7FA] text-[#001C64] border border-[#E1E7EC]"
             aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}

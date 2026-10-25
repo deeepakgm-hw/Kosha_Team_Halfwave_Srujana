@@ -24,32 +24,28 @@ export const LandingHero: React.FC = () => {
   };
 
   return (
-    <section className="relative overflow-hidden pt-10 sm:pt-16 pb-12 sm:pb-20 bg-gradient-to-b from-white via-sky-50/30 to-slate-50 border-b border-slate-200/60">
-      {/* Decorative ambient gradients */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/3 right-10 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
-
+    <section className="relative overflow-hidden pt-12 sm:pt-16 pb-12 sm:pb-20 bg-[#F5F7FA] border-b border-[#E1E7EC]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Top Badge */}
         <div className="flex justify-center mb-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-white text-kosha-navy border border-slate-200 shadow-xs hover:border-slate-300 transition-colors">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-white text-[#001C64] border border-[#E1E7EC] shadow-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-slate-500 font-medium">India MSME Checkout & Treasury</span>
+            <span className="text-[#545D68] font-medium">India MSME Checkout &amp; Treasury</span>
             <span className="text-slate-300">|</span>
-            <span className="text-kosha-blue font-semibold">Srujana Tech Fest 2026</span>
+            <span className="text-[#0070E0] font-semibold">Srujana Tech Fest 2026</span>
           </div>
         </div>
 
         {/* Hero Headline & Subhead */}
         <div className="text-center max-w-4xl mx-auto space-y-6">
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-kosha-navy tracking-tight leading-[1.08]">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-[#001C64] tracking-tight leading-[1.08]">
             Turn more shoppers into buyers. <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-kosha-blue via-indigo-600 to-emerald-600">
+            <span className="text-[#0070E0]">
               Keep your treasury from running dry.
             </span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-slate-600 font-normal max-w-3xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-[#545D68] font-normal max-w-3xl mx-auto leading-relaxed">
             Deliver instant QR counter credit with flexible split down-payments for in-store shoppers, while our AI forecast predicts your 90-day cash runway with zero surprises.
           </p>
 
@@ -59,34 +55,34 @@ export const LandingHero: React.FC = () => {
             <button
               type="button"
               onClick={handleOpenBusiness}
-              className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-kosha-blue via-blue-600 to-kosha-deep hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-base shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all flex items-center justify-center gap-2.5 active:scale-[0.98]"
+              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-[#FFC439] hover:bg-[#F6B623] text-[#001C64] font-black text-base shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2.5 active:scale-[0.98]"
             >
-              <Store className="w-5 h-5" />
+              <Store className="w-5 h-5 text-[#001C64]" />
               <span>Business Login — Start Free Forecast</span>
-              <ArrowRight className="w-4 h-4 ml-1" />
+              <ArrowRight className="w-4 h-4 ml-1 text-[#001C64]" />
             </button>
 
             {/* Secondary CTA: Member Login */}
             <button
               type="button"
               onClick={handleOpenCustomer}
-              className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-white hover:bg-slate-50 text-emerald-800 border-2 border-emerald-500/40 hover:border-emerald-600 font-bold text-base shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2.5 active:scale-[0.98]"
+              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white hover:bg-[#0070E0]/5 text-[#0070E0] border-2 border-[#0070E0] font-bold text-base shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-2.5 active:scale-[0.98]"
             >
-              <User className="w-5 h-5 text-emerald-600" />
-              <span>Member Login — View Dues & Pay</span>
+              <User className="w-5 h-5 text-[#0070E0]" />
+              <span>Member Login — View Dues &amp; Pay</span>
             </button>
           </div>
 
           {/* Trust Guarantees Strip */}
-          <div className="pt-4 flex flex-wrap items-center justify-center gap-y-2 gap-x-6 text-xs text-slate-500 font-medium">
+          <div className="pt-4 flex flex-wrap items-center justify-center gap-y-2 gap-x-6 text-xs text-[#545D68] font-medium">
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> No setup fees or hardware required
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> No setup fees or hardware required
             </span>
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Instant dynamic QR counter activation
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Instant dynamic QR counter activation
             </span>
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> MSMED Act Section 16 penal compliant
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> MSMED Act Section 16 penal compliant
             </span>
           </div>
         </div>
