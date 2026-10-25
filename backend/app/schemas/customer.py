@@ -93,7 +93,10 @@ class CreditTransactionOut(BaseModel):
     outstanding_amount: float
     transaction_date: date
     agreed_repayment_date: date
-    status: str  # upcoming, due_today, overdue, paid
+    status: str  # upcoming, due_today, overdue, paid, disputed
+    is_disputed: Optional[bool] = False
+    dispute_id: Optional[str] = None
+    dispute_status: Optional[str] = None
     idempotency_key: Optional[str] = None
     created_at: datetime
     repayments: List[RepaymentOut] = []
@@ -140,6 +143,9 @@ class CustomerDashboardSummary(BaseModel):
     total_paid_amount: Optional[float] = 0.0
     active_bills_count: Optional[int] = 0
     settled_bills_count: Optional[int] = 0
+    trust_score: Optional[int] = None
+    trust_score_category: Optional[str] = None
+    active_disputes_count: Optional[int] = 0
 
 
 class CustomerDuesResponse(BaseModel):
@@ -152,6 +158,9 @@ class CustomerDuesResponse(BaseModel):
     total_purchase_amount: Optional[float] = 0.0
     total_initial_paid: Optional[float] = 0.0
     total_verified_online_paid: Optional[float] = 0.0
+    trust_score: Optional[int] = None
+    trust_score_category: Optional[str] = None
+    active_disputes_count: Optional[int] = 0
 
 
 # =========================================================================

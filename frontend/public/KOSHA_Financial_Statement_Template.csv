@@ -1,0 +1,24 @@
+Date,Description,Credit,Debit,Reference,Balance
+2026-08-27,Opening Balance Verified,450000.0,0.0,INIT-BAL-001,450000.0
+2026-08-29,Customer Inflow - Tata Motors Ancillary Payment,185000.0,0.0,NEFT-TAT-8821,635000.0
+2026-08-31,Vendor Outflow - Jindal Steel & Alloys Sheet Raw Material,0.0,142000.0,RTGS-JIN-4412,493000.0
+2026-09-03,UPI Counter Collections - Retail Store Sales,34500.0,0.0,UPI-RET-9901,527500.0
+2026-09-06,Workforce Payroll - Monthly Factory Staff Salaries,0.0,165000.0,NEFT-SAL-0101,362500.0
+2026-09-09,Facility Electricity & Industrial Power Tariff,0.0,24500.0,BBPS-BESCOM-331,338000.0
+2026-09-11,Customer Inflow - Mahindra Auto Components Clearing,220000.0,0.0,RTGS-MHD-7712,558000.0
+2026-09-14,Tooling Spares & CNC Cutter Bits,0.0,38500.0,UPI-CNC-4421,519500.0
+2026-09-17,UPI AutoPay Mandate - Cloud Server Infrastructure,0.0,12500.0,MANDATE-AWS-882,507000.0
+2026-09-21,Customer Inflow - Bharat Heavy Electricals Bulk Order,145000.0,0.0,NEFT-BHEL-2201,652000.0
+2026-09-24,Vendor Outflow - Industrial Lubricants & Cutting Fluid,0.0,41000.0,CHQ-004521,611000.0
+2026-09-26,Factory Premises Monthly Lease Rent,0.0,75000.0,NEFT-RENT-002,536000.0
+2026-09-30,Customer Inflow - Precision Engineering Works Invoice #441,195000.0,0.0,NEFT-PEW-9912,731000.0
+2026-10-03,Vendor Outflow - High-Grade Fasteners & Bearings,0.0,88000.0,RTGS-BEAR-1102,643000.0
+2026-10-06,GST Monthly Tax Settlement - Challan #992182,0.0,68500.0,CPIN-GST-99218,574500.0
+2026-10-09,UPI Merchant Collections - Batch Counter Inflow,48200.0,0.0,UPI-SETTLE-7721,622700.0
+2026-10-11,Customer Inflow - Apex Precision Milestone Payment,280000.0,0.0,RTGS-APEX-5541,902700.0
+2026-10-14,Machinery Equipment Term Loan EMI #24,0.0,52000.0,ACH-HDFC-LN-441,850700.0
+2026-10-16,Vendor Outflow - Packaging & Corrugated Cartons,0.0,26500.0,UPI-PKG-8821,824200.0
+2026-10-19,Customer Inflow - Sundaram Fasteners Invoice Clearance,160000.0,0.0,NEFT-SUN-3312,984200.0
+2026-10-22,Vendor Outflow - Heat Treatment & Galvanizing Jobwork,0.0,64000.0,RTGS-HEAT-9921,920200.0
+2026-10-24,Logistics & Interstate Freight Transport Dispatch,0.0,31500.0,UPI-VRL-1102,888700.0
+2026-10-25,Razorpay Verified Payment Collections - Batch,75000.0,0.0,RZP-BATCH-4412,963700.0

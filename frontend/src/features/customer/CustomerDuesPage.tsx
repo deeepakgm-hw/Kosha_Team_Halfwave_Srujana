@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Receipt,
   AlertTriangle,
@@ -22,10 +22,12 @@ import { RazorpayCheckoutModal } from "../payments/RazorpayCheckoutModal";
 import { DigitalBillModal } from "../../components/bills/DigitalBillModal";
 import { AutoPayCard } from "../../components/bills/AutoPayCard";
 import { BillTimelineModal } from "../../components/bills/BillTimelineModal";
+import { CustomerDisputeModal } from "../../components/bills/CustomerDisputeModal";
 import { useRealTimeSync } from "../../hooks/useRealTimeSync";
 import { useAuth } from "../../context/AuthContext";
 
 export const CustomerDuesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const initialFilter = searchParams.get("status") || "all";
@@ -57,6 +59,7 @@ export const CustomerDuesPage: React.FC = () => {
   const [selectedBillForCheckout, setSelectedBillForCheckout] = useState<BillPaymentHistory | null>(null);
   const [selectedBillForDigitalModal, setSelectedBillForDigitalModal] = useState<BillPaymentHistory | null>(null);
   const [selectedBillForTimeline, setSelectedBillForTimeline] = useState<BillPaymentHistory | null>(null);
+  const [selectedTxnForDispute, setSelectedTxnForDispute] = useState<{ id: string; reference: string; shop_name: string; outstanding_amount: number } | null>(null);
   const [isResolvingCheckout, setIsResolvingCheckout] = useState<boolean>(false);
 
   const fetchDues = useCallback(async (filter: string, isSilent = false) => {
@@ -267,6 +270,33 @@ export const CustomerDuesPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* KOSHA TrustScore Live Summary Strip */}
+      <div className="bg-gradient-to-r from-blue-50 via-indigo-50/50 to-white p-4 rounded-2xl border border-blue-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-[#0070E0] text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
+            {data?.trust_score ?? "NEW"}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-900">KOSHA TrustScore</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-100 text-[#003087]">
+                {data?.trust_score_category ? data.trust_score_category.replace('_', ' ') : 'Reliability Rating'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium">
+              Internal 4-factor reliability score (40% On-time, 25% Overdue duration, 20% Overdue ratio, 15% Recency)
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => navigate("/customer/trustscore")}
+          className="px-3.5 py-1.5 text-xs font-bold text-[#0070E0] bg-white border border-blue-200 hover:bg-blue-50 rounded-xl transition-colors shadow-2xs flex items-center gap-1.5 self-start sm:self-auto shrink-0"
+        >
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span>View Factor Breakdown</span>
+        </button>
+      </div>
 
       {/* View Switcher: Credit Ledger vs Razorpay UPI Bills */}
       <div className="flex items-center gap-2 p-1.5 bg-white rounded-full border border-[#E1E7EC] shadow-2xs max-w-fit">
@@ -747,6 +777,27 @@ export const CustomerDuesPage: React.FC = () => {
                             <CreditCard className="w-3.5 h-3.5" />
                             <span>Manual</span>
                           </button>
+
+                          {!txn.is_disputed ? (
+                            <button
+                              onClick={() => setSelectedTxnForDispute({
+                                id: txn.id,
+                                reference: txn.reference,
+                                shop_name: txn.shop_name,
+                                outstanding_amount: txn.outstanding_amount,
+                              })}
+                              className="px-3 py-2 rounded-full border border-amber-200 hover:bg-amber-50 text-amber-700 text-xs font-bold transition-all flex items-center gap-1"
+                              title="Flag incorrect amount or payment missing"
+                            >
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Dispute</span>
+                            </button>
+                          ) : (
+                            <span className="px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold border border-amber-300 flex items-center gap-1">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                              <span>Disputed · Frozen</span>
+                            </span>
+                          )}
                         </>
                       )}
 
@@ -840,6 +891,18 @@ export const CustomerDuesPage: React.FC = () => {
           onClose={() => setSelectedBillForTimeline(null)}
           customerId={currentCustomerId || user?.customer_id || undefined}
           businessId={selectedBillForTimeline.shop_id || undefined}
+        />
+      )}
+
+      {selectedTxnForDispute && (
+        <CustomerDisputeModal
+          billId={selectedTxnForDispute.id}
+          billReference={selectedTxnForDispute.reference}
+          shopName={selectedTxnForDispute.shop_name}
+          outstandingAmount={selectedTxnForDispute.outstanding_amount}
+          customerId={currentCustomerId}
+          onClose={() => setSelectedTxnForDispute(null)}
+          onSuccess={() => fetchDues(activeFilter, true)}
         />
       )}
     </div>

@@ -21,6 +21,7 @@ from backend.app.db.models import (
     ActivityEventModel,
     CreditTransactionModel,
     CustomerModel,
+    RepaymentDisputeModel,
     RepaymentModel,
     ShopModel,
 )
@@ -67,7 +68,7 @@ class CustomerService:
                 "owner_name": "Vikram Mehta",
                 "phone": "+91 98220 11223",
                 "upi_id": "halfwave@razorpay",
-                "qr_payload": "upi://pay?pa=halfwave@razorpay&pn=Apex+Precision+Works&cu=INR&tn=KOSHA-APEX",
+                "qr_payload": "kosha://shop/KOSHA-APEX",
                 "status": "active",
             },
             {
@@ -159,7 +160,7 @@ class CustomerService:
                 "owner_name": "Vikram Mehta",
                 "phone": "+91 98220 11223",
                 "upi_id": "halfwave@razorpay",
-                "qr_payload": "upi://pay?pa=halfwave@razorpay&pn=Apex+Precision+Works&cu=INR&tn=KOSHA-APEX",
+                "qr_payload": "kosha://shop/KOSHA-APEX",
                 "status": "active",
             },
             {
@@ -499,7 +500,9 @@ class CustomerService:
         return primary_customer or db.query(CustomerModel).filter_by(id="cust_rahul_01").first()
 
     def _sync_transaction_status(self, txn: CreditTransactionModel) -> str:
-        """Derives transaction status dynamically based on current date and outstanding amount."""
+        """Derives transaction status dynamically based on current date and outstanding amount, preserving disputes."""
+        if txn.status == "disputed":
+            return "disputed"
         if txn.outstanding_amount <= Decimal("0.00"):
             return "paid"
         today = date.today()
@@ -511,10 +514,15 @@ class CustomerService:
             return "upcoming"
 
     def _serialize_transaction(self, txn: CreditTransactionModel) -> CreditTransactionOut:
-        """Converts ORM transaction into typed schema with live calculated status."""
+        """Converts ORM transaction into typed schema with live calculated status and dispute state."""
         current_status = self._sync_transaction_status(txn)
         if txn.status != current_status:
             txn.status = current_status
+
+        active_disp = next((d for d in (txn.disputes or []) if d.status in ("opened", "under_review")), None)
+        is_disp = active_disp is not None or txn.status == "disputed"
+        disp_id = active_disp.id if active_disp else None
+        disp_status = active_disp.status if active_disp else None
 
         repayments = [
             RepaymentOut(
@@ -546,6 +554,9 @@ class CustomerService:
             transaction_date=txn.transaction_date,
             agreed_repayment_date=txn.agreed_repayment_date,
             status=current_status,
+            is_disputed=is_disp,
+            dispute_id=disp_id,
+            dispute_status=disp_status,
             created_at=txn.created_at,
             repayments=repayments,
         )
@@ -662,6 +673,23 @@ class CustomerService:
         active_bills_count = sum(1 for t in txns if t.outstanding_amount > 0)
         settled_bills_count = sum(1 for t in txns if t.outstanding_amount == 0)
 
+        score_val = None
+        score_cat = None
+        try:
+            from backend.app.services.trustscore_service import trustscore_service
+            ts = trustscore_service.get_or_calculate_score(customer_id=customer_id, db=db)
+            score_val = ts.get("score")
+            score_cat = ts.get("score_category")
+        except Exception:
+            pass
+
+        active_disputes = (
+            db.query(RepaymentDisputeModel)
+            .filter_by(customer_id=customer_id)
+            .filter(RepaymentDisputeModel.status.in_(["opened", "under_review"]))
+            .count()
+        )
+
         return CustomerDashboardSummary(
             customer=CustomerProfileOut.model_validate(customer),
             total_outstanding=float(total_outstanding),
@@ -678,6 +706,9 @@ class CustomerService:
             total_paid_amount=float(total_paid_amount),
             active_bills_count=active_bills_count,
             settled_bills_count=settled_bills_count,
+            trust_score=score_val,
+            trust_score_category=score_cat,
+            active_disputes_count=active_disputes,
         )
 
     def get_dues(
@@ -756,6 +787,23 @@ class CustomerService:
                 if r.payment_status == "completed" and r.payment_method in ("razorpay_upi", "upi", "initial_downpayment", "demo_upi"):
                     total_verified_online += Decimal(str(r.amount))
 
+        score_val = None
+        score_cat = None
+        try:
+            from backend.app.services.trustscore_service import trustscore_service
+            ts = trustscore_service.get_or_calculate_score(customer_id=customer_id, db=db)
+            score_val = ts.get("score")
+            score_cat = ts.get("score_category")
+        except Exception:
+            pass
+
+        active_disputes = (
+            db.query(RepaymentDisputeModel)
+            .filter_by(customer_id=customer_id)
+            .filter(RepaymentDisputeModel.status.in_(["opened", "under_review"]))
+            .count()
+        )
+
         return CustomerDuesResponse(
             total_outstanding=float(total_outstanding),
             overdue_amount=float(overdue_amount),
@@ -766,6 +814,9 @@ class CustomerService:
             total_purchase_amount=float(total_purchase_amount),
             total_initial_paid=float(total_initial_paid),
             total_verified_online_paid=float(total_verified_online),
+            trust_score=score_val,
+            trust_score_category=score_cat,
+            active_disputes_count=active_disputes,
         )
 
     def get_transaction(
@@ -947,6 +998,16 @@ class CustomerService:
         db.refresh(txn)
 
         try:
+            from backend.app.services.trustscore_service import trustscore_service
+            trustscore_service.calculate_and_save_snapshot(
+                customer_id=customer.id,
+                db=db,
+                trigger_reason=f"bill_created_{txn.reference}",
+            )
+        except Exception:
+            pass
+
+        try:
             from backend.app.core.events import event_broadcaster
             event_broadcaster.publish("bill_created", {
                 "bill_id": txn.id,
@@ -1048,6 +1109,16 @@ class CustomerService:
         db.refresh(txn)
 
         try:
+            from backend.app.services.trustscore_service import trustscore_service
+            trustscore_service.calculate_and_save_snapshot(
+                customer_id=customer.id,
+                db=db,
+                trigger_reason=f"bill_created_{txn.reference}",
+            )
+        except Exception:
+            pass
+
+        try:
             from backend.app.core.events import event_broadcaster
             event_broadcaster.publish("repayment_recorded", {
                 "bill_id": txn.id,
@@ -1068,8 +1139,8 @@ class CustomerService:
         shops = db.query(ShopModel).filter_by(is_verified=True).all()
         return [ShopOut.model_validate(s) for s in shops]
 
-    def get_shop_by_code(self, shop_code: str, db: Session) -> ShopOut:
-        """Resolves a shop by code, VPA, name, or auto-registers a scanned merchant."""
+    def get_shop_by_code(self, shop_code: str, db: Session, auto_create: bool = False) -> ShopOut:
+        """Resolves a shop by code, VPA, name, or auto-registers a scanned merchant if auto_create is True."""
         self.ensure_system_metadata(db)
         clean = shop_code.strip()
 
@@ -1105,6 +1176,9 @@ class CustomerService:
         shop = db.query(ShopModel).filter(ShopModel.shop_name.ilike(f"%{clean}%")).first()
         if shop:
             return ShopOut.model_validate(shop)
+
+        if not auto_create:
+            raise NotFoundException(f"Shop with code '{shop_code}' not found.")
 
         # 6. Auto-register scanned merchant so the customer can pay immediately!
         clean_name = clean.replace("_", " ").replace("-", " ").strip()
@@ -1147,8 +1221,7 @@ class CustomerService:
     def get_shop_qr(self, shop_code: str, db: Session) -> ShopQrOut:
         """Generates real SVG QR code and instructions for a shop in standard NPCI UPI format."""
         shop = self.get_shop_by_code(shop_code=shop_code, db=db)
-        merchant_vpa = (shop.upi_id if shop and shop.upi_id else None) or "kosha.merchant@razorpay"
-        payload = f"upi://pay?pa={merchant_vpa}&pn={quote_plus(shop.shop_name)}&cu=INR&tn={quote_plus(shop.shop_code)}"
+        payload = shop.qr_payload or f"upi://pay?pa={(shop.upi_id or 'halfwave@razorpay')}&pn={quote_plus(shop.shop_name)}&cu=INR&tn={quote_plus(shop.shop_code)}"
         
         # Generate SVG QR image in memory
         img = qrcode.make(payload, image_factory=qrcode.image.svg.SvgPathImage)
@@ -1304,10 +1377,7 @@ class CustomerService:
                 for r in (b.repayments or [])
                 if r.payment_status == "completed" and r.payment_method in ("shopkeeper_cash", "cash", "manual_cash", "initial_downpayment")
             )
-            if cash_from_repayments > Decimal("0.00"):
-                tot_counter_cash += cash_from_repayments
-            else:
-                tot_counter_cash += (b.initial_paid_amount or Decimal("0.00"))
+            tot_counter_cash += (b.initial_paid_amount or Decimal("0.00")) + cash_from_repayments
 
             for v in (b.payment_verifications or []):
                 if v.status == "captured":
@@ -1548,6 +1618,16 @@ class CustomerService:
         db.add(act)
         db.commit()
         db.refresh(txn)
+
+        try:
+            from backend.app.services.trustscore_service import trustscore_service
+            trustscore_service.calculate_and_save_snapshot(
+                customer_id=customer.id,
+                db=db,
+                trigger_reason=f"bill_created_{txn.reference}",
+            )
+        except Exception:
+            pass
 
         try:
             from backend.app.core.events import event_broadcaster

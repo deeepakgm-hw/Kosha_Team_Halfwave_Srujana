@@ -18,12 +18,16 @@ from backend.app.api.routes.notifications import router as notifications_router
 from backend.app.api.routes.events import router as events_router
 from backend.app.api.routes.auth import router as auth_router
 from backend.app.api.routes.autopay import router as autopay_router
+from backend.app.api.routes.trustscore import router as trustscore_router
+from backend.app.api.routes.disputes import router as disputes_router
 
 api_router = APIRouter()
 
 # Register active routes
 api_router.include_router(auth_router, prefix="/auth", tags=["Authentication & Identity"])
 api_router.include_router(autopay_router, prefix="/autopay", tags=["AutoPay & Recurring Mandates"])
+api_router.include_router(trustscore_router, prefix="/trustscore", tags=["KOSHA TrustScore Reliability"])
+api_router.include_router(disputes_router, prefix="/disputes", tags=["Customer Disputes & Corrections"])
 api_router.include_router(health_router, tags=["Health"])
 api_router.include_router(businesses_router, tags=["Businesses & Accounts"])
 api_router.include_router(statements_router, tags=["Bank Statements & Transactions"])

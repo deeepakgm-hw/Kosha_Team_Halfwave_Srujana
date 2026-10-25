@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { UploadCloud, CheckCircle2, AlertTriangle, FileText, X, Download, Info } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertTriangle, FileText, X, Download, Info, FileSpreadsheet } from "lucide-react";
 import { apiClient, formatApiError } from "../../lib/api";
 import { CsvImportResult } from "../../types/cashflow";
 import { formatINR } from "../../lib/utils";
@@ -103,7 +103,7 @@ export const StatementImportModal: React.FC<StatementImportModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-slate-200">
           <div className="flex items-center gap-2">
             <UploadCloud className="w-5 h-5 text-emerald-600" />
-            <h2 className="font-bold text-base text-slate-900">Import Bank Statement (CSV)</h2>
+            <h2 className="font-bold text-base text-slate-900">Import Bank Statement &amp; Financial Data (Excel / CSV)</h2>
           </div>
           <button
             onClick={onClose}
@@ -116,29 +116,58 @@ export const StatementImportModal: React.FC<StatementImportModalProps> = ({
         {/* Form */}
         {!result ? (
           <form onSubmit={handleUpload} className="mt-4 space-y-4 text-xs">
+            {/* 1-Click Sample File Downloads */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 bg-blue-50/80 border border-blue-200/90 rounded-xl text-xs text-[#001C64]">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-[#0070E0] shrink-0" />
+                <div>
+                  <span className="font-bold block">Need a ready-made file to generate graphs?</span>
+                  <span className="text-[10px] text-slate-600">Download and upload our verified MSME financial template:</span>
+                </div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <a
+                  href="/KOSHA_Financial_Statement_Template.xlsx"
+                  download="KOSHA_Financial_Statement_Template.xlsx"
+                  className="px-3.5 py-1.5 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white text-[11px] font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Excel (.xlsx)</span>
+                </a>
+                <a
+                  href="/KOSHA_Financial_Statement_Template.csv"
+                  download="KOSHA_Financial_Statement_Template.csv"
+                  className="px-3 py-1.5 rounded-full bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-[11px] font-bold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" />
+                  <span>CSV</span>
+                </a>
+              </div>
+            </div>
+
             <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-lg text-slate-600 leading-relaxed">
-              <p className="font-semibold text-slate-800">Supported Formats & Auto-Detection:</p>
+              <p className="font-semibold text-slate-800">Supported Formats &amp; Auto-Detection:</p>
               <ul className="list-disc list-inside mt-1 space-y-0.5 text-[11px]">
                 <li>
-                  Canonical columns: <code>transaction_date</code>, <code>description</code>,{" "}
-                  <code>amount</code> (or separate <code>credit</code>/<code>debit</code>),{" "}
-                  <code>external_reference</code>.
+                  Accepts <strong>Excel (.xlsx, .xls)</strong> and <strong>CSV</strong> bank statements.
                 </li>
                 <li>
-                  Supports UTF-8, Latin-1, CP1252 encodings; comma, semicolon, tab delimiters.
+                  Canonical columns: <code>Date</code>, <code>Description</code>,{" "}
+                  <code>Credit</code>, <code>Debit</code> (or single signed <code>Amount</code>),{" "}
+                  <code>Reference</code>, <code>Balance</code>.
                 </li>
                 <li>Signed amounts: Positive = Inflow (Credit), Negative = Outflow (Debit).</li>
-                <li>Duplicate prevention: Identical files or previously imported rows are skipped.</li>
+                <li>Duplicate prevention: Identical files or previously imported rows are skipped safely.</li>
               </ul>
             </div>
 
             <div>
-              <label className="block font-medium text-slate-700 mb-1">Select CSV Statement File *</label>
+              <label className="block font-medium text-slate-700 mb-1">Select Excel (.xlsx) or CSV Statement File *</label>
               <input
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                 onChange={handleFileChange}
-                className="w-full border border-slate-300 rounded-lg p-2 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                className="w-full border border-slate-300 rounded-lg p-2 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
               />
               {file && (
                 <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">

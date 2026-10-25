@@ -309,7 +309,44 @@ export const CustomerDashboardPage: React.FC = () => {
         </button>
       </div>
 
-      {/* C. LEVEL 2: Outstanding Dues Hero Card */}
+      {/* C. LEVEL 2: KOSHA TrustScore Live Summary Card */}
+      <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 rounded-3xl p-5 sm:p-6 text-white shadow-md shadow-blue-950/20 flex flex-col md:flex-row items-center justify-between gap-5">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-white/10 text-white flex flex-col items-center justify-center border border-white/20 shrink-0">
+            <span className="text-2xl font-black tracking-tight leading-none">
+              {data.trust_score ?? "NEW"}
+            </span>
+            <span className="text-[9px] font-bold text-blue-200 uppercase tracking-widest mt-0.5">
+              {data.trust_score !== null ? "/ 100" : "Awaiting"}
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-base font-black tracking-tight">KOSHA TrustScore</span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                {data.trust_score_category ? data.trust_score_category.replace(/_/g, " ") : "Reliability Index"}
+              </span>
+            </div>
+            <p className="text-xs text-blue-200/90 font-medium max-w-md">
+              Internal 4-factor repayment reliability (40% On-time, 25% Overdue duration, 20% Overdue ratio, 15% Recency).
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 shrink-0 self-stretch md:self-auto justify-end">
+          <button
+            onClick={() => navigate("/customer/trustscore")}
+            className="w-full md:w-auto px-5 py-2.5 rounded-xl bg-white hover:bg-blue-50 text-[#001C64] text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+          >
+            <ShieldCheck className="w-4 h-4 text-[#0070E0]" />
+            <span>Inspect TrustScore</span>
+            <ChevronRight className="w-4 h-4 text-[#0070E0]" />
+          </button>
+        </div>
+      </div>
+
+      {/* D. LEVEL 3: Outstanding Dues Hero Card */}
       <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div>

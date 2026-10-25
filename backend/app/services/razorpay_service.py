@@ -10,7 +10,7 @@ Implements:
 7. Multi-tenant authorization (bill ownership validation).
 """
 
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
 import hashlib
 import hmac
@@ -1208,7 +1208,7 @@ class RazorpayService:
         if new_outstanding_paise == 0:
             bill.status = "paid"
         else:
-            today = datetime.now(timezone.utc).date()
+            today = date.today()
             if bill.agreed_repayment_date < today:
                 bill.status = "overdue"
             elif bill.agreed_repayment_date == today:
@@ -1259,6 +1259,17 @@ class RazorpayService:
                 "new_outstanding": float(bill.outstanding_amount),
                 "status": bill.status,
             })
+        except Exception:
+            pass
+
+        # Automatically recalculate customer TrustScore with updated repayment history
+        try:
+            from backend.app.services.trustscore_service import trustscore_service
+            trustscore_service.calculate_and_save_snapshot(
+                customer_id=bill.customer_id,
+                db=db,
+                trigger_reason=f"payment_verified_{razorpay_payment_id[:12]}",
+            )
         except Exception:
             pass
 

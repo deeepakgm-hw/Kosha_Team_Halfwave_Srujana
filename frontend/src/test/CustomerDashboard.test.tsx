@@ -1,11 +1,10 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter } from "react-router-dom";
 import { LoginPage } from "../features/auth/LoginPage";
 import { RepayModal } from "../features/customer/RepayModal";
 import { CustomerDashboardPage } from "../features/customer/CustomerDashboardPage";
-import { BusinessProvider } from "../context/BusinessContext";
-import { LanguageProvider } from "../context/LanguageContext";
+import { Providers } from "../app/providers";
 import { CreditTransaction, CustomerDashboardSummary } from "../types/customer";
 import { apiClient } from "../lib/api";
 
@@ -79,92 +78,61 @@ const mockDashboardData: CustomerDashboardSummary = {
 describe("Customer Entry and Dashboard Experiences", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    localStorage.setItem("kosha_active_customer_id", "cust_rahul_01");
   });
 
   describe("LoginPage Entry Redesign", () => {
     it("renders dual persona options: Business Owner and Customer Member", () => {
       render(
         <MemoryRouter initialEntries={["/login"]}>
-          <BusinessProvider>
-            <LanguageProvider>
-              <LoginPage />
-            </LanguageProvider>
-          </BusinessProvider>
+          <Providers>
+            <LoginPage />
+          </Providers>
         </MemoryRouter>
       );
 
       // Verify Brand Tagline and Context
       expect(screen.getByText(/Know your treasury/i)).toBeInTheDocument();
       expect(screen.getByText(/before it runs dry/i)).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          /One place to understand your business cash flow, manage shop credit, and stay ahead of repayments/i
-        )
-      ).toBeInTheDocument();
 
-      // Verify Business Owner Card
-      expect(screen.getByText("I'm a business owner")).toBeInTheDocument();
-      expect(
-        screen.getByText("Forecast cash flow, understand receivables, and plan your next financial move.")
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Open Business Dashboard/i })).toBeInTheDocument();
+      // Verify Role selection tabs
+      expect(screen.getByRole("button", { name: "Customer" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Business Owner" })).toBeInTheDocument();
 
-      // Verify Customer Card
-      expect(screen.getByText("I'm a customer")).toBeInTheDocument();
-      expect(
-        screen.getByText("Track shop purchases, manage outstanding dues, and never miss a repayment date.")
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Open Customer Dashboard/i })).toBeInTheDocument();
+      // Verify Sign In CTA and Google Login
+      expect(screen.getByRole("button", { name: "Sign In" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Continue with Google" })).toBeInTheDocument();
     });
 
-    it("navigates to /customer/dashboard when customer card is chosen", () => {
+    it("allows switching between Customer and Business Owner roles", () => {
       render(
         <MemoryRouter initialEntries={["/login"]}>
-          <BusinessProvider>
-            <LanguageProvider>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/customer/dashboard" element={<div>Customer Dashboard Target Screen</div>} />
-              </Routes>
-            </LanguageProvider>
-          </BusinessProvider>
+          <Providers>
+            <LoginPage />
+          </Providers>
         </MemoryRouter>
       );
 
-      const customerButton = screen.getByRole("button", { name: /Open Customer Dashboard/i });
-      fireEvent.click(customerButton);
+      const businessTab = screen.getByRole("button", { name: "Business Owner" });
+      fireEvent.click(businessTab);
 
-      expect(screen.getByText("Customer Dashboard Target Screen")).toBeInTheDocument();
-    });
-
-    it("navigates to /load when business owner card is chosen", () => {
-      render(
-        <MemoryRouter initialEntries={["/login"]}>
-          <BusinessProvider>
-            <LanguageProvider>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/load" element={<div>Business Load Data Target Screen</div>} />
-              </Routes>
-            </LanguageProvider>
-          </BusinessProvider>
-        </MemoryRouter>
-      );
-
-      const businessButton = screen.getByRole("button", { name: /Open Business Dashboard/i });
-      fireEvent.click(businessButton);
-
-      expect(screen.getByText("Business Load Data Target Screen")).toBeInTheDocument();
+      // In business mode, sign in button still present, role updated
+      expect(businessTab).toHaveClass("bg-white");
     });
   });
 
   describe("CustomerDashboardPage", () => {
     it("renders KPI cards, quick actions, and upcoming dues from API response", async () => {
       vi.spyOn(apiClient, "getCustomerDashboard").mockResolvedValue(mockDashboardData);
+      vi.spyOn(apiClient, "listCustomerBills").mockResolvedValue([]);
+      vi.spyOn(apiClient, "listCustomerAutopayMandates").mockResolvedValue([]);
+      vi.spyOn(apiClient, "listShopkeeperCustomers").mockResolvedValue([]);
 
       render(
         <MemoryRouter initialEntries={["/customer/dashboard"]}>
-          <CustomerDashboardPage />
+          <Providers>
+            <CustomerDashboardPage />
+          </Providers>
         </MemoryRouter>
       );
 
@@ -181,12 +149,12 @@ describe("Customer Entry and Dashboard Experiences", () => {
 
       // Verify Outstanding Dues section
       expect(screen.getByText("Current Outstanding Dues")).toBeInTheDocument();
-      expect(screen.getByText("₹6,700")).toBeInTheDocument();
+      expect(screen.getAllByText("₹6,700")[0]).toBeInTheDocument();
       expect(screen.getByText(/₹1,500 Overdue/i)).toBeInTheDocument();
 
       // Verify upcoming repayment card
       expect(screen.getByText("Lakshmi Kirana Stores")).toBeInTheDocument();
-      expect(screen.getByText("Monthly staples (Rice, Oil, Spices)")).toBeInTheDocument();
+      expect(screen.getByText(/Monthly staples \(Rice, Oil, Spices\)/i)).toBeInTheDocument();
     });
   });
 

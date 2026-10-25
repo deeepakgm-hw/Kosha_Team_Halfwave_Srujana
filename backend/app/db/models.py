@@ -283,6 +283,8 @@ class CustomerModel(Base):
 
     transactions = relationship("CreditTransactionModel", back_populates="customer", cascade="all, delete-orphan")
     activities = relationship("ActivityEventModel", back_populates="customer", cascade="all, delete-orphan")
+    trust_score_snapshots = relationship("TrustScoreSnapshotModel", back_populates="customer", cascade="all, delete-orphan")
+    disputes = relationship("RepaymentDisputeModel", back_populates="customer", cascade="all, delete-orphan")
 
 
 class CreditTransactionModel(Base):
@@ -318,6 +320,7 @@ class CreditTransactionModel(Base):
     payment_verifications = relationship("PaymentVerificationModel", back_populates="bill", cascade="all, delete-orphan")
     autopay_mandates = relationship("AutopayMandateModel", back_populates="bill", cascade="all, delete-orphan")
     autopay_attempts = relationship("AutopayAttemptModel", back_populates="bill", cascade="all, delete-orphan")
+    disputes = relationship("RepaymentDisputeModel", back_populates="bill", cascade="all, delete-orphan")
 
 
 class RepaymentModel(Base):
@@ -736,3 +739,97 @@ class AutopayReconciliationModel(Base):
     notes = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+# =============================================================================
+# KOSHA TrustScore Persistence Models
+# =============================================================================
+
+class TrustScoreSnapshotModel(Base):
+    """
+    Persisted historical snapshot of KOSHA internal TrustScore.
+    Captures exact factor weights (40/25/20/15) and input metrics for full reproducibility.
+    """
+    __tablename__ = "trust_score_snapshots"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    customer_id = Column(String(50), ForeignKey("customers.id"), nullable=False, index=True)
+
+    score = Column(Integer, nullable=True)  # 0 to 100, or None if insufficient history
+    score_category = Column(String(50), nullable=False, default="insufficient_history")  # excellent, good, fair, needs_attention, insufficient_history
+    has_sufficient_history = Column(Boolean, default=True, nullable=False)
+    model_version = Column(String(50), default="v1.0-deterministic", nullable=False)
+
+    # 4 Factor Breakdown (Sum to max 100.0)
+    on_time_performance_score = Column(Numeric(5, 2, asdecimal=True), default=0.00, nullable=False)       # Max 40.0
+    overdue_frequency_duration_score = Column(Numeric(5, 2, asdecimal=True), default=0.00, nullable=False) # Max 25.0
+    current_overdue_ratio_score = Column(Numeric(5, 2, asdecimal=True), default=0.00, nullable=False)      # Max 20.0
+    recency_consistency_score = Column(Numeric(5, 2, asdecimal=True), default=0.00, nullable=False)        # Max 15.0
+
+    # Underlying Ledger Statistics
+    total_obligations_count = Column(Integer, default=0, nullable=False)
+    completed_obligations_count = Column(Integer, default=0, nullable=False)
+    on_time_obligations_count = Column(Integer, default=0, nullable=False)
+    late_obligations_count = Column(Integer, default=0, nullable=False)
+    active_overdue_count = Column(Integer, default=0, nullable=False)
+
+    total_borrowed_paise = Column(Integer, default=0, nullable=False)
+    total_repaid_paise = Column(Integer, default=0, nullable=False)
+    current_outstanding_paise = Column(Integer, default=0, nullable=False)
+    current_overdue_paise = Column(Integer, default=0, nullable=False)
+    on_time_ratio_pct = Column(Numeric(5, 2, asdecimal=True), default=0.00, nullable=False)
+
+    # Delta & Explanation
+    previous_score = Column(Integer, nullable=True)
+    score_change = Column(Integer, nullable=True)
+    change_reason = Column(String(255), nullable=True)
+    factors_json = Column(Text, nullable=True)  # JSON-encoded signals & explanations
+
+    calculation_timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    customer = relationship("CustomerModel", back_populates="trust_score_snapshots")
+
+
+# =============================================================================
+# Customer Disputes & Corrections Workflow Models
+# =============================================================================
+
+class RepaymentDisputeModel(Base):
+    """
+    Authoritative record of customer-flagged ledger disputes or billing inaccuracies.
+    Enforces the invariant that disputed bills are frozen from automatic AutoPay collection.
+    """
+    __tablename__ = "repayment_disputes"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    bill_id = Column(String(50), ForeignKey("customer_credit_transactions.id"), nullable=False, index=True)
+    customer_id = Column(String(50), ForeignKey("customers.id"), nullable=False, index=True)
+    shop_id = Column(String(50), ForeignKey("shops.id"), nullable=True, index=True)
+    business_id = Column(String(50), nullable=True, index=True)
+
+    dispute_type = Column(String(50), nullable=False)
+    # incorrect_amount, payment_missing, failed_payment_charged, incorrect_deadline, unauthorized_collection, other
+
+    description = Column(Text, nullable=False)
+    status = Column(String(30), default="opened", nullable=False, index=True)
+    # opened, under_review, resolved, rejected
+
+    prior_bill_status = Column(String(30), nullable=True)  # Preserves bill state prior to dispute
+    resolution_action = Column(String(50), nullable=True)
+    # balance_adjusted, payment_credited, deadline_extended, dispute_dismissed
+
+    resolution_notes = Column(Text, nullable=True)
+    resolved_by = Column(String(100), nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    bill = relationship("CreditTransactionModel", back_populates="disputes")
+    customer = relationship("CustomerModel", back_populates="disputes")
+    shop = relationship("ShopModel")

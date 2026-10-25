@@ -54,7 +54,10 @@ export interface CreditTransaction {
   outstanding_amount: number;
   transaction_date: string;
   agreed_repayment_date: string;
-  status: "upcoming" | "due_today" | "overdue" | "paid";
+  status: "upcoming" | "due_today" | "overdue" | "paid" | "disputed";
+  is_disputed?: boolean;
+  dispute_id?: string;
+  dispute_status?: string;
   created_at: string;
   repayments: Repayment[];
 }
@@ -98,6 +101,8 @@ export interface CustomerDashboardSummary {
   total_paid_amount?: number;
   active_bills_count?: number;
   settled_bills_count?: number;
+  trust_score?: number | null;
+  trust_score_category?: string | null;
 }
 
 export interface CustomerDuesResponse {
@@ -111,6 +116,8 @@ export interface CustomerDuesResponse {
   total_purchase_amount?: number;
   total_initial_paid?: number;
   total_verified_online_paid?: number;
+  trust_score?: number | null;
+  trust_score_category?: string | null;
 }
 
 export interface CreditTransactionCreatePayload {
@@ -163,7 +170,10 @@ export interface ShopkeeperTransaction {
   outstanding_amount: number;
   transaction_date: string;
   agreed_repayment_date: string;
-  status: "upcoming" | "due_today" | "overdue" | "paid";
+  status: "upcoming" | "due_today" | "overdue" | "paid" | "disputed";
+  is_disputed?: boolean;
+  dispute_id?: string;
+  dispute_status?: string;
   created_at: string;
   repayments: Repayment[];
 }
@@ -299,7 +309,10 @@ export interface BillPaymentHistory {
   outstanding_amount: number;
   created_at?: string;
   agreed_repayment_date: string;
-  status: "upcoming" | "due_today" | "overdue" | "paid";
+  status: "upcoming" | "due_today" | "overdue" | "paid" | "disputed";
+  is_disputed?: boolean;
+  dispute_id?: string;
+  dispute_status?: string;
   active_payment_request?: RazorpayPaymentRequest | null;
   payment_requests?: RazorpayPaymentRequest[];
   verified_payments: RazorpayPaymentVerification[];
@@ -328,4 +341,113 @@ export interface ShopkeeperBillCreatePayload {
   agreed_repayment_date: string;
   generate_payment_request?: boolean;
   idempotency_key?: string;
+}
+
+// =============================================================================
+// KOSHA TrustScore & Dispute Interfaces
+// =============================================================================
+
+export interface TrustScoreFactorDetail {
+  score: number;
+  max_score: number;
+  percentage?: number;
+  weight_description: string;
+}
+
+export interface TrustScoreDetail {
+  customer_id: string;
+  score: number | null;
+  score_category: "excellent" | "good" | "fair" | "needs_attention" | "insufficient_history";
+  has_sufficient_history: boolean;
+  model_version: string;
+  calculation_timestamp: string;
+  breakdown: {
+    on_time_performance: TrustScoreFactorDetail;
+    overdue_frequency_duration: TrustScoreFactorDetail;
+    current_overdue_ratio: TrustScoreFactorDetail;
+    recency_consistency: TrustScoreFactorDetail;
+  };
+  metrics: {
+    total_obligations: number;
+    completed_obligations: number;
+    on_time_obligations: number;
+    late_obligations: number;
+    active_overdue_count: number;
+    on_time_ratio_pct: number;
+    total_borrowed_inr: number;
+    total_repaid_inr: number;
+    current_outstanding_inr: number;
+    current_overdue_inr: number;
+  };
+  delta: {
+    previous_score: number | null;
+    score_change: number | null;
+    change_reason: string | null;
+  };
+  signals: {
+    positive_factors: string[];
+    risk_factors: string[];
+  };
+  methodology_notes: string;
+}
+
+export interface TrustScoreHistoryItem {
+  id: string;
+  score: number | null;
+  score_category: string;
+  score_change: number | null;
+  change_reason: string | null;
+  timestamp: string;
+  on_time_ratio_pct: number;
+  outstanding_inr: number;
+}
+
+export interface BusinessCustomerTrustProfile {
+  customer_id: string;
+  customer_name: string;
+  phone_masked?: string;
+  trust_score: number | null;
+  score_category: string;
+  has_sufficient_history: boolean;
+  overall_on_time_ratio_pct: number;
+  merchant_specific: {
+    shop_id: string;
+    shop_name: string;
+    total_billed_inr: number;
+    current_outstanding_inr: number;
+    current_overdue_inr: number;
+    active_bills_count: number;
+    settled_bills_count: number;
+    bills: Array<{
+      id: string;
+      reference: string;
+      description: string;
+      purchase_amount: number;
+      outstanding_amount: number;
+      agreed_repayment_date: string;
+      status: string;
+    }>;
+  };
+  signals: {
+    positive_factors: string[];
+    risk_factors: string[];
+  };
+}
+
+export interface CustomerDispute {
+  id: string;
+  bill_id: string;
+  bill_reference: string;
+  shop_name?: string;
+  customer_name?: string;
+  customer_phone?: string;
+  purchase_amount?: number;
+  outstanding_amount?: number;
+  dispute_type: string;
+  description: string;
+  status: "opened" | "under_review" | "resolved" | "rejected";
+  resolution_action?: string;
+  resolution_notes?: string;
+  created_at: string;
+  resolved_at?: string;
 }

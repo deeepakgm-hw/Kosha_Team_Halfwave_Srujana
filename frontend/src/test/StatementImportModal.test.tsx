@@ -52,8 +52,8 @@ describe("StatementImportModal Component", () => {
       />
     );
 
-    expect(screen.getByText("Import Bank Statement (CSV)")).toBeInTheDocument();
-    expect(screen.getByText("Select CSV Statement File *")).toBeInTheDocument();
+    expect(screen.getByText(/Import Bank Statement/i)).toBeInTheDocument();
+    expect(screen.getByText(/Select .* Statement File/i)).toBeInTheDocument();
     expect(screen.getByText(/Account Opening Balance/)).toBeInTheDocument();
     expect(screen.getByText(/Opening Balance Date/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Import & Reconcile" })).toBeInTheDocument();

@@ -96,7 +96,7 @@ describe("ForecastPage component", () => {
     // Check heading & badges
     expect(screen.getByText("90-Day Rolling Cash Forecast")).toBeInTheDocument();
     expect(screen.getByText("Deterministic Simulation")).toBeInTheDocument();
-    expect(screen.getByText("Synthetic Profile")).toBeInTheDocument();
+    expect(screen.getByText(/Persistent DB Record|Synthetic Profile/)).toBeInTheDocument();
 
     // Check Shortfall Alert banner
     expect(screen.getByText("Projected Cash Shortfall Alert")).toBeInTheDocument();

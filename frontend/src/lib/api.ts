@@ -45,9 +45,11 @@ import {
 import {
   ActivityEvent,
   BillPaymentHistory,
+  BusinessCustomerTrustProfile,
   CreditTransaction,
   CreditTransactionCreatePayload,
   CustomerDashboardSummary,
+  CustomerDispute,
   CustomerDuesResponse,
   CustomerProfile,
   PaymentGatewayStatus,
@@ -62,6 +64,8 @@ import {
   ShopkeeperRepaymentCreatePayload,
   ShopkeeperSummary,
   ShopkeeperTransaction,
+  TrustScoreDetail,
+  TrustScoreHistoryItem,
 } from "../types/customer";
 
 export const getApiBaseUrl = (): string => {
@@ -836,5 +840,87 @@ export const apiClient = {
     if (params?.limit) query.append("limit", params.limit.toString());
     const qs = query.toString() ? `?${query.toString()}` : "";
     return fetchApi<ReconciliationRecord[]>(`/autopay/reconciliation/history${qs}`);
+  },
+
+  // =========================================================================
+  // KOSHA TrustScore APIs
+  // =========================================================================
+
+  async getCustomerTrustScore(customerId: string, forceRecalc = false): Promise<TrustScoreDetail> {
+    const qs = forceRecalc ? "?force_recalc=true" : "";
+    return fetchApi<TrustScoreDetail>(`/trustscore/customer/${encodeURIComponent(customerId)}${qs}`);
+  },
+
+  async getTrustScoreHistory(customerId?: string, limit = 12): Promise<TrustScoreHistoryItem[]> {
+    const query = new URLSearchParams();
+    if (customerId) query.append("customer_id", customerId);
+    query.append("limit", limit.toString());
+    return fetchApi<TrustScoreHistoryItem[]>(`/trustscore/history?${query.toString()}`);
+  },
+
+  async recalculateTrustScore(customerId?: string, reason = "manual_refresh"): Promise<TrustScoreDetail> {
+    const query = new URLSearchParams();
+    if (customerId) query.append("customer_id", customerId);
+    query.append("reason", reason);
+    return fetchApi<TrustScoreDetail>(`/trustscore/recalculate?${query.toString()}`, {
+      method: "POST",
+    });
+  },
+
+  async getBusinessCustomerTrustProfile(
+    businessOrShopId: string,
+    customerId: string
+  ): Promise<BusinessCustomerTrustProfile> {
+    return fetchApi<BusinessCustomerTrustProfile>(
+      `/trustscore/business/${encodeURIComponent(businessOrShopId)}/customer/${encodeURIComponent(customerId)}`
+    );
+  },
+
+  // =========================================================================
+  // Customer Disputes & Corrections APIs
+  // =========================================================================
+
+  async raiseDispute(
+    payload: { bill_id: string; dispute_type: string; description: string },
+    customerId?: string
+  ): Promise<{ dispute_id: string; bill_id: string; status: string; message: string }> {
+    const qs = customerId ? `?customer_id=${encodeURIComponent(customerId)}` : "";
+    return fetchApi<{ dispute_id: string; bill_id: string; status: string; message: string }>(
+      `/disputes/raise${qs}`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
+  },
+
+  async listCustomerDisputes(customerId?: string): Promise<CustomerDispute[]> {
+    const qs = customerId ? `?customer_id=${encodeURIComponent(customerId)}` : "";
+    return fetchApi<CustomerDispute[]>(`/disputes/customer${qs}`);
+  },
+
+  async listShopDisputes(shopIdOrCode: string, status?: string): Promise<CustomerDispute[]> {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+    return fetchApi<CustomerDispute[]>(`/disputes/shop/${encodeURIComponent(shopIdOrCode)}${qs}`);
+  },
+
+  async resolveDispute(
+    disputeId: string,
+    payload: {
+      resolution_action: string;
+      resolution_notes: string;
+      adjusted_amount?: number;
+      extended_date?: string;
+    },
+    shopId?: string
+  ): Promise<{ dispute_id: string; bill_id: string; status: string; message: string }> {
+    const qs = shopId ? `?shop_id=${encodeURIComponent(shopId)}` : "";
+    return fetchApi<{ dispute_id: string; bill_id: string; status: string; message: string }>(
+      `/disputes/${encodeURIComponent(disputeId)}/resolve${qs}`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
   },
 };

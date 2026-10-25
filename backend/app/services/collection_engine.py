@@ -36,6 +36,7 @@ from backend.app.db.models import (
     ConsentAuditModel,
     CreditTransactionModel,
     PaymentVerificationModel,
+    RepaymentDisputeModel,
     RepaymentModel,
 )
 from backend.app.services.razorpay_service import razorpay_service
@@ -146,7 +147,25 @@ class CollectionEngineService:
                 "deferral_reason": "Bill has already been fully settled.",
             }
 
-        # Rule 2: Repayment deadline must have arrived or passed
+        # Rule 2: Bill must not be cancelled or disputed
+        active_dispute = (
+            db.query(RepaymentDisputeModel)
+            .filter(
+                RepaymentDisputeModel.bill_id == bill.id,
+                RepaymentDisputeModel.status.in_(["opened", "under_review"]),
+            )
+            .first()
+        )
+        if active_dispute or bill.status in ("cancelled", "disputed"):
+            return {
+                "is_eligible": False,
+                "decision": "ineligible_bill_disputed" if active_dispute else "ineligible_bill_status",
+                "collectible_paise": 0,
+                "mandate": None,
+                "deferral_reason": "Bill has an active customer dispute or is cancelled. Excluded from automatic collection.",
+            }
+
+        # Rule 3: Repayment deadline must have arrived or passed
         if bill.agreed_repayment_date > eval_date:
             return {
                 "is_eligible": False,
@@ -154,16 +173,6 @@ class CollectionEngineService:
                 "collectible_paise": 0,
                 "mandate": None,
                 "deferral_reason": f"Repayment deadline {bill.agreed_repayment_date} is in the future.",
-            }
-
-        # Rule 3: Bill must not be cancelled
-        if bill.status in ("cancelled", "disputed"):
-            return {
-                "is_eligible": False,
-                "decision": "ineligible_bill_status",
-                "collectible_paise": 0,
-                "mandate": None,
-                "deferral_reason": f"Bill status is '{bill.status}'. Excluded from automatic collection.",
             }
 
         # Rule 4: Active, verified AutoPay mandate

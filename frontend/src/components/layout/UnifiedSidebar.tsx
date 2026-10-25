@@ -14,6 +14,7 @@ import {
   UploadCloud,
   LogOut,
   LayoutDashboard,
+  AlertCircle,
 } from "lucide-react";
 import { KoshaLogo } from "../ui/KoshaLogo";
 import { useAuth } from "../../context/AuthContext";
@@ -117,6 +118,12 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ onCloseMobile })
           badge: "NPCI",
         },
         {
+          name: "Customer Disputes",
+          path: "/shop-credit?tab=disputes",
+          aliases: [],
+          icon: AlertCircle,
+        },
+        {
           name: "Repayment Ledger",
           path: "/shop-credit?tab=credit_ledger",
           aliases: [],
@@ -136,6 +143,13 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ onCloseMobile })
           aliases: [],
           icon: ShieldCheck,
           badge: "Smart",
+        },
+        {
+          name: "KOSHA TrustScore",
+          path: "/customer/trustscore",
+          aliases: [],
+          icon: ShieldCheck,
+          badge: "Score",
         },
       ];
 

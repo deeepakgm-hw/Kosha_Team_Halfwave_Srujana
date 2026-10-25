@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   QrCode,
   Download,
@@ -38,10 +39,19 @@ import { formatINR } from "../../lib/utils";
 import { BusinessPaymentsSection } from "../payments/BusinessPaymentsSection";
 import { DigitalBillModal } from "../../components/bills/DigitalBillModal";
 import { BillTimelineModal } from "../../components/bills/BillTimelineModal";
+import { ShopDisputesSection } from "./ShopDisputesSection";
+import { ShopCustomerTrustScoreDrawer } from "./ShopCustomerTrustScoreDrawer";
 
 export const ShopCreditPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [selectedShopCode, setSelectedShopCode] = useState<string>("KOSHA-APEX");
-  const [activeTab, setActiveTab] = useState<"credit_ledger" | "razorpay_upi" | "autopay_smart_dues">("credit_ledger");
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<"credit_ledger" | "razorpay_upi" | "autopay_smart_dues" | "disputes">(
+    tabParam === "disputes" || tabParam === "autopay_smart_dues" || tabParam === "razorpay_upi"
+      ? tabParam
+      : "credit_ledger"
+  );
+  const [selectedCustomerForTrustScore, setSelectedCustomerForTrustScore] = useState<string | null>(null);
   const [shops, setShops] = useState<Shop[]>([]);
   const [summary, setSummary] = useState<ShopkeeperSummary | null>(null);
   const [transactions, setTransactions] = useState<ShopkeeperTransaction[]>([]);
@@ -371,6 +381,17 @@ export const ShopCreditPage: React.FC = () => {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab("disputes")}
+          className={`px-5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === "disputes"
+              ? "bg-[#0070E0] text-white shadow-xs"
+              : "text-[#545D68] hover:text-[#0C0C0D] hover:bg-[#F5F7FA]"
+          }`}
+        >
+          <AlertTriangle className="w-4 h-4 text-amber-500" />
+          <span>Customer Disputes</span>
+        </button>
       </div>
 
       {activeTab === "razorpay_upi" ? (
@@ -627,6 +648,11 @@ export const ShopCreditPage: React.FC = () => {
             </div>
           )}
         </div>
+      ) : activeTab === "disputes" ? (
+        <ShopDisputesSection
+          shopCode={selectedShopCode}
+          onDisputeResolved={loadShopData}
+        />
       ) : (
         <>
           {/* 2. Top Summary KPI Cards */}
@@ -930,8 +956,19 @@ export const ShopCreditPage: React.FC = () => {
                         <span className="text-[11px] text-[#545D68] line-clamp-1">{t.description}</span>
                       </td>
                       <td className="py-3.5 px-3">
-                        <span className="font-bold text-slate-800 block">{t.customer_name}</span>
-                        <span className="text-[11px] text-[#545D68]">{t.customer_phone}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-slate-800">{t.customer_name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCustomerForTrustScore(t.customer_id)}
+                            className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-[#0070E0] hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer"
+                            title="Inspect Customer KOSHA TrustScore"
+                          >
+                            <ShieldCheck className="w-3 h-3 text-[#0070E0]" />
+                            <span>TrustScore</span>
+                          </button>
+                        </div>
+                        <span className="text-[11px] text-[#545D68] block">{t.customer_phone}</span>
                       </td>
                       <td className="py-3.5 px-3 text-slate-600 font-medium">
                         {new Date(t.transaction_date).toLocaleDateString("en-IN", {
@@ -1389,6 +1426,15 @@ export const ShopCreditPage: React.FC = () => {
           billId={selectedBillIdForTimeline}
           onClose={() => setSelectedBillIdForTimeline(null)}
           businessId="shop_apex_01"
+        />
+      )}
+
+      {/* Customer TrustScore Profile Drawer */}
+      {selectedCustomerForTrustScore && (
+        <ShopCustomerTrustScoreDrawer
+          shopCode={selectedShopCode}
+          customerId={selectedCustomerForTrustScore}
+          onClose={() => setSelectedCustomerForTrustScore(null)}
         />
       )}
     </div>

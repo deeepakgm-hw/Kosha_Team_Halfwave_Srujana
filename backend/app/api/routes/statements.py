@@ -35,12 +35,32 @@ async def import_csv_statement(
     file: UploadFile = File(..., description="Bank statement CSV file"),
     db: Session = Depends(get_db),
 ) -> CsvImportResult:
-    if not file.filename.lower().endswith((".csv", ".txt")):
-        raise AppException(status_code=400, message="Uploaded file must be a CSV or text file.", code="INVALID_FILE_TYPE")
+    if not file.filename.lower().endswith((".csv", ".txt", ".xlsx", ".xls")):
+        raise AppException(
+            status_code=400,
+            message="Uploaded file must be a CSV, Excel (.xlsx/.xls), or text file.",
+            code="INVALID_FILE_TYPE",
+        )
 
     file_bytes = await file.read()
     if not file_bytes:
         raise AppException(status_code=400, message="Uploaded file is empty.", code="EMPTY_FILE")
+
+    # Native Excel (.xlsx / .xls) conversion to standard tabular format
+    if file.filename.lower().endswith((".xlsx", ".xls")):
+        try:
+            import io
+            import pandas as pd
+            excel_df = pd.read_excel(io.BytesIO(file_bytes))
+            csv_buffer = io.StringIO()
+            excel_df.to_csv(csv_buffer, index=False)
+            file_bytes = csv_buffer.getvalue().encode("utf-8")
+        except Exception as exc:
+            raise AppException(
+                status_code=422,
+                message=f"Could not parse Excel spreadsheet: {exc}",
+                code="EXCEL_PARSE_ERROR",
+            )
 
     custom_mapping = None
     if column_mapping_json:
