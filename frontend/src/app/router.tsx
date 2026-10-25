@@ -19,9 +19,10 @@ import { CustomerPayPage } from "../features/customer/CustomerPayPage";
 import { CustomerActivityPage } from "../features/customer/CustomerActivityPage";
 import { CustomerProfilePage } from "../features/customer/CustomerProfilePage";
 import { RouteErrorBoundary } from "../components/layout/RouteErrorBoundary";
+import { ProtectedRoute } from "../components/layout/ProtectedRoute";
 
 export const router = createBrowserRouter([
-  // High-Impact PayPal-Style Landing Page
+  // High-Impact Landing Page
   {
     path: "/",
     element: <LandingPage />,
@@ -37,7 +38,7 @@ export const router = createBrowserRouter([
     element: <LandingPage />,
     errorElement: <RouteErrorBoundary />,
   },
-  // Interactive Demo / Persona Selection
+  // Authentic Authentication / Role Selection
   {
     path: "/welcome",
     element: <LoginPage />,
@@ -48,10 +49,14 @@ export const router = createBrowserRouter([
     element: <LoginPage />,
     errorElement: <RouteErrorBoundary />,
   },
-  // Customer Experience
+  // Customer Experience (Protected for Customer Role)
   {
     path: "/customer",
-    element: <CustomerLayout />,
+    element: (
+      <ProtectedRoute allowedRoles={["customer"]}>
+        <CustomerLayout />
+      </ProtectedRoute>
+    ),
     errorElement: <RouteErrorBoundary />,
     children: [
       {
@@ -88,9 +93,13 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  // Business Owner / Merchant Dashboard Experience
+  // Business Owner / Merchant Dashboard Experience (Protected for Business Owner Role)
   {
-    element: <GlassLayout />,
+    element: (
+      <ProtectedRoute allowedRoles={["business_owner"]}>
+        <GlassLayout />
+      </ProtectedRoute>
+    ),
     errorElement: <RouteErrorBoundary />,
     children: [
       // 1. Load data

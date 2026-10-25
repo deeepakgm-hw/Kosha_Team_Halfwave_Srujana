@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { KoshaLogo } from "../ui/KoshaLogo";
 import { useBusiness } from "../../context/BusinessContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "../../context/AuthContext";
 import {
   ChevronDown,
   Database,
@@ -27,6 +28,7 @@ export const GlassNavbar: React.FC = () => {
   const currentPath = location.pathname;
   const { language, setLanguage, t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const { user, logout } = useAuth();
   const {
     isDemoMode,
     setIsDemoMode,
@@ -89,11 +91,10 @@ export const GlassNavbar: React.FC = () => {
 
   const supportingNav = [...operationalNav, ...analyticalNav];
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    await logout();
     sessionStorage.clear();
-    localStorage.removeItem("kosha_user_session");
-    setIsDemoMode(true);
-    navigate("/welcome");
+    navigate("/login?role=business");
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -438,6 +439,14 @@ export const GlassNavbar: React.FC = () => {
             <HelpCircle className="w-3.5 h-3.5 text-[#0070E0] shrink-0" />
             <span className="hidden 2xl:inline">{t("overview")}</span>
           </Link>
+
+          {/* Authenticated User Badge */}
+          {user && (
+            <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <User className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="max-w-[120px] truncate">{user.full_name || user.email}</span>
+            </div>
+          )}
 
           {/* Sign Out Button */}
           <button

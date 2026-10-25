@@ -491,3 +491,68 @@ class PaymentVerificationModel(Base):
 
     payment_request = relationship("PaymentRequestModel", back_populates="verifications")
     bill = relationship("CreditTransactionModel", back_populates="payment_verifications")
+
+
+# =============================================================================
+# Authentication & Identity Models
+# =============================================================================
+
+class UserModel(Base):
+    """
+    Authenticated application user for Customer and Business Owner roles.
+    Authenticates via secure bcrypt-hashed password or verified Google Identity.
+    """
+    __tablename__ = "users"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=True)  # Nullable for Google OAuth users
+    full_name = Column(String(200), nullable=False)
+    role = Column(String(50), nullable=False, default="customer")  # "customer" or "business_owner"
+    is_active = Column(Boolean, default=True, nullable=False)
+    email_verified = Column(Boolean, default=False, nullable=False)
+    google_sub = Column(String(255), unique=True, nullable=True, index=True)
+
+    # Scoped entity references for authoritative data isolation
+    customer_id = Column(String(50), ForeignKey("customers.id"), nullable=True, index=True)
+    business_id = Column(String(50), ForeignKey("businesses.id"), nullable=True, index=True)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    customer = relationship("CustomerModel", foreign_keys=[customer_id])
+    business = relationship("BusinessModel", foreign_keys=[business_id])
+    sessions = relationship("AuthSessionModel", back_populates="user", cascade="all, delete-orphan")
+    password_reset_tokens = relationship("PasswordResetTokenModel", back_populates="user", cascade="all, delete-orphan")
+
+
+class AuthSessionModel(Base):
+    """Active authenticated session tracking for server-side revocation and validation."""
+    __tablename__ = "auth_sessions"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    user_id = Column(String(50), ForeignKey("users.id"), nullable=False, index=True)
+    token = Column(String(500), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    is_revoked = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("UserModel", back_populates="sessions")
+
+
+class PasswordResetTokenModel(Base):
+    """Cryptographic single-use, time-limited password reset tokens."""
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(String(50), primary_key=True, default=generate_uuid)
+    user_id = Column(String(50), ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String(255), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("UserModel", back_populates="password_reset_tokens")

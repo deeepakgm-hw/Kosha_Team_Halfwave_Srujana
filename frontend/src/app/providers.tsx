@@ -1,6 +1,7 @@
 import React from "react";
 import { BusinessProvider } from "../context/BusinessContext";
 import { LanguageProvider } from "../context/LanguageContext";
+import { AuthProvider } from "../context/AuthContext";
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -9,7 +10,9 @@ interface ProvidersProps {
 export const Providers: React.FC<ProvidersProps> = ({ children }) => {
   return (
     <LanguageProvider>
-      <BusinessProvider>{children}</BusinessProvider>
+      <AuthProvider>
+        <BusinessProvider>{children}</BusinessProvider>
+      </AuthProvider>
     </LanguageProvider>
   );
 };

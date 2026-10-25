@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { BusinessProfile, BusinessStateSummary, PersonaType } from "../types/cashflow";
 import { apiClient } from "../lib/api";
+import { useAuth } from "./AuthContext";
 
 export const PERSONA_PROFILES: Record<PersonaType, BusinessProfile> = {
   manufacturer: {
@@ -66,12 +67,21 @@ interface BusinessContextType {
 const BusinessContext = createContext<BusinessContextType | undefined>(undefined);
 
 export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
+  const { user } = useAuth();
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(!user?.business_id);
   const [selectedPersona, setSelectedPersona] = useState<PersonaType>("manufacturer");
   const [businesses, setBusinesses] = useState<BusinessProfile[]>([]);
-  const [activeBusinessId, setActiveBusinessId] = useState<string | null>(null);
+  const [activeBusinessId, setActiveBusinessId] = useState<string | null>(user?.business_id || null);
   const [stateSummary, setStateSummary] = useState<BusinessStateSummary | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Sync active business with authenticated user
+  useEffect(() => {
+    if (user?.business_id) {
+      setIsDemoMode(false);
+      setActiveBusinessId(user.business_id);
+    }
+  }, [user?.business_id]);
 
   const refreshBusinesses = useCallback(async () => {
     try {

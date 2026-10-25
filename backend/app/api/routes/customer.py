@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from backend.app.db.database import get_db
+from backend.app.db.models import UserModel
+from backend.app.api.deps import get_optional_user
 from backend.app.schemas.customer import (
     ActivityEventOut,
     BillPaymentHistoryOut,
@@ -23,6 +25,15 @@ router = APIRouter()
 DEFAULT_CUSTOMER_ID = "cust_rahul_01"
 
 
+def resolve_customer_id(explicit_id: Optional[str], current_user: Optional[UserModel]) -> str:
+    """Prioritizes authenticated customer identity; falls back to explicit query param or default."""
+    if current_user and current_user.customer_id:
+        return current_user.customer_id
+    if explicit_id:
+        return explicit_id
+    return DEFAULT_CUSTOMER_ID
+
+
 @router.get(
     "/bills",
     response_model=List[BillPaymentHistoryOut],
@@ -30,13 +41,15 @@ DEFAULT_CUSTOMER_ID = "cust_rahul_01"
     description="Returns all bills belonging to this customer with payment requests, verified payments, and outstanding balances.",
 )
 def list_customer_bills(
-    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    customer_id: Optional[str] = Query(None, description="Target customer identifier"),
     status: Optional[str] = Query(None, description="'all', 'upcoming', 'due_today', 'overdue', 'paid'"),
     db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
 ) -> List[BillPaymentHistoryOut]:
-    dues = customer_service.get_dues(customer_id=customer_id, filter_status=status, db=db)
+    eff_id = resolve_customer_id(customer_id, current_user)
+    dues = customer_service.get_dues(customer_id=eff_id, filter_status=status, db=db)
     return [
-        razorpay_service.get_bill_payment_history(bill_id=t.id, customer_id=customer_id, db=db)
+        razorpay_service.get_bill_payment_history(bill_id=t.id, customer_id=eff_id, db=db)
         for t in dues.transactions
     ]
 
@@ -49,11 +62,13 @@ def list_customer_bills(
 )
 def get_customer_bill_detail(
     bill_id: str,
-    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    customer_id: Optional[str] = Query(None, description="Target customer identifier"),
     db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
 ) -> BillPaymentHistoryOut:
+    eff_id = resolve_customer_id(customer_id, current_user)
     return razorpay_service.get_bill_payment_history(
-        bill_id=bill_id, customer_id=customer_id, db=db
+        bill_id=bill_id, customer_id=eff_id, db=db
     )
 
 
@@ -66,9 +81,11 @@ def get_customer_bill_detail(
 def create_customer_bill_payment_request(
     bill_id: str,
     partial_amount: Optional[Decimal] = Query(None, gt=0, description="Optional custom partial payment in INR"),
-    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    customer_id: Optional[str] = Query(None, description="Target customer identifier"),
     db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
 ) -> RazorpayPaymentRequestOut:
+    eff_id = resolve_customer_id(customer_id, current_user)
     amount_paise = None
     if partial_amount is not None:
         amount_paise = razorpay_service.inr_to_paise(partial_amount)
@@ -76,7 +93,7 @@ def create_customer_bill_payment_request(
     req = razorpay_service.create_payment_request(
         bill_id=bill_id,
         amount_paise=amount_paise,
-        customer_id=customer_id,
+        customer_id=eff_id,
         force_new=bool(partial_amount is not None),
         db=db,
     )
@@ -113,10 +130,12 @@ def create_customer_bill_payment_request(
     description="Returns aggregate outstanding dues, upcoming repayments, and recent activity for the customer.",
 )
 def get_customer_dashboard(
-    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    customer_id: Optional[str] = Query(None, description="Target customer identifier"),
     db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
 ) -> CustomerDashboardSummary:
-    return customer_service.get_dashboard(customer_id=customer_id, db=db)
+    eff_id = resolve_customer_id(customer_id, current_user)
+    return customer_service.get_dashboard(customer_id=eff_id, db=db)
 
 
 @router.get(
@@ -126,11 +145,13 @@ def get_customer_dashboard(
     description="Returns customer credit purchases with status breakdown and optional filtering.",
 )
 def get_customer_dues(
-    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    customer_id: Optional[str] = Query(None, description="Target customer identifier"),
     status: Optional[str] = Query(None, description="'all', 'upcoming', 'due_today', 'overdue', 'paid'"),
     db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
 ) -> CustomerDuesResponse:
-    return customer_service.get_dues(customer_id=customer_id, filter_status=status, db=db)
+    eff_id = resolve_customer_id(customer_id, current_user)
+    return customer_service.get_dues(customer_id=eff_id, filter_status=status, db=db)
 
 
 @router.get(
@@ -140,10 +161,12 @@ def get_customer_dues(
     description="Returns all credit transactions recorded for this customer.",
 )
 def list_customer_transactions(
-    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    customer_id: Optional[str] = Query(None, description="Target customer identifier"),
     db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
 ) -> List[CreditTransactionOut]:
-    dues = customer_service.get_dues(customer_id=customer_id, filter_status=None, db=db)
+    eff_id = resolve_customer_id(customer_id, current_user)
+    dues = customer_service.get_dues(customer_id=eff_id, filter_status=None, db=db)
     return dues.transactions
 
 
@@ -155,10 +178,12 @@ def list_customer_transactions(
 )
 def get_transaction_detail(
     transaction_id: str,
-    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    customer_id: Optional[str] = Query(None, description="Target customer identifier"),
     db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
 ) -> CreditTransactionOut:
-    return customer_service.get_transaction(transaction_id=transaction_id, customer_id=customer_id, db=db)
+    eff_id = resolve_customer_id(customer_id, current_user)
+    return customer_service.get_transaction(transaction_id=transaction_id, customer_id=eff_id, db=db)
 
 
 @router.post(
@@ -170,10 +195,12 @@ def get_transaction_detail(
 )
 def create_credit_transaction(
     data: CreditTransactionCreate,
-    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    customer_id: Optional[str] = Query(None, description="Target customer identifier"),
     db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
 ) -> CreditTransactionOut:
-    return customer_service.create_credit_transaction(customer_id=customer_id, data=data, db=db)
+    eff_id = resolve_customer_id(customer_id, current_user)
+    return customer_service.create_credit_transaction(customer_id=eff_id, data=data, db=db)
 
 
 @router.post(
@@ -186,11 +213,13 @@ def create_credit_transaction(
 def record_repayment(
     transaction_id: str,
     data: RepaymentCreate,
-    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    customer_id: Optional[str] = Query(None, description="Target customer identifier"),
     db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
 ) -> CreditTransactionOut:
+    eff_id = resolve_customer_id(customer_id, current_user)
     return customer_service.record_repayment(
-        transaction_id=transaction_id, customer_id=customer_id, data=data, db=db
+        transaction_id=transaction_id, customer_id=eff_id, data=data, db=db
     )
 
 
@@ -201,11 +230,13 @@ def record_repayment(
     description="Returns timeline of credit purchases, partial payments, and cleared balances.",
 )
 def get_customer_activity(
-    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    customer_id: Optional[str] = Query(None, description="Target customer identifier"),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
 ) -> List[ActivityEventOut]:
-    return customer_service.get_activity(customer_id=customer_id, limit=limit, db=db)
+    eff_id = resolve_customer_id(customer_id, current_user)
+    return customer_service.get_activity(customer_id=eff_id, limit=limit, db=db)
 
 
 @router.get(
@@ -215,7 +246,9 @@ def get_customer_activity(
     description="Returns chronological, urgency-sorted repayment reminders based on upcoming, due today, and overdue commitments.",
 )
 def get_customer_reminders(
-    customer_id: str = Query(DEFAULT_CUSTOMER_ID, description="Target customer identifier"),
+    customer_id: Optional[str] = Query(None, description="Target customer identifier"),
     db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
 ) -> List[ReminderItemOut]:
-    return customer_service.get_reminders(customer_id=customer_id, db=db)
+    eff_id = resolve_customer_id(customer_id, current_user)
+    return customer_service.get_reminders(customer_id=eff_id, db=db)

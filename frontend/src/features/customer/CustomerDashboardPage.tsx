@@ -23,15 +23,17 @@ import { RepayModal } from "./RepayModal";
 import { RazorpayCheckoutModal } from "../payments/RazorpayCheckoutModal";
 import { DigitalBillModal } from "../../components/bills/DigitalBillModal";
 import { useRealTimeSync } from "../../hooks/useRealTimeSync";
+import { useAuth } from "../../context/AuthContext";
 
 export const CustomerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [data, setData] = useState<CustomerDashboardSummary | null>(null);
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [customerBills, setCustomerBills] = useState<BillPaymentHistory[]>([]);
   const [billFilter, setBillFilter] = useState<"all" | "unpaid" | "paid">("all");
   const [currentCustomerId, setCurrentCustomerId] = useState<string>(() => {
-    return localStorage.getItem("kosha_active_customer_id") || "cust_amit_03";
+    return user?.customer_id || localStorage.getItem("kosha_active_customer_id") || "";
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,15 +41,25 @@ export const CustomerDashboardPage: React.FC = () => {
   const [selectedBillForCheckout, setSelectedBillForCheckout] = useState<BillPaymentHistory | null>(null);
   const [selectedBillForDigitalModal, setSelectedBillForDigitalModal] = useState<BillPaymentHistory | null>(null);
 
+  useEffect(() => {
+    if (user?.customer_id && user.customer_id !== currentCustomerId) {
+      setCurrentCustomerId(user.customer_id);
+    }
+  }, [user?.customer_id]);
+
   const fetchDashboard = useCallback(
     async (isSilent = false, custId?: string) => {
+      const targetId = custId || currentCustomerId || user?.customer_id;
+      if (!targetId) {
+        setIsLoading(false);
+        return;
+      }
       if (!isSilent) setIsLoading(true);
       setError(null);
-      const targetId = custId || currentCustomerId;
       try {
         const [dashRes, custList, billsList] = await Promise.all([
           apiClient.getCustomerDashboard(targetId),
-          apiClient.listShopkeeperCustomers().catch(() => []),
+          user?.role === "customer" ? Promise.resolve([]) : apiClient.listShopkeeperCustomers().catch(() => []),
           apiClient.listCustomerBills(targetId).catch(() => []),
         ]);
         setData(dashRes);
@@ -59,7 +71,7 @@ export const CustomerDashboardPage: React.FC = () => {
         if (!isSilent) setIsLoading(false);
       }
     },
-    [currentCustomerId]
+    [currentCustomerId, user?.customer_id, user?.role]
   );
 
   // Real-Time Server-Sent Events listener for live balance updates (silent refresh in background)

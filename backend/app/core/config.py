@@ -46,5 +46,14 @@ class Settings:
     RAZORPAY_MERCHANT_NAME: str = os.getenv("RAZORPAY_MERCHANT_NAME", "KOSHA MSME Treasury")
     RAZORPAY_UPI_VPA: str = os.getenv("RAZORPAY_UPI_VPA", "kosha.msme@razorpay")
 
+    # Authentication & JWT Configuration
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "kosha_dev_jwt_secret_key_change_in_production_32b_len")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24 hours
+
+    # Google Identity OAuth Configuration
+    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+
 
 settings = Settings()

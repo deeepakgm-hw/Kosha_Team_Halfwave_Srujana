@@ -20,18 +20,27 @@ import { RepayModal } from "./RepayModal";
 import { RazorpayCheckoutModal } from "../payments/RazorpayCheckoutModal";
 import { DigitalBillModal } from "../../components/bills/DigitalBillModal";
 import { useRealTimeSync } from "../../hooks/useRealTimeSync";
+import { useAuth } from "../../context/AuthContext";
 
 export const CustomerDuesPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
   const initialFilter = searchParams.get("status") || "all";
   const [currentCustomerId, setCurrentCustomerId] = useState<string>(() => {
     return (
+      user?.customer_id ||
       searchParams.get("customer_id") ||
       localStorage.getItem("kosha_active_customer_id") ||
-      "cust_amit_03"
+      ""
     );
   });
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
+
+  useEffect(() => {
+    if (user?.customer_id && user.customer_id !== currentCustomerId) {
+      setCurrentCustomerId(user.customer_id);
+    }
+  }, [user?.customer_id]);
 
   const [activeTab, setActiveTab] = useState<"all" | "upi_bills">("all");
   const [activeFilter, setActiveFilter] = useState<string>(initialFilter);
@@ -47,13 +56,18 @@ export const CustomerDuesPage: React.FC = () => {
   const [isResolvingCheckout, setIsResolvingCheckout] = useState<boolean>(false);
 
   const fetchDues = useCallback(async (filter: string, isSilent = false) => {
+    const targetId = currentCustomerId || user?.customer_id;
+    if (!targetId) {
+      setIsLoading(false);
+      return;
+    }
     if (!isSilent) setIsLoading(true);
     setError(null);
     try {
       const [duesRes, billsRes, custList] = await Promise.all([
-        apiClient.getCustomerDues(currentCustomerId, filter === "all" ? undefined : filter),
-        apiClient.listCustomerBills(currentCustomerId, filter === "all" ? undefined : filter).catch(() => []),
-        apiClient.listShopkeeperCustomers().catch(() => []),
+        apiClient.getCustomerDues(targetId, filter === "all" ? undefined : filter),
+        apiClient.listCustomerBills(targetId, filter === "all" ? undefined : filter).catch(() => []),
+        user?.role === "customer" ? Promise.resolve([]) : apiClient.listShopkeeperCustomers().catch(() => []),
       ]);
       setData(duesRes);
       setCustomerBills(billsRes);
@@ -63,7 +77,7 @@ export const CustomerDuesPage: React.FC = () => {
     } finally {
       if (!isSilent) setIsLoading(false);
     }
-  }, [currentCustomerId]);
+  }, [currentCustomerId, user?.customer_id, user?.role]);
 
   // Real-Time Server-Sent Events listener (silent refresh in background)
   const { isRealTime } = useRealTimeSync({

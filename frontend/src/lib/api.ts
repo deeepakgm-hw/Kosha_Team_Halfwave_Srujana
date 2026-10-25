@@ -1,5 +1,14 @@
 import { ApiHealthResponse } from "../types/api";
 import {
+  AuthResponse,
+  GoogleAuthPayload,
+  LoginPayload,
+  MessageResponse,
+  RegisterBusinessPayload,
+  RegisterCustomerPayload,
+  UserProfile,
+} from "../types/auth";
+import {
   ActionRankingResponse,
   BacktestResponse,
   BankAccount,
@@ -117,6 +126,12 @@ export async function fetchApi<T>(
     Accept: "application/json",
   };
 
+  // Attach bearer token if authenticated
+  const token = typeof window !== "undefined" ? localStorage.getItem("kosha_auth_token") : null;
+  if (token) {
+    (defaultHeaders as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  }
+
   // If not FormData, set application/json
   if (!(options.body instanceof FormData)) {
     (defaultHeaders as Record<string, string>)["Content-Type"] = "application/json";
@@ -124,6 +139,7 @@ export async function fetchApi<T>(
 
   const response = await fetch(url, {
     ...options,
+    credentials: "include",
     headers: {
       ...defaultHeaders,
       ...options.headers,
@@ -579,6 +595,61 @@ export const apiClient = {
     if (partialAmount && partialAmount > 0) url += `&partial_amount=${partialAmount}`;
     return fetchApi<RazorpayPaymentRequest>(url, {
       method: "POST",
+    });
+  },
+
+  // ---------------------------------------------------------------------------
+  // Real Authentication API
+  // ---------------------------------------------------------------------------
+  async registerCustomer(payload: RegisterCustomerPayload): Promise<AuthResponse> {
+    return fetchApi<AuthResponse>("/auth/register/customer", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async registerBusiness(payload: RegisterBusinessPayload): Promise<AuthResponse> {
+    return fetchApi<AuthResponse>("/auth/register/business", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async login(payload: LoginPayload): Promise<AuthResponse> {
+    return fetchApi<AuthResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async loginWithGoogle(payload: GoogleAuthPayload): Promise<AuthResponse> {
+    return fetchApi<AuthResponse>("/auth/google", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getCurrentUser(): Promise<UserProfile> {
+    return fetchApi<UserProfile>("/auth/me");
+  },
+
+  async logout(): Promise<MessageResponse> {
+    return fetchApi<MessageResponse>("/auth/logout", {
+      method: "POST",
+    });
+  },
+
+  async forgotPassword(email: string): Promise<MessageResponse> {
+    return fetchApi<MessageResponse>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async resetPassword(payload: { token: string; new_password: string; confirm_password: string }): Promise<MessageResponse> {
+    return fetchApi<MessageResponse>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
   },
 };
