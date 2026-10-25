@@ -16,6 +16,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Sparkles,
+  ArrowLeft,
 } from "lucide-react";
 import { KoshaLogo } from "../../components/ui/KoshaLogo";
 import { useAuth } from "../../context/AuthContext";
@@ -82,7 +83,6 @@ export const LoginPage: React.FC = () => {
     try {
       if (mode === "login") {
         await login({ email, password, role });
-        // Navigation will be handled by useEffect
       } else {
         if (role === "customer") {
           if (!fullName.trim()) {
@@ -133,7 +133,6 @@ export const LoginPage: React.FC = () => {
 
     try {
       setLoading(true);
-      // Trigger Google Identity Services One Tap or Token Flow
       if (!(window as any).google?.accounts?.id) {
         throw new Error("Google Identity Services script is loading. Please try again in a moment.");
       }
@@ -167,7 +166,6 @@ export const LoginPage: React.FC = () => {
       if (!resetToken) {
         const res = await forgotPassword(forgotEmail);
         setForgotSuccess(res.message);
-        // If server provided reset_token in dev mode, capture it
         if (res.reset_token) {
           setResetToken(res.reset_token);
         }
@@ -191,127 +189,134 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-10 relative overflow-hidden bg-gradient-to-br from-slate-50 via-emerald-50/20 to-teal-50/30">
-      {/* Decorative ambient background accents */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-10 relative overflow-hidden bg-gradient-to-br from-[#F5F7FA] via-[#EDF3FC] to-[#E5F0FC]">
+      {/* Dynamic Ambient Glassmorphism Orbs */}
+      <div className="absolute -top-28 -left-28 w-[500px] h-[500px] bg-[#0070E0]/15 rounded-full blur-[110px] pointer-events-none" />
+      <div className="absolute top-1/4 -right-24 w-[460px] h-[460px] bg-sky-400/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute -bottom-32 left-1/4 w-[480px] h-[480px] bg-[#001C64]/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute -bottom-20 -right-20 w-[360px] h-[360px] bg-[#FFC439]/12 rounded-full blur-[90px] pointer-events-none" />
 
       {/* Top Header */}
       <header className="w-full max-w-7xl mx-auto flex items-center justify-between z-10 relative mb-4">
         <div className="flex items-center gap-3">
           <KoshaLogo size="md" showWordmark={true} />
-          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-800 border border-emerald-500/20 shadow-xs">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/70 backdrop-blur-md text-[#003087] border border-white/80 shadow-xs">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#0070E0]" />
             <span>Secure Treasury Platform</span>
           </div>
         </div>
 
         <button
           onClick={() => navigate("/")}
-          className="text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#545D68] hover:text-[#001C64] px-3.5 py-1.5 rounded-full bg-white/60 hover:bg-white/90 backdrop-blur-md border border-white/80 shadow-xs transition-all cursor-pointer"
         >
-          &larr; Back to Home
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Home</span>
         </button>
       </header>
 
       {/* Main 2-Column Split */}
       <main className="w-full max-w-6xl mx-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center z-10 my-auto py-6">
         {/* Left Column: Brand & Value Narrative */}
-        <div className="lg:col-span-6 space-y-6 text-slate-900 pr-0 lg:pr-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100/70 border border-emerald-200/80 text-emerald-900 text-xs font-semibold">
-            <Sparkles className="w-4 h-4 text-emerald-600" />
+        <div className="lg:col-span-6 space-y-6 text-[#0C0C0D] pr-0 lg:pr-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/70 backdrop-blur-md border border-white/90 text-[#001C64] text-xs font-bold shadow-xs">
+            <Sparkles className="w-3.5 h-3.5 text-[#0070E0]" />
             <span>Authentic Real-Time Treasury</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#001C64] leading-tight">
             Know your treasury <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-700">
+            <span className="text-[#0070E0]">
               before it runs dry.
             </span>
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
+          <p className="text-base sm:text-lg text-[#545D68] leading-relaxed font-normal">
             Stay ahead of your cash flow. Track verified payments, generate automated digital bills, manage shop credit, and ensure timely collections with full data transparency.
           </p>
 
-          {/* Value Props Matrix */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-200/80">
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/60 backdrop-blur-xs border border-white/80 shadow-xs">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-700">
+          {/* Value Props Matrix (Frosted Glass Cards) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-[#E1E7EC]/80">
+            <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white/65 hover:bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_4px_16px_rgba(0,28,100,0.04)] transition-all duration-200">
+              <div className="p-2.5 rounded-xl bg-[#0070E0]/10 text-[#0070E0] shrink-0">
                 <QrCode className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Verified UPI Payments</h4>
-                <p className="text-xs text-slate-500 mt-0.5">Dynamic QR with live webhook reconciliation.</p>
+                <h4 className="text-sm font-bold text-[#001C64]">Verified UPI Payments</h4>
+                <p className="text-xs text-[#545D68] mt-0.5">Dynamic QR with live webhook reconciliation.</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/60 backdrop-blur-xs border border-white/80 shadow-xs">
-              <div className="p-2 rounded-lg bg-teal-500/10 text-teal-700">
+            <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white/65 hover:bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_4px_16px_rgba(0,28,100,0.04)] transition-all duration-200">
+              <div className="p-2.5 rounded-xl bg-[#003087]/10 text-[#003087] shrink-0">
                 <Receipt className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Unified Bill Ledger</h4>
-                <p className="text-xs text-slate-500 mt-0.5">Dual-synchronized customer & shopkeeper views.</p>
+                <h4 className="text-sm font-bold text-[#001C64]">Unified Bill Ledger</h4>
+                <p className="text-xs text-[#545D68] mt-0.5">Dual-synchronized customer & shopkeeper views.</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/60 backdrop-blur-xs border border-white/80 shadow-xs">
-              <div className="p-2 rounded-lg bg-sky-500/10 text-sky-700">
+            <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white/65 hover:bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_4px_16px_rgba(0,28,100,0.04)] transition-all duration-200">
+              <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-700 shrink-0">
                 <TrendingUp className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Runway Forecasting</h4>
-                <p className="text-xs text-slate-500 mt-0.5">Simulate stress tests and cash inflows accurately.</p>
+                <h4 className="text-sm font-bold text-[#001C64]">Runway Forecasting</h4>
+                <p className="text-xs text-[#545D68] mt-0.5">Simulate stress tests and cash inflows accurately.</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/60 backdrop-blur-xs border border-white/80 shadow-xs">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-700">
+            <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white/65 hover:bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_4px_16px_rgba(0,28,100,0.04)] transition-all duration-200">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-700 shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Strict Data Integrity</h4>
-                <p className="text-xs text-slate-500 mt-0.5">Genuine multi-tenant relational persistence.</p>
+                <h4 className="text-sm font-bold text-[#001C64]">Strict Data Integrity</h4>
+                <p className="text-xs text-[#545D68] mt-0.5">Genuine multi-tenant relational persistence.</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Authentication Card */}
+        {/* Right Column: Premium Glassmorphism Card */}
         <div className="lg:col-span-6 w-full max-w-md mx-auto">
-          <div className="relative rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/90 shadow-xl shadow-emerald-950/5 p-6 sm:p-8">
+          <div className="relative rounded-3xl bg-white/75 backdrop-blur-2xl border border-white/90 shadow-[0_20px_50px_rgba(0,28,100,0.09),0_0_0_1px_rgba(255,255,255,0.8)] p-6 sm:p-8 overflow-hidden">
+            {/* Top Light Glare Highlight */}
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-white/60 to-transparent rounded-full blur-2xl pointer-events-none" />
+
             {/* Segmented Role Selector */}
-            <div className="flex p-1 mb-6 rounded-xl bg-slate-100/90 border border-slate-200/80">
+            <div className="flex p-1.5 mb-6 rounded-2xl bg-[#E1E7EC]/60 backdrop-blur-md border border-white/70 shadow-inner relative z-10">
               <button
                 type="button"
                 onClick={() => handleRoleChange("customer")}
-                className={`flex-1 py-2 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
                   role === "customer"
-                    ? "bg-white text-emerald-800 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-[#001C64] shadow-sm border border-white/80"
+                    : "text-[#545D68] hover:text-[#001C64] hover:bg-white/40"
                 }`}
               >
-                <User className="w-4 h-4" />
+                <User className="w-4 h-4 text-[#0070E0]" />
                 <span>Customer</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleRoleChange("business_owner")}
-                className={`flex-1 py-2 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
                   role === "business_owner"
-                    ? "bg-white text-emerald-800 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-[#001C64] shadow-sm border border-white/80"
+                    : "text-[#545D68] hover:text-[#001C64] hover:bg-white/40"
                 }`}
               >
-                <Building className="w-4 h-4" />
+                <Building className="w-4 h-4 text-[#0070E0]" />
                 <span>Business Owner</span>
               </button>
             </div>
 
             {/* Contextual Header */}
-            <div className="mb-6">
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            <div className="mb-6 relative z-10">
+              <h2 className="text-xl sm:text-2xl font-black text-[#001C64] tracking-tight">
                 {role === "customer"
                   ? mode === "login"
                     ? "Welcome back"
@@ -320,7 +325,7 @@ export const LoginPage: React.FC = () => {
                   ? "Welcome back, Business Owner"
                   : "Register Your Business"}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              <p className="text-xs sm:text-sm text-[#545D68] mt-1 font-medium">
                 {role === "customer"
                   ? mode === "login"
                     ? "Sign in to manage your purchases, payments, and outstanding dues."
@@ -333,17 +338,17 @@ export const LoginPage: React.FC = () => {
 
             {/* Error Message */}
             {errorMessage && (
-              <div className="mb-5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5">
+              <div className="mb-5 p-3.5 rounded-2xl bg-rose-50/90 backdrop-blur-xs border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5 shadow-2xs relative z-10">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
-                <div>{errorMessage}</div>
+                <div className="font-medium">{errorMessage}</div>
               </div>
             )}
 
             {/* Success Message */}
             {successMessage && (
-              <div className="mb-5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-start gap-2.5">
+              <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50/90 backdrop-blur-xs border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5 shadow-2xs relative z-10">
                 <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
-                <div>{successMessage}</div>
+                <div className="font-medium">{successMessage}</div>
               </div>
             )}
 
@@ -352,7 +357,7 @@ export const LoginPage: React.FC = () => {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full py-2.5 px-4 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs sm:text-sm flex items-center justify-center gap-3 shadow-xs transition-colors mb-5 disabled:opacity-50"
+              className="w-full py-2.5 px-4 rounded-xl border border-[#E1E7EC] bg-white/85 hover:bg-white backdrop-blur-sm text-[#001C64] font-bold text-xs sm:text-sm flex items-center justify-center gap-3 shadow-2xs hover:shadow-xs transition-all mb-5 disabled:opacity-50 cursor-pointer relative z-10"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
@@ -375,18 +380,18 @@ export const LoginPage: React.FC = () => {
               <span>Continue with Google</span>
             </button>
 
-            <div className="relative flex items-center justify-center my-4">
-              <div className="border-t border-slate-200 w-full" />
-              <span className="bg-white px-3 text-[11px] uppercase tracking-wider text-slate-400 font-semibold absolute">
+            <div className="relative flex items-center justify-center my-4 z-10">
+              <div className="border-t border-[#E1E7EC] w-full" />
+              <span className="bg-white/80 backdrop-blur-md px-3 text-[11px] uppercase tracking-wider text-[#545D68] font-bold rounded-full border border-white/60 absolute">
                 or with email
               </span>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
               {mode === "register" && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+                  <label className="block text-xs font-bold text-[#001C64] mb-1">Full Name</label>
                   <div className="relative">
                     <User className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
                     <input
@@ -395,7 +400,7 @@ export const LoginPage: React.FC = () => {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="e.g. Ramesh Kumar"
-                      className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-white"
+                      className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl border border-[#E1E7EC] focus:outline-hidden focus:ring-4 focus:ring-[#0070E0]/15 focus:border-[#0070E0] bg-white/70 backdrop-blur-sm text-[#001C64] placeholder:text-slate-400 transition-all shadow-2xs"
                     />
                   </div>
                 </div>
@@ -404,7 +409,7 @@ export const LoginPage: React.FC = () => {
               {mode === "register" && role === "business_owner" && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Business Name</label>
+                    <label className="block text-xs font-bold text-[#001C64] mb-1">Business Name</label>
                     <div className="relative">
                       <Building className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
                       <input
@@ -413,29 +418,29 @@ export const LoginPage: React.FC = () => {
                         value={businessName}
                         onChange={(e) => setBusinessName(e.target.value)}
                         placeholder="e.g. Royal Provisions"
-                        className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-white"
+                        className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl border border-[#E1E7EC] focus:outline-hidden focus:ring-4 focus:ring-[#0070E0]/15 focus:border-[#0070E0] bg-white/70 backdrop-blur-sm text-[#001C64] placeholder:text-slate-400 transition-all shadow-2xs"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Business Type</label>
+                    <label className="block text-xs font-bold text-[#001C64] mb-1">Business Type</label>
                     <select
                       value={businessType}
                       onChange={(e) => setBusinessType(e.target.value)}
-                      className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-white text-slate-700"
+                      className="w-full px-3 py-2.5 text-xs sm:text-sm rounded-xl border border-[#E1E7EC] focus:outline-hidden focus:ring-4 focus:ring-[#0070E0]/15 focus:border-[#0070E0] bg-white/70 backdrop-blur-sm text-[#001C64] transition-all shadow-2xs cursor-pointer"
                     >
                       <option value="retail">Retail / Grocery Store</option>
-                      <option value="wholesale">Wholesale & Distribution</option>
+                      <option value="wholesale">Wholesale &amp; Distribution</option>
                       <option value="manufacturing">Manufacturing</option>
-                      <option value="services">Services & Consulting</option>
+                      <option value="services">Services &amp; Consulting</option>
                     </select>
                   </div>
                 </>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-[#001C64] mb-1">
                   {role === "business_owner" ? "Business Email Address" : "Email Address"}
                 </label>
                 <div className="relative">
@@ -446,15 +451,15 @@ export const LoginPage: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
-                    className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-white"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl border border-[#E1E7EC] focus:outline-hidden focus:ring-4 focus:ring-[#0070E0]/15 focus:border-[#0070E0] bg-white/70 backdrop-blur-sm text-[#001C64] placeholder:text-slate-400 transition-all shadow-2xs"
                   />
                 </div>
               </div>
 
               {mode === "register" && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Phone Number <span className="text-slate-400 font-normal">(Optional)</span>
+                  <label className="block text-xs font-bold text-[#001C64] mb-1">
+                    Phone Number <span className="text-[#545D68] font-normal">(Optional)</span>
                   </label>
                   <div className="relative">
                     <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
@@ -463,7 +468,7 @@ export const LoginPage: React.FC = () => {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+91 9876543210"
-                      className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-white"
+                      className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl border border-[#E1E7EC] focus:outline-hidden focus:ring-4 focus:ring-[#0070E0]/15 focus:border-[#0070E0] bg-white/70 backdrop-blur-sm text-[#001C64] placeholder:text-slate-400 transition-all shadow-2xs"
                     />
                   </div>
                 </div>
@@ -471,7 +476,7 @@ export const LoginPage: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-700">Password</label>
+                  <label className="block text-xs font-bold text-[#001C64]">Password</label>
                   {mode === "login" && (
                     <button
                       type="button"
@@ -479,7 +484,7 @@ export const LoginPage: React.FC = () => {
                         setForgotEmail(email);
                         setIsForgotModalOpen(true);
                       }}
-                      className="text-xs font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
+                      className="text-xs font-bold text-[#0070E0] hover:text-[#003087] transition-colors cursor-pointer"
                     >
                       Forgot password?
                     </button>
@@ -494,22 +499,23 @@ export const LoginPage: React.FC = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="At least 8 characters"
                     minLength={8}
-                    className="w-full pl-9 pr-10 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-white"
+                    className="w-full pl-9 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border border-[#E1E7EC] focus:outline-hidden focus:ring-4 focus:ring-[#0070E0]/15 focus:border-[#0070E0] bg-white/70 backdrop-blur-sm text-[#001C64] placeholder:text-slate-400 transition-all shadow-2xs"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
+              {/* Signature Action Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-700/20 transition-all duration-200 mt-2 disabled:opacity-50 cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-[#0070E0] hover:bg-[#003087] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(0,112,224,0.35)] hover:shadow-[0_6px_20px_rgba(0,112,224,0.45)] active:scale-[0.99] transition-all duration-200 mt-2 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -529,7 +535,7 @@ export const LoginPage: React.FC = () => {
             </form>
 
             {/* Mode Switcher */}
-            <div className="mt-5 text-center text-xs text-slate-600">
+            <div className="mt-5 text-center text-xs text-[#545D68] relative z-10 font-medium">
               {mode === "login" ? (
                 <>
                   Don't have an account?{" "}
@@ -539,7 +545,7 @@ export const LoginPage: React.FC = () => {
                       setMode("register");
                       setErrorMessage(null);
                     }}
-                    className="font-bold text-emerald-700 hover:text-emerald-800 underline underline-offset-2 ml-1"
+                    className="font-bold text-[#0070E0] hover:text-[#003087] underline underline-offset-2 ml-1 cursor-pointer"
                   >
                     {role === "customer" ? "Create Customer Account" : "Register Business"}
                   </button>
@@ -553,7 +559,7 @@ export const LoginPage: React.FC = () => {
                       setMode("login");
                       setErrorMessage(null);
                     }}
-                    className="font-bold text-emerald-700 hover:text-emerald-800 underline underline-offset-2 ml-1"
+                    className="font-bold text-[#0070E0] hover:text-[#003087] underline underline-offset-2 ml-1 cursor-pointer"
                   >
                     Sign in here
                   </button>
@@ -564,43 +570,43 @@ export const LoginPage: React.FC = () => {
         </div>
       </main>
 
-      {/* Forgot Password Modal */}
+      {/* Frosted Glass Forgot Password Modal */}
       {isForgotModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 relative">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Reset Password</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Enter your registered email address to receive a password reset token.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-white/85 backdrop-blur-2xl rounded-3xl shadow-[0_20px_60px_rgba(0,28,100,0.18)] border border-white/90 p-6 sm:p-8 relative">
+            <h3 className="text-lg font-black text-[#001C64] mb-1">Reset Password</h3>
+            <p className="text-xs text-[#545D68] mb-4 font-medium">
+              Enter your registered email address to receive a secure password reset token.
             </p>
 
             {forgotError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
                 {forgotError}
               </div>
             )}
 
             {forgotSuccess && (
-              <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs">
+              <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
                 {forgotSuccess}
               </div>
             )}
 
             <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
+                <label className="block text-xs font-bold text-[#001C64] mb-1">Email Address</label>
                 <input
                   type="email"
                   required
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-[#E1E7EC] focus:outline-hidden focus:ring-4 focus:ring-[#0070E0]/15 focus:border-[#0070E0] bg-white/70 backdrop-blur-sm text-[#001C64] transition-all"
                 />
               </div>
 
               {resetToken && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">New Password</label>
+                  <label className="block text-xs font-bold text-[#001C64] mb-1">New Password</label>
                   <input
                     type="password"
                     required
@@ -608,7 +614,7 @@ export const LoginPage: React.FC = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new 8+ character password"
-                    className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-[#E1E7EC] focus:outline-hidden focus:ring-4 focus:ring-[#0070E0]/15 focus:border-[#0070E0] bg-white/70 backdrop-blur-sm text-[#001C64] transition-all"
                   />
                 </div>
               )}
@@ -617,13 +623,13 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsForgotModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900"
+                  className="px-4 py-2 text-xs font-bold text-[#545D68] hover:text-[#001C64] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs"
+                  className="px-5 py-2.5 rounded-xl bg-[#0070E0] hover:bg-[#003087] text-white text-xs font-bold shadow-[0_4px_12px_rgba(0,112,224,0.3)] cursor-pointer"
                 >
                   {resetToken ? "Update Password" : "Send Reset Token"}
                 </button>
@@ -634,7 +640,7 @@ export const LoginPage: React.FC = () => {
       )}
 
       {/* Footer */}
-      <footer className="w-full max-w-7xl mx-auto text-center py-4 text-xs text-slate-400 z-10">
+      <footer className="w-full max-w-7xl mx-auto text-center py-4 text-xs text-[#545D68] z-10 font-medium">
         &copy; {new Date().getFullYear()} KOSHA Treasury Platform. Strictly authentic financial ledgering.
       </footer>
     </div>
