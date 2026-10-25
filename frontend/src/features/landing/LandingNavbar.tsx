@@ -5,7 +5,6 @@ import {
   User,
   Menu,
   X,
-  ArrowRight,
   TrendingUp,
   QrCode,
   ShieldCheck,
@@ -34,20 +33,6 @@ export const LandingNavbar: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#E1E7EC] transition-all duration-200">
-      {/* Top Banner (Hackathon announcement / trust line) */}
-      <div className="bg-[#001C64] text-white text-[11px] sm:text-xs py-1.5 px-4 font-medium text-center flex items-center justify-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-[#FFC439] animate-pulse shrink-0" />
-        <span>
-          <strong>KOSHA</strong> · Built for Srujana Tech Fest 2026 by Team Halfwave · Predictive MSME Treasury &amp; Counter QR Credit
-        </span>
-        <button
-          onClick={handleOpenBusiness}
-          className="hidden md:inline-flex items-center gap-1 underline text-[#FFC439] hover:text-white font-bold ml-2 text-[11px]"
-        >
-          Explore Interactive Demo <ArrowRight className="w-3 h-3" />
-        </button>
-      </div>
-
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
         {/* Left: Brand Logo */}
