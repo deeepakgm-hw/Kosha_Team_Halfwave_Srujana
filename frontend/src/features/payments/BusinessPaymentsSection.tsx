@@ -19,6 +19,7 @@ import {
   FileText,
   Trash2,
   UserPlus,
+  Smartphone,
 } from "lucide-react";
 import { apiClient, formatApiError, getApiBaseUrl } from "../../lib/api";
 import {
@@ -862,10 +863,10 @@ export const BusinessPaymentsSection: React.FC = () => {
       </div>
 
       <div class="btn-row">
-        ${upiPayload ? `<a href="${upiPayload}" class="btn btn-secondary" id="btnOpenUpi">📱 Pay via App</a>` : ""}
-        ${shortUrl ? `<a href="${shortUrl}" target="_blank" class="btn btn-primary">💳 Open Checkout</a>` : ""}
+        ${upiPayload ? `<a href="${upiPayload}" class="btn btn-primary" id="btnOpenUpi" style="background:#FFC439; color:#001C64; font-weight:900; font-size:13px; width:100%;">⚡ Open in UPI App (GPay / PhonePe / Paytm)</a>` : ""}
       </div>
       <div class="btn-row">
+        ${shortUrl ? `<a href="${shortUrl}" target="_blank" class="btn btn-secondary">💳 Open Web Checkout</a>` : ""}
         <button class="btn btn-secondary" onclick="copyUpi()" id="btnCopy">📋 Copy UPI Link</button>
         <button class="btn btn-secondary" onclick="window.close()">✕ Close</button>
       </div>
@@ -1407,6 +1408,31 @@ export const BusinessPaymentsSection: React.FC = () => {
                 </div>
               </div>
 
+              {/* Itemized Line Items Breakdown */}
+              {selectedBillForDetail.line_items && selectedBillForDetail.line_items.length > 0 && (
+                <div className="bg-[#F5F7FA] rounded-2xl p-4 border border-[#E1E7EC] space-y-2 text-xs">
+                  <div className="font-bold text-[#545D68] text-[10px] uppercase tracking-wider flex items-center justify-between">
+                    <span>Itemized Bill Line Items</span>
+                    <span className="text-[#0070E0]">{selectedBillForDetail.line_items.length} item(s)</span>
+                  </div>
+                  <div className="divide-y divide-[#E1E7EC]">
+                    {selectedBillForDetail.line_items.map((item, idx) => (
+                      <div key={idx} className="py-2 flex justify-between items-center text-xs">
+                        <div>
+                          <span className="font-bold text-[#001C64] block">{item.name || item.item_name || "Line Item"}</span>
+                          <span className="text-[11px] text-[#545D68]">
+                            Qty: {item.quantity} × {formatINR(item.unit_price)}
+                          </span>
+                        </div>
+                        <span className="font-mono font-bold text-[#001C64]">
+                          {formatINR(item.line_total ?? item.total ?? (item.quantity * item.unit_price))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Real-Time Recognition Outcome: SUCCESS */}
               {recognitionOutcome.type === "success" ? (
                 <div className="bg-emerald-50 rounded-2xl p-6 border-2 border-emerald-300 text-center space-y-4 shadow-sm animate-in fade-in zoom-in-95 duration-300">
@@ -1612,6 +1638,19 @@ export const BusinessPaymentsSection: React.FC = () => {
                       Customer scans via Phone Camera or Google Lens to pay with GPay, PhonePe, Paytm, or Cards
                     </p>
                   </div>
+
+                  {/* Direct UPI App Intent Trigger on Mobile / Desktop */}
+                  {selectedBillForDetail.active_payment_request?.upi_qr_payload && (
+                    <div className="w-full pt-1">
+                      <a
+                        href={selectedBillForDetail.active_payment_request.upi_qr_payload}
+                        className="w-full py-2.5 rounded-full bg-[#FFC439] hover:bg-[#F6B623] text-[#001C64] font-black text-xs flex items-center justify-center gap-2 shadow-paypal transition-all active:scale-[0.98]"
+                      >
+                        <Smartphone className="w-4 h-4" />
+                        <span>⚡ Pay via UPI App (GPay / PhonePe / Paytm)</span>
+                      </a>
+                    </div>
+                  )}
 
                   {/* Actions: Standalone Window, Copy UPI Link & Hosted Link */}
                   <div className="w-full pt-1">

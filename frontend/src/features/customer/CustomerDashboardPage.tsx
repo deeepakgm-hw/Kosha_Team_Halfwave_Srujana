@@ -13,6 +13,8 @@ import {
   Bell,
   Smartphone,
   FileText,
+  Receipt,
+  Clock,
 } from "lucide-react";
 import { apiClient, formatApiError } from "../../lib/api";
 import { CustomerDashboardSummary, CreditTransaction, BillPaymentHistory, CustomerProfile } from "../../types/customer";
@@ -26,6 +28,8 @@ export const CustomerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<CustomerDashboardSummary | null>(null);
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
+  const [customerBills, setCustomerBills] = useState<BillPaymentHistory[]>([]);
+  const [billFilter, setBillFilter] = useState<"all" | "unpaid" | "paid">("all");
   const [currentCustomerId, setCurrentCustomerId] = useState<string>(() => {
     return localStorage.getItem("kosha_active_customer_id") || "cust_amit_03";
   });
@@ -41,12 +45,14 @@ export const CustomerDashboardPage: React.FC = () => {
       setError(null);
       const targetId = custId || currentCustomerId;
       try {
-        const [dashRes, custList] = await Promise.all([
+        const [dashRes, custList, billsList] = await Promise.all([
           apiClient.getCustomerDashboard(targetId),
           apiClient.listShopkeeperCustomers().catch(() => []),
+          apiClient.listCustomerBills(targetId).catch(() => []),
         ]);
         setData(dashRes);
         if (custList.length > 0) setCustomers(custList);
+        setCustomerBills(billsList || []);
       } catch (err: unknown) {
         setError(formatApiError(err));
       } finally {
@@ -449,6 +455,165 @@ export const CustomerDashboardPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Comprehensive Customer Bills & Purchase Invoices Section */}
+      <div className="bg-white rounded-2xl p-5 border border-[#E1E7EC] shadow-paypal space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-extrabold text-[#001C64]">My Store Bills &amp; Invoices</h2>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-[#003087] border border-blue-200">
+                {customerBills.length} Total Bill{customerBills.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            <p className="text-xs text-[#545D68]">Complete itemized breakdown, verified cash receipts &amp; UPI payments</p>
+          </div>
+
+          <div className="flex items-center gap-1.5 self-start sm:self-auto">
+            {(["all", "unpaid", "paid"] as const).map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setBillFilter(filter)}
+                className={`px-3 py-1 rounded-full text-xs font-bold capitalize transition-all ${
+                  billFilter === filter
+                    ? "bg-[#0070E0] text-white shadow-2xs"
+                    : "bg-[#F5F7FA] text-[#545D68] hover:bg-slate-100 border border-[#E1E7EC]"
+                }`}
+              >
+                {filter === "all" ? "All Bills" : filter === "unpaid" ? "Pending Dues" : "Paid & Settled"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {customerBills.filter((b) => {
+          if (billFilter === "paid") return b.outstanding_amount === 0 || b.status === "paid";
+          if (billFilter === "unpaid") return b.outstanding_amount > 0 && b.status !== "paid";
+          return true;
+        }).length === 0 ? (
+          <div className="text-center py-8 text-[#545D68] bg-[#F5F7FA] rounded-xl border border-dashed border-[#E1E7EC]">
+            <Receipt className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+            <p className="text-xs font-bold text-[#001C64]">No bills found in this filter</p>
+            <p className="text-[11px] text-[#545D68] mt-0.5">Purchases recorded at participating shops will appear here with full line items.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {customerBills
+              .filter((b) => {
+                if (billFilter === "paid") return b.outstanding_amount === 0 || b.status === "paid";
+                if (billFilter === "unpaid") return b.outstanding_amount > 0 && b.status !== "paid";
+                return true;
+              })
+              .map((b) => {
+                const isPaid = b.outstanding_amount === 0 || b.status === "paid";
+                const isOverdue = b.status === "overdue";
+                const isDueToday = b.status === "due_today";
+
+                return (
+                  <div
+                    key={b.bill_id || b.id}
+                    className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                      isPaid
+                        ? "bg-emerald-50/20 border-emerald-200 hover:border-emerald-300"
+                        : isOverdue
+                        ? "bg-rose-50/30 border-rose-200 hover:border-rose-300"
+                        : isDueToday
+                        ? "bg-amber-50/30 border-amber-200 hover:border-amber-300"
+                        : "bg-[#F5F7FA]/70 border-[#E1E7EC] hover:border-[#0070E0]"
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-[#001C64] font-mono">
+                          {b.bill_reference || b.bill_number}
+                        </span>
+                        <span className="text-xs font-bold text-slate-700">· {b.shop_name}</span>
+                        {b.shop_code && (
+                          <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                            {b.shop_code}
+                          </span>
+                        )}
+                      </div>
+
+                      <div>
+                        {isPaid ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Fully Paid (Settled)</span>
+                          </span>
+                        ) : isOverdue ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200">
+                            <AlertTriangle className="w-3 h-3" />
+                            <span>Overdue</span>
+                          </span>
+                        ) : isDueToday ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
+                            <Clock className="w-3 h-3" />
+                            <span>Due Today</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-[#003087] border border-blue-200">
+                            <Calendar className="w-3 h-3" />
+                            <span>Upcoming Due</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-[#0C0C0D] font-medium">{b.description}</p>
+
+                    {/* Financial 4-metric strip */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-200/60 text-xs">
+                      <div className="p-2 rounded-xl bg-white border border-[#E1E7EC]">
+                        <span className="text-[10px] font-bold text-[#545D68] uppercase block">Total Bill</span>
+                        <span className="text-sm font-black text-[#001C64] font-mono mt-0.5 block">{formatINR(b.total_amount)}</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white border border-[#E1E7EC]">
+                        <span className="text-[10px] font-bold text-[#545D68] uppercase block">Counter Cash</span>
+                        <span className="text-sm font-bold text-slate-700 font-mono mt-0.5 block">{formatINR(b.initial_manual_paid ?? (b as any).initial_paid_amount ?? 0)}</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white border border-[#E1E7EC]">
+                        <span className="text-[10px] font-bold text-emerald-700 uppercase block">Verified Online</span>
+                        <span className="text-sm font-bold text-emerald-700 font-mono mt-0.5 block">{formatINR(b.verified_razorpay_paid ?? (b as any).total_verified_payments ?? 0)}</span>
+                      </div>
+                      <div className={`p-2 rounded-xl border ${b.outstanding_amount === 0 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"}`}>
+                        <span className="text-[10px] font-bold uppercase block">{b.outstanding_amount === 0 ? "Remaining Balance" : "Remaining Due"}</span>
+                        <span className="text-sm font-black font-mono mt-0.5 block">{formatINR(b.outstanding_amount)}</span>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
+                      <span className="text-[11px] text-[#545D68]">
+                        Due Date: <strong className="text-slate-800">{b.agreed_repayment_date}</strong>
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedBillForDigitalModal(b)}
+                          className="px-3.5 py-1.5 rounded-full border border-[#E1E7EC] hover:bg-slate-100 text-[#001C64] text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-[#0070E0]" />
+                          <span>View Digital Bill &amp; Breakdown</span>
+                        </button>
+
+                        {b.outstanding_amount > 0 && (
+                          <button
+                            onClick={() => setSelectedBillForDigitalModal(b)}
+                            className="px-4 py-1.5 rounded-full bg-[#FFC439] hover:bg-[#F6B623] text-[#001C64] text-xs font-black shadow-xs flex items-center gap-1.5 active:scale-[0.98] transition-all"
+                          >
+                            <Smartphone className="w-3.5 h-3.5" />
+                            <span>Pay via UPI ({formatINR(b.outstanding_amount)})</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+      </div>
 
       {/* E. Upcoming Repayments (PayPal Card Style with Gold Action Pill) */}
       <div className="bg-white rounded-2xl p-5 border border-[#E1E7EC] shadow-paypal space-y-4">

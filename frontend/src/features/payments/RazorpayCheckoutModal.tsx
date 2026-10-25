@@ -12,6 +12,7 @@ import {
   ExternalLink,
   ShieldCheck,
   Maximize2,
+  Smartphone,
 } from "lucide-react";
 import { apiClient, formatApiError, getApiBaseUrl } from "../../lib/api";
 import { BillPaymentHistory, RazorpayPaymentRequest, RazorpayConfig } from "../../types/customer";
@@ -567,10 +568,10 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
       </div>
 
       <div class="btn-row">
-        ${upiPayload ? `<a href="${upiPayload}" class="btn btn-secondary" id="btnOpenUpi">📱 Pay via App</a>` : ""}
-        ${shortUrl ? `<a href="${shortUrl}" target="_blank" class="btn btn-primary">💳 Open Checkout</a>` : ""}
+        ${upiPayload ? `<a href="${upiPayload}" class="btn btn-primary" id="btnOpenUpi" style="background:#FFC439; color:#001C64; font-weight:900; font-size:13px; width:100%;">⚡ Open in UPI App (GPay / PhonePe / Paytm)</a>` : ""}
       </div>
       <div class="btn-row">
+        ${shortUrl ? `<a href="${shortUrl}" target="_blank" class="btn btn-secondary">💳 Open Web Checkout</a>` : ""}
         <button class="btn btn-secondary" onclick="copyUpi()" id="btnCopy">📋 Copy UPI Link</button>
         <button class="btn btn-secondary" onclick="window.close()">✕ Close</button>
       </div>
@@ -925,6 +926,16 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
 
             {/* Quick Action Buttons */}
             <div className="w-full flex flex-col gap-2 pt-1">
+              {paymentRequest.upi_qr_payload && (
+                <a
+                  href={paymentRequest.upi_qr_payload}
+                  className="w-full py-2.5 px-3 rounded-xl bg-[#FFC439] hover:bg-[#F6B623] text-[#001C64] text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-[0.98]"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  <span>⚡ Pay via UPI App (GPay / PhonePe / Paytm)</span>
+                </a>
+              )}
+
               <button
                 type="button"
                 onClick={handleOpenQrInNewWindow}

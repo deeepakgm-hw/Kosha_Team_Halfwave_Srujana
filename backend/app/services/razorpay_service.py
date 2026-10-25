@@ -354,11 +354,13 @@ class RazorpayService:
             if not exp_utc or exp_utc > now:
                 # If live mode is configured but existing_active was created with mock IDs, bypass and generate authentic live request
                 is_mock_existing = existing_active.razorpay_order_id and existing_active.razorpay_order_id.startswith("order_test_")
-                if not (self.is_live_configured() and is_mock_existing):
+                has_valid_upi_intent = existing_active.upi_qr_payload and existing_active.upi_qr_payload.startswith("upi://pay?")
+                if has_valid_upi_intent and not (self.is_live_configured() and is_mock_existing):
                     return existing_active
 
         # 6. Generate Razorpay Identifiers & UPI Payloads
         customer = db.query(CustomerModel).filter_by(id=bill.customer_id).first()
+        shop = db.query(ShopModel).filter_by(id=bill.shop_id).first() if getattr(bill, "shop_id", None) else None
 
         # If live credentials or real credentials configured, try remote Razorpay creation
         remote_order_id = None
@@ -373,30 +375,20 @@ class RazorpayService:
         razorpay_qr_id = f"qr_test_{order_uuid}"
         short_url = (remote_plink.get("short_url") if remote_plink else None) or f"https://rzp.io/i/{razorpay_plink_id}"
 
-        # Real UPI Intent URI standard (RFC/NPCI UPI specification)
+        # Real UPI Intent URI standard (NPCI UPI specification)
+        # Scan with Google Pay, PhonePe, Paytm, BHIM, CRED
+        merchant_vpa = (shop.upi_id if shop and shop.upi_id else None) or self.upi_vpa or "kosha.msme@razorpay"
         amount_inr_str = f"{amount_paise / 100:.2f}"
-        pn = quote_plus(self.merchant_name)
+        pn = quote_plus(shop.shop_name if shop else self.merchant_name)
         ref_tr = f"KSH_{(bill.reference or bill.id[:8]).replace('-', '')}_{order_uuid[:6]}"
+        bill_desc = getattr(bill, "description", None) or getattr(bill, "reference", None) or "Bill Payment"
+        note = quote_plus(bill_desc[:40])
 
-        if self.is_custom_upi_vpa(self.upi_vpa):
-            upi_intent = (
-                f"upi://pay?pa={self.upi_vpa}&pn={pn}&am={amount_inr_str}&cu=INR"
-                f"&tr={ref_tr}&tn={quote_plus(bill.description[:40])}"
-            )
-            qr_target = upi_intent
-        elif remote_plink and remote_plink.get("short_url"):
-            # Authentic live Razorpay link for merchant (e.g. Halfwaveplatforms).
-            # Direct link in QR opens live payment page without NPCI VPA errors!
-            upi_intent = remote_plink["short_url"]
-            qr_target = remote_plink["short_url"]
-        else:
-            vpa = self.upi_vpa
-            upi_intent = (
-                f"upi://pay?pa={vpa}&pn={pn}&am={amount_inr_str}&cu=INR"
-                f"&tr={ref_tr}&tn={quote_plus(bill.description[:40])}"
-            )
-            qr_target = upi_intent
-
+        upi_intent = (
+            f"upi://pay?pa={merchant_vpa}&pn={pn}&am={amount_inr_str}&cu=INR"
+            f"&tr={ref_tr}&tn={note}"
+        )
+        qr_target = upi_intent
         qr_img = self.generate_qr_data_url(qr_target)
         expires_at = now + timedelta(minutes=5)  # Strict 5-minute security payment window
 

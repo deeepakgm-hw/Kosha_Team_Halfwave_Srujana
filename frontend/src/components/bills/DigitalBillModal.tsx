@@ -16,6 +16,7 @@ import {
   User,
   Edit2,
   ShieldCheck,
+  Smartphone,
 } from "lucide-react";
 import { BillPaymentHistory, RazorpayPaymentRequest } from "../../types/customer";
 import { formatINR, parseUtcDate } from "../../lib/utils";
@@ -461,12 +462,18 @@ export const DigitalBillModal: React.FC<DigitalBillModalProps> = ({
               {/* QR Image & Payment Instructions */}
               {activeRequest && activeRequest.status === "active" && activeRequest.qr_image_url ? (
                 <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-2xl bg-white border border-blue-100 shadow-xs">
-                  <div className="w-40 h-40 rounded-xl border border-slate-200 p-2 bg-white flex items-center justify-center shrink-0">
-                    <img
-                      src={activeRequest.qr_image_url}
-                      alt="UPI Dynamic Payment QR"
-                      className="w-full h-full object-contain"
-                    />
+                  <div className="flex flex-col items-center">
+                    <div className="w-44 h-44 rounded-xl border border-slate-200 p-2 bg-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <img
+                        src={activeRequest.qr_image_url}
+                        alt="UPI Dynamic Payment QR"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span>Scan with GPay, PhonePe, Paytm, BHIM</span>
+                    </div>
                   </div>
 
                   <div className="space-y-3 flex-1 text-center sm:text-left">
@@ -475,9 +482,22 @@ export const DigitalBillModal: React.FC<DigitalBillModalProps> = ({
                       <div className="text-2xl font-black text-[#001C64] font-mono">
                         {formatINR(activeRequest.amount_inr)}
                       </div>
+                      <p className="text-[11px] text-[#545D68] mt-0.5">
+                        NPCI compliant UPI Intent URI. Opens directly in your mobile banking app.
+                      </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                    <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                      {activeRequest.upi_qr_payload && (
+                        <a
+                          href={activeRequest.upi_qr_payload}
+                          className="w-full sm:w-auto px-4 py-2 rounded-full bg-[#FFC439] hover:bg-[#F6B623] text-[#001C64] text-xs font-black flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-[0.98]"
+                        >
+                          <Smartphone className="w-3.5 h-3.5" />
+                          <span>Pay via UPI App (GPay / PhonePe / Paytm)</span>
+                        </a>
+                      )}
+
                       {activeRequest.upi_qr_payload && (
                         <button
                           onClick={() => handleCopy(activeRequest.upi_qr_payload || "")}
@@ -496,7 +516,7 @@ export const DigitalBillModal: React.FC<DigitalBillModalProps> = ({
                           className="px-3.5 py-1.5 rounded-full bg-[#0070E0] hover:bg-[#003087] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
-                          <span>Pay via Checkout</span>
+                          <span>Pay via Web Checkout</span>
                         </a>
                       )}
                     </div>
