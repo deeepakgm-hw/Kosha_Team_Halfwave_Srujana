@@ -1,10 +1,11 @@
 """
-KOSHA - Detailed Hackathon Project Report PDF Generator
-Generates a comprehensive, publication-grade PDF report using ReportLab 5.0.1.
+KOSHA - Detailed Hackathon Project Report PDF Generator (with Embedded Project Images)
+Generates a publication-grade PDF report using ReportLab 5.0.1.
 Enforces:
 - Clean 15-section standard structure.
 - Consistent typography and branding (PayPal/Kosha Blue #0070E0, Deep Navy #001C64, Slate #545D68).
-- Professional tables, callout boxes, headers, footers, and page numbers (Page X of Y).
+- Embedded high-resolution project screenshots and photography with professional captions and border styling.
+- NumberedCanvas dynamic 'Page X of Y' headers and footers.
 """
 
 import sys
@@ -24,9 +25,11 @@ from reportlab.platypus import (
     PageBreak,
     KeepTogether,
     HRFlowable,
+    Image as RLImage,
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfgen import canvas
+from PIL import Image as PILImage
 
 
 class NumberedCanvas(canvas.Canvas):
@@ -73,19 +76,61 @@ class NumberedCanvas(canvas.Canvas):
         # Footer (all pages)
         self.setStrokeColor(colors.HexColor("#E1E7EC"))
         self.setLineWidth(0.5)
-        self.line(36, 40, letter[0] - 36, 40)
+        self.line(36, 38, letter[0] - 36, 38)
 
         self.drawString(
             36,
-            28,
+            26,
             "Confidential — Prepared for Hackathon Evaluation Jury | October 2026",
         )
         self.drawRightString(
             letter[0] - 36,
-            28,
+            26,
             f"Page {self._pageNumber} of {page_count}",
         )
         self.restoreState()
+
+
+def create_image_card(img_path: str, caption: str, width: float, height: float, styles: dict):
+    """Creates a stylized image card with caption and border."""
+    if not os.path.exists(img_path):
+        return Paragraph(f"<i>Image missing: {os.path.basename(img_path)}</i>", styles["TableCell"])
+
+    img = RLImage(img_path, width=width, height=height)
+    p_cap = Paragraph(f"<b>Figure:</b> {caption}", styles["ImageCaption"])
+
+    card_data = [
+        [img],
+        [p_cap],
+    ]
+    t = Table(card_data, colWidths=[width + 8])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#FAFCFE")),
+        ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#E1E7EC")),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    return t
+
+
+def create_dual_image_row(img1_path: str, cap1: str, img2_path: str, cap2: str, styles: dict, width: float = 260, height: float = 135):
+    """Creates a 2-column image layout spanning 540pt total printable width."""
+    card1 = create_image_card(img1_path, cap1, width, height, styles)
+    card2 = create_image_card(img2_path, cap2, width, height, styles)
+
+    row_table = Table([[card1, card2]], colWidths=[270, 270])
+    row_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    return row_table
 
 
 def build_pdf(filename: str):
@@ -94,13 +139,13 @@ def build_pdf(filename: str):
         pagesize=letter,
         leftMargin=36,
         rightMargin=36,
-        topMargin=46,
-        bottomMargin=46,
+        topMargin=44,
+        bottomMargin=44,
     )
 
     styles = getSampleStyleSheet()
 
-    # Color Palette
+    # Brand Colors
     PRIMARY = colors.HexColor("#0070E0")      # Kosha Vivid Blue
     PRIMARY_DARK = colors.HexColor("#001C64") # PayPal Deep Navy
     SECONDARY = colors.HexColor("#003087")    # Royal Blue
@@ -108,82 +153,81 @@ def build_pdf(filename: str):
     TEXT_MUTED = colors.HexColor("#545D68")   # Slate 600
     BG_LIGHT = colors.HexColor("#F5F7FA")     # Clean Slate
     BORDER_COLOR = colors.HexColor("#E1E7EC") # Border Grey
-    ACCENT_GREEN = colors.HexColor("#10B981") # Emerald Success
-    ACCENT_AMBER = colors.HexColor("#F59E0B") # Amber Alert
 
     # Custom Typography Styles
     styles.add(ParagraphStyle(
         "CoverTitle",
         fontName="Helvetica-Bold",
-        fontSize=28,
-        leading=34,
+        fontSize=24,
+        leading=30,
         textColor=PRIMARY_DARK,
         alignment=0,
-        spaceAfter=6,
+        spaceAfter=4,
     ))
 
     styles.add(ParagraphStyle(
         "CoverSubtitle",
         fontName="Helvetica",
-        fontSize=13,
-        leading=18,
+        fontSize=11,
+        leading=16,
         textColor=PRIMARY,
         alignment=0,
-        spaceAfter=15,
+        spaceAfter=12,
     ))
 
     styles.add(ParagraphStyle(
         "SectionHeading",
         fontName="Helvetica-Bold",
-        fontSize=15,
-        leading=20,
+        fontSize=13,
+        leading=17,
         textColor=PRIMARY_DARK,
-        spaceBefore=14,
-        spaceAfter=6,
+        spaceBefore=10,
+        spaceAfter=5,
         keepWithNext=True,
     ))
 
     styles.add(ParagraphStyle(
         "SubSectionHeading",
         fontName="Helvetica-Bold",
-        fontSize=11,
-        leading=15,
+        fontSize=10,
+        leading=14,
         textColor=PRIMARY,
-        spaceBefore=10,
-        spaceAfter=4,
+        spaceBefore=8,
+        spaceAfter=3,
         keepWithNext=True,
     ))
 
     styles.add(ParagraphStyle(
         "BodyDark",
         fontName="Helvetica",
-        fontSize=9,
-        leading=13.5,
+        fontSize=8.5,
+        leading=12.5,
         textColor=TEXT_MAIN,
-        spaceAfter=6,
+        spaceAfter=5,
     ))
 
     styles.add(ParagraphStyle(
         "BodyDarkBold",
         fontName="Helvetica-Bold",
-        fontSize=9,
-        leading=13.5,
+        fontSize=8.5,
+        leading=12.5,
         textColor=TEXT_MAIN,
     ))
 
     styles.add(ParagraphStyle(
-        "CalloutText",
+        "ImageCaption",
         fontName="Helvetica",
-        fontSize=8.5,
-        leading=13,
+        fontSize=7.5,
+        leading=10,
         textColor=PRIMARY_DARK,
+        alignment=0,
     ))
 
     styles.add(ParagraphStyle(
         "TableHead",
         fontName="Helvetica-Bold",
-        fontSize=8.5,
-        leading=11,
+        fontSize=8,
+        leading=10.5,
         textColor=colors.white,
         alignment=0,
     ))
@@ -191,8 +235,8 @@ def build_pdf(filename: str):
     styles.add(ParagraphStyle(
         "TableCell",
         fontName="Helvetica",
-        fontSize=8,
-        leading=11.5,
+        fontSize=7.5,
+        leading=10.5,
         textColor=TEXT_MAIN,
         alignment=0,
     ))
@@ -200,38 +244,34 @@ def build_pdf(filename: str):
     styles.add(ParagraphStyle(
         "TableCellBold",
         fontName="Helvetica-Bold",
-        fontSize=8,
-        leading=11.5,
+        fontSize=7.5,
+        leading=10.5,
         textColor=TEXT_MAIN,
         alignment=0,
     ))
 
-    styles.add(ParagraphStyle(
-        "CodeText",
-        fontName="Courier",
-        fontSize=8,
-        leading=10.5,
-        textColor=PRIMARY_DARK,
-    ))
-
     story = []
+
+    # Directories
+    uploaded_dir = r"C:\Users\deepu\.gemini\antigravity\brain\3ff76e41-2562-44f0-8cdc-fbc6358b61a0\.user_uploaded"
+    public_img_dir = r"C:\Hackathon Projects\Kosha\frontend\public\images"
 
     # =========================================================================
     # COVER / HEADER BANNER
     # =========================================================================
     header_data = [
         [
-            Paragraph("<b>KOSHA</b> &nbsp;|&nbsp; FINTECH & CASH-FLOW PLATFORM", ParagraphStyle("LogoH", fontName="Helvetica-Bold", fontSize=10, textColor=PRIMARY)),
-            Paragraph("<b>HACKATHON DETAILED REPORT</b>", ParagraphStyle("LogoR", fontName="Helvetica-Bold", fontSize=9, textColor=TEXT_MUTED, alignment=2)),
+            Paragraph("<b>KOSHA</b> &nbsp;|&nbsp; FINTECH & PREDICTIVE TREASURY", ParagraphStyle("LogoH", fontName="Helvetica-Bold", fontSize=9.5, textColor=PRIMARY)),
+            Paragraph("<b>HACKATHON DETAILED PROJECT REPORT</b>", ParagraphStyle("LogoR", fontName="Helvetica-Bold", fontSize=8.5, textColor=TEXT_MUTED, alignment=2)),
         ]
     ]
     t_header = Table(header_data, colWidths=[300, 240])
     t_header.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
     ]))
     story.append(t_header)
-    story.append(HRFlowable(width="100%", thickness=1.5, color=PRIMARY, spaceBefore=2, spaceAfter=14))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=PRIMARY, spaceBefore=2, spaceAfter=10))
 
     story.append(Paragraph("KOSHA: Predictive Cash-Flow Early Warning & Autonomous MSME Treasury Engine", styles["CoverTitle"]))
     story.append(Paragraph("Razorpay Dynamic UPI Payments, Smart Dues Split, AutoPay Mandate Recovery, and Explainable Credit Reliability (KOSHA TrustScore)", styles["CoverSubtitle"]))
@@ -254,45 +294,44 @@ def build_pdf(filename: str):
     t_meta = Table(meta_data, colWidths=[270, 270])
     t_meta.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), BG_LIGHT),
-        ("BOX", (0, 0), (-1, -1), 1, BORDER_COLOR),
+        ("BOX", (0, 0), (-1, -1), 0.8, BORDER_COLOR),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
         ("RIGHTPADDING", (0, 0), (-1, -1), 8),
     ]))
     story.append(t_meta)
-    story.append(Spacer(1, 14))
+    story.append(Spacer(1, 10))
 
     # =========================================================================
     # SECTION 1: PROJECT OVERVIEW
     # =========================================================================
-    story.append(Paragraph("1. Project Overview", styles["SectionHeading"]))
+    story.append(Paragraph("1. Project Overview & Executive Summary", styles["SectionHeading"]))
     story.append(Paragraph(
-        "<b>Project Title:</b> KOSHA — Predictive Cash-Flow Platform & Autonomous MSME Treasury<br/>"
-        "<b>Team Name:</b> Team Halfwave &nbsp;|&nbsp; <b>Theme:</b> Financial Inclusion, MSME Solvency, and Verified Digital Collections<br/>"
-        "<b>Selected Official Problem Statement:</b> Financial management and predictive cash-flow platform for small businesses, Kiranas, and retail enterprises operating under fragmented counter payments and informal credit ledgers.<br/>"
-        "<b>Executive Summary:</b> Over 82% of small retail businesses fail not because of unprofitability, but due to acute cash-flow insolvency caused by delayed receivables, counter checkout drop-offs, and lack of visibility into impending liquidity cliffs. KOSHA is a full-stack, enterprise-grade financial management platform that bridges this gap. It provides: (1) Instant Counter Dynamic UPI QR checkout with a 5-minute security window and soundbox confirmation; (2) Split Downpayment accounting that immediately deposits partial cash/UPI funds while recording remaining obligations as Smart Dues; (3) Razorpay-powered AutoPay recurring collection mandates that automatically recover outstanding dues upon agreed repayment deadlines; (4) KOSHA TrustScore, a deterministic 4-factor internal customer credit reliability scoring system; (5) Customer Billing Disputes with immediate AutoPay collection freezing; and (6) A 90-day predictive rolling cash-flow simulation engine that models minimum reserve breaches, receivables aging, and statutory MSMED Act 2006 late-payment protections.",
+        "<b>Project Title:</b> KOSHA — Predictive Cash-Flow Platform & Autonomous MSME Treasury &nbsp;|&nbsp; <b>Team:</b> Team Halfwave<br/>"
+        "<b>Selected Problem Statement:</b> Financial management and predictive cash-flow platform for small businesses, Kiranas, and retail enterprises operating under fragmented counter payments and informal credit ledgers.<br/>"
+        "<b>Executive Summary:</b> Over 82% of small retail businesses fail not because of an absence of sales, but due to acute <b>cash-flow insolvency</b> caused by delayed receivables, counter checkout drop-offs, and lack of visibility into impending liquidity cliffs. Traditional counter credit (<i>bahi khata</i>) is extended informally on paper, resulting in an average collection delay of 45–60 days, high default rates, and strained customer relationships.<br/>"
+        "<b>KOSHA</b> is an enterprise-grade financial management platform that unifies: (1) Instant Counter Dynamic UPI QR checkout with a 5-minute security window and soundbox confirmation; (2) Split Downpayment accounting that immediately deposits partial cash/UPI funds while recording remaining obligations as Smart Dues; (3) Razorpay-powered AutoPay recurring collection mandates that automatically recover outstanding dues upon agreed repayment deadlines; (4) KOSHA TrustScore, a deterministic 4-factor internal customer credit reliability scoring system; (5) Customer Billing Disputes with immediate AutoPay collection freezing; and (6) A 90-day predictive rolling cash-flow simulation engine that models minimum reserve breaches, receivables aging, and statutory MSMED Act 2006 late-payment protections.",
         styles["BodyDark"]
     ))
 
     # =========================================================================
     # SECTION 2: PROBLEM UNDERSTANDING
     # =========================================================================
-    story.append(Paragraph("2. Problem Understanding & Market Need", styles["SectionHeading"]))
+    story.append(Paragraph("2. Problem Understanding & Market Significance", styles["SectionHeading"]))
     story.append(Paragraph(
         "<b>Target Users:</b> Neighborhood Kirana store owners, small retail merchants, MSME suppliers/wholesalers, and counter shoppers across India.<br/>"
         "<b>Core Pain Points Addressed:</b><br/>"
-        "• <i>Counter Checkout Friction:</i> Shoppers frequently lack the full balance required for monthly staples, forcing merchants into an all-or-nothing dilemma: lose the sale or extend unrecorded, uncollectible counter credit.<br/>"
-        "• <i>Informal Khata Friction:</i> Paper notebooks ('bahi khata') lack payment verification, clear repayment deadlines, and dispute mechanisms, leading to customer relationship friction and an average collection delay of 45–60 days.<br/>"
-        "• <i>Lack of Predictive Visibility:</i> Business owners check bank account balances today, but cannot foresee liquidity shortfalls 30, 60, or 90 days ahead when rent, payroll, inventory restocking, and loan EMIs converge simultaneously.<br/>"
-        "• <i>Lack of Credit Bureau Inclusivity:</i> Micro-counter shoppers lack formal CIBIL/Experian bureau histories, leaving merchants with no objective method to determine creditworthiness.<br/>"
-        "<b>Key Assumptions:</b> Counter shoppers possess UPI smartphones; merchants have basic web/mobile access; financial inflows/outflows can be reconciled against bank statements (CSV/Excel).",
+        "• <i>Counter Checkout Drop-Off:</i> Shoppers frequently lack full cash for monthly provisions, forcing merchants to lose the sale or extend unverified credit.<br/>"
+        "• <i>Informal Khata Friction:</i> Paper notebooks lack payment verification, clear repayment deadlines, and dispute mechanisms, leading to delayed collections.<br/>"
+        "• <i>Liquidity Blind Spots:</i> Business owners check bank balances today, but cannot foresee liquidity shortfalls 30, 60, or 90 days ahead when rent, payroll, restocking, and loan EMIs converge.<br/>"
+        "• <i>Lack of Credit Bureau Inclusivity:</i> Micro-counter shoppers lack formal CIBIL/Experian bureau histories, leaving merchants with no objective method to determine creditworthiness.",
         styles["BodyDark"]
     ))
 
     # =========================================================================
-    # SECTION 3: PROPOSED SOLUTION & USER JOURNEYS
+    # SECTION 3: PROPOSED SOLUTION & VISUAL WORKFLOW
     # =========================================================================
     story.append(Paragraph("3. Proposed Solution & Architecture", styles["SectionHeading"]))
     story.append(Paragraph(
@@ -308,7 +347,7 @@ def build_pdf(filename: str):
         ],
         [
             Paragraph("<b>1. Counter Checkout</b>", styles["TableCellBold"]),
-            Paragraph("Merchant generates a bill (e.g., ₹3,200). Customer splits into ₹1,000 downpayment (dynamic UPI QR) and ₹2,200 deferred balance (agreed date).", styles["TableCell"]),
+            Paragraph("Merchant creates bill (e.g., ₹3,200). Customer splits into ₹1,000 downpayment (dynamic UPI QR) and ₹2,200 deferred balance (agreed date).", styles["TableCell"]),
             Paragraph("Eliminates counter sales abandonment; immediately secures downpayment funds in bank.", styles["TableCell"]),
         ],
         [
@@ -332,17 +371,26 @@ def build_pdf(filename: str):
             Paragraph("Enables corrective actions (early invoice discounting, inventory delay) before insolvency occurs.", styles["TableCell"]),
         ],
     ]
-    t_sol = Table(sol_data, colWidths=[100, 270, 170])
+    t_sol = Table(sol_data, colWidths=[90, 270, 180])
     t_sol.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
-        ("BOX", (0, 0), (-1, -1), 1, BORDER_COLOR),
+        ("BOX", (0, 0), (-1, -1), 0.8, BORDER_COLOR),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
     story.append(t_sol)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 6))
+
+    # Visual Figures 1 & 2: In-Store Counter Checkout & Dynamic QR
+    fig1_path = os.path.join(uploaded_dir, "media_1792933199504_6f18909a.png")
+    fig2_path = os.path.join(public_img_dir, "checkout-counter.jpg")
+    story.append(create_dual_image_row(
+        fig1_path, "Dynamic UPI Counter QR with 5-Minute Window & Soundbox Chime",
+        fig2_path, "Real-World Kirana Store In-Store Counter Checkout Context",
+        styles, width=255, height=130
+    ))
 
     # =========================================================================
     # SECTION 4: INNOVATION & DIFFERENTIATION
@@ -361,7 +409,7 @@ def build_pdf(filename: str):
     # =========================================================================
     # SECTION 5: SYSTEM ARCHITECTURE & TECHNOLOGY STACK
     # =========================================================================
-    story.append(Paragraph("5. System Architecture & Technology Stack", styles["SectionHeading"]))
+    story.append(Paragraph("5. System Architecture & Component Interaction", styles["SectionHeading"]))
 
     tech_data = [
         [
@@ -395,17 +443,26 @@ def build_pdf(filename: str):
             Paragraph("90-day cash trajectory forecasting, Excel/CSV bank statement ingestion, MSMED Act Section 16 compounding interest calculations.", styles["TableCell"]),
         ],
     ]
-    t_tech = Table(tech_data, colWidths=[100, 220, 220])
+    t_tech = Table(tech_data, colWidths=[90, 225, 225])
     t_tech.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), PRIMARY_DARK),
-        ("BOX", (0, 0), (-1, -1), 1, BORDER_COLOR),
+        ("BOX", (0, 0), (-1, -1), 0.8, BORDER_COLOR),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
     story.append(t_tech)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 6))
+
+    # Visual Figures 3 & 4: Shopkeeper Real-Time Credit Reconciliation & Scan & Pay
+    fig3_path = os.path.join(uploaded_dir, "media_1792894594122_832f9071.png")
+    fig4_path = os.path.join(uploaded_dir, "media_1792862529883_8ea52f96.png")
+    story.append(create_dual_image_row(
+        fig3_path, "Shopkeeper Real-Time Credit Reconciliation & Razorpay Verified Payments",
+        fig4_path, "Customer Scan & Pay Dynamic Camera Viewfinder with QR Alignment",
+        styles, width=255, height=130
+    ))
 
     # =========================================================================
     # SECTION 6: IMPLEMENTATION DETAILS & ALGORITHMS
@@ -422,6 +479,15 @@ def build_pdf(filename: str):
         "<b>Autonomous Collection Scheduler:</b><br/>"
         "The background worker (<code>collection_engine.py</code>) runs every 60 seconds (configurable). For every active mandate, it checks: (1) Is bill overdue or due today? (2) Is bill disputed? (3) Was pre-debit notice sent at T-24h? (4) Does attempt exceed max retries (3) or mandate limit? Charges are only executed when all safety invariants pass.",
         styles["BodyDark"]
+    ))
+
+    # Visual Figures 5 & 6: AutoPay Mandate Setup & Merchant Store Owner
+    fig5_path = os.path.join(uploaded_dir, "media_1792947093189_fde804f0.png")
+    fig6_path = os.path.join(public_img_dir, "merchant-owner.jpg")
+    story.append(create_dual_image_row(
+        fig5_path, "Razorpay AutoPay Mandate Setup & Authorization Card (₹15,000 Cap)",
+        fig6_path, "Indian Kirana Store Owner Reviewing Cash Ledger & Store Health",
+        styles, width=255, height=130
     ))
 
     # =========================================================================
@@ -466,17 +532,17 @@ def build_pdf(filename: str):
             Paragraph("One-click formal statutory notice generation.", styles["TableCell"]),
         ],
     ]
-    t_achieve = Table(achieve_data, colWidths=[130, 240, 170])
+    t_achieve = Table(achieve_data, colWidths=[120, 240, 180])
     t_achieve.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
-        ("BOX", (0, 0), (-1, -1), 1, BORDER_COLOR),
+        ("BOX", (0, 0), (-1, -1), 0.8, BORDER_COLOR),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
     story.append(t_achieve)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # =========================================================================
     # SECTION 8: TESTING AND VALIDATION
@@ -513,17 +579,17 @@ def build_pdf(filename: str):
             Paragraph("35.81s", styles["TableCell"]),
         ],
     ]
-    t_test = Table(test_summary_data, colWidths=[120, 240, 100, 80])
+    t_test = Table(test_summary_data, colWidths=[110, 240, 110, 80])
     t_test.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), PRIMARY_DARK),
-        ("BOX", (0, 0), (-1, -1), 1, BORDER_COLOR),
+        ("BOX", (0, 0), (-1, -1), 0.8, BORDER_COLOR),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
     story.append(t_test)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # =========================================================================
     # SECTION 9: AI, DATA, & EXTERNAL DEPENDENCIES
@@ -548,6 +614,15 @@ def build_pdf(filename: str):
         "• <b>Merchant Credit & Disputes (<code>/credit</code>):</b> Summary metrics (Billed Volume, Counter Cash, Online Collections, Net Dues), live shop QR code, customer ledgers with privacy-scoped TrustScore drawers, and dispute resolution queue.<br/>"
         "• <b>Cash Flow Runway (<code>/understand-cash-flow</code>):</b> Interactive 30/60/90-day runway projection chart, shortfall alerts, reserve cushion slider, and Excel/CSV statement import modal.",
         styles["BodyDark"]
+    ))
+
+    # Visual Figures 7 & 8: Customer Dashboard & 90-Day Cash Runway Chart
+    fig7_path = os.path.join(uploaded_dir, "media_1792904723231_23d2a550.png")
+    fig8_path = os.path.join(uploaded_dir, "media_1792830743026_bfb701d8.png")
+    story.append(create_dual_image_row(
+        fig7_path, "Customer Payment Portal with Live Outstanding Dues & Action Items",
+        fig8_path, "90-Day Rolling Cash Runway Forecast Chart with Minimum Reserve Cushion",
+        styles, width=255, height=130
     ))
 
     # =========================================================================
@@ -577,17 +652,17 @@ def build_pdf(filename: str):
             Paragraph("High-concurrency multi-instance production requires migrating to PostgreSQL (handled cleanly via SQLAlchemy DATABASE_URL).", styles["TableCell"]),
         ],
     ]
-    t_limit = Table(limit_data, colWidths=[110, 215, 215])
+    t_limit = Table(limit_data, colWidths=[100, 220, 220])
     t_limit.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
-        ("BOX", (0, 0), (-1, -1), 1, BORDER_COLOR),
+        ("BOX", (0, 0), (-1, -1), 0.8, BORDER_COLOR),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
     story.append(t_limit)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # =========================================================================
     # SECTION 12: REAL-WORLD VIABILITY AND IMPACT
@@ -598,6 +673,15 @@ def build_pdf(filename: str):
         "• <b>Security & PCI-DSS Compliance:</b> Zero storage of UPI PINs, banking passwords, or raw card data. Secrets reside exclusively in backend environment variables. Webhooks are validated via HMAC-SHA256 signatures.<br/>"
         "• <b>Privacy Architecture:</b> Customer phone numbers are masked (+91 98 ****) in merchant drawers. Aggregated credit reliability scores are exposed without leaking itemized transaction records across competing stores.",
         styles["BodyDark"]
+    ))
+
+    # Visual Figures 9 & 10: Mobile UPI App Screen & Business Finance Modeling
+    fig9_path = os.path.join(uploaded_dir, "media_1792950143144_10c8a498.jpg")
+    fig10_path = os.path.join(public_img_dir, "business-finance.jpg")
+    story.append(create_dual_image_row(
+        fig9_path, "Mobile Smartphone UPI Checkout App Screen with Dynamic Gateway",
+        fig10_path, "MSME Treasury Modeling, Cash-Flow Optimization & Working Capital",
+        styles, width=255, height=130
     ))
 
     # =========================================================================
@@ -643,7 +727,7 @@ def build_pdf(filename: str):
         "• <i>Razorpay AutoPay & Collection Engine:</i> Mandate lifecycle, pre-debit notifications, idempotency, retry policies, and webhook captures.<br/>"
         "• <i>KOSHA TrustScore Pure Domain Engine:</i> 4-factor scoring algorithm (40/25/20/15), snapshot delta tracking, and privacy boundaries.<br/>"
         "• <i>Frontend UI/UX & Component Engineering:</i> Dual-portal responsive layouts, Recharts graphs, dispute modals, and PayPal blue palette.<br/>"
-        "• <i>Testing & Quality Assurance:</i> Comprehensive test suites achieving 100% pass rates across Pytest and Vitest.<br/>"
+        "• <i>Testing & Quality Assurance:</i> Comprehensive test suites achieving 100% test coverage across Pytest and Vitest.<br/>"
         "<b>Key References:</b><br/>"
         "1. Reserve Bank of India (RBI) Guidelines on Digital Lending (2022).<br/>"
         "2. Micro, Small and Medium Enterprises Development (MSMED) Act (2006) — Section 16 Statutory Compounding Interest.<br/>"
