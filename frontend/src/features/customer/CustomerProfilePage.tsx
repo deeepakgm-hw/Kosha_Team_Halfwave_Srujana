@@ -121,6 +121,31 @@ export const CustomerProfilePage: React.FC = () => {
                 </span>
               </div>
             </div>
+
+            {/* KOSHA TrustScore Card */}
+            <div className="p-4 bg-gradient-to-r from-blue-900 to-indigo-950 text-white rounded-2xl flex items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center font-bold shrink-0 border border-white/20">
+                  <ShieldCheck className="w-5 h-5 text-sky-300" />
+                </div>
+                <div>
+                  <p className="font-bold text-xs text-white flex items-center gap-1.5">
+                    <span>KOSHA TrustScore</span>
+                    <span className="text-[10px] px-2 py-0.2 rounded-full bg-sky-500/30 text-sky-200 border border-sky-400/30">
+                      Reliability
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-blue-200">View 4-factor repayment reliability and credit history.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/customer/trustscore")}
+                className="px-4 py-2 rounded-xl bg-white hover:bg-blue-50 text-[#001C64] text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+              >
+                <span>View Score</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </>
         )}
 

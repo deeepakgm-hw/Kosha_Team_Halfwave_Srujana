@@ -38,7 +38,7 @@ export const MobileBottomNav: React.FC = () => {
     { name: "Home", path: "/customer/dashboard", icon: Home },
     { name: "Scan & Pay", path: "/customer/pay", icon: QrCode, isHero: true },
     { name: "Dues", path: "/customer/dues", icon: Receipt },
-    { name: "Activity", path: "/customer/activity", icon: Clock },
+    { name: "TrustScore", path: "/customer/trustscore", icon: ShieldCheck },
     { name: "Profile", path: "/customer/profile", icon: User },
   ];
 
